@@ -491,77 +491,6 @@ class DevOnly(commands.Cog):
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
     
-    @commands.command(name="dm", description="Send a DM", hidden=True)
-    @commands.is_owner()
-    async def send_dm(self, ctx, user: discord.User, *, message: str):
-        """Send a DM to a user"""
-        try:
-            await user.send(message)
-            
-            embed = discord.Embed(
-                title="DM Sent",
-                description=f"Successfully sent DM to {user.mention}",
-                color=EMBED_COLOR_NORMAL
-            )
-            embed.add_field(
-                name="Message",
-                value=message[:1000] + ("..." if len(message) > 1000 else ""),
-                inline=False
-            )
-            embed.set_thumbnail(url=user.display_avatar.url)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-            
-        except discord.Forbidden:
-            embed = discord.Embed(
-                title="DM Failed",
-                description=f"Could not send DM to {user.mention} (DMs disabled or blocked)",
-                color=EMBED_COLOR_ERROR
-            )
-            embed.set_thumbnail(url=user.display_avatar.url)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        except Exception as e:
-            embed = discord.Embed(
-                title="DM Error",
-                description=f"Error sending DM: {str(e)}",
-                color=EMBED_COLOR_ERROR
-            )
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-    
-    @commands.command(name="say", description="Make the bot say something", hidden=True)
-    @commands.is_owner()
-    async def say_message(self, ctx, *, message: str):
-        """Make the bot say something"""
-        try:
-            # Delete the command message
-            await ctx.message.delete()
-            # Send the message
-            await ctx.send(message)
-            
-        except discord.Forbidden:
-            embed = discord.Embed(
-                title=f"{SPROUTS_WARNING} Insufficient Permissions",
-                description="I don't have permission to delete messages or send messages in this channel.",
-                color=EMBED_COLOR_ERROR
-            )
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        except Exception as e:
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Say Error",
-                description=f"Error: {str(e)}",
-                color=EMBED_COLOR_ERROR
-            )
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-    
     @commands.command(name="setstatus", description="Change bot status", hidden=True)
     @commands.is_owner()
     async def set_status(self, ctx, status: str):
@@ -1355,8 +1284,8 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="**Available Commands**",
             value=(
-                "`s.dmlogs set <#channel>` - Set global DM logging channel\n"
-                "`s.dmlogs status` - View current configuration\n"
+                "`{ctx.prefix}dmlogs set <#channel>` - Set global DM logging channel\n"
+                "`{ctx.prefix}dmlogs status` - View current configuration\n"
                 "**Note**: All DMs to the bot will be logged to this one channel"
             ),
             inline=False
