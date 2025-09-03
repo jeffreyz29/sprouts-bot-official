@@ -251,16 +251,16 @@ class Reminders(commands.Cog):
     
     @commands.command(name="remind", aliases=["remindme", "setr"], help="Set personal reminder with flexible time format")
     async def set_reminder(self, ctx, time: str, *, message: str):
-        """Set a reminder
+        """Set a personal reminder
         
-        Usage: remind <time> <message>
+        Usage: `{ctx.prefix}remind <time> <message>`
         Creates personal reminder that alerts you after specified time
         
         Examples:
-        - remind 1h Take a break
-        - remind 30m Check the oven  
-        - remind 1d2h30m Meeting tomorrow
-        - remind 2w Project deadline
+        - `{ctx.prefix}remind 1h Take a break`
+        - `{ctx.prefix}remind 30m Check the oven`
+        - `{ctx.prefix}remind 1d2h30m Meeting tomorrow`
+        - `{ctx.prefix}remind 2w Project deadline`
         
         Time Formats:
         - s/sec/seconds, m/min/minutes, h/hour/hours
@@ -282,10 +282,10 @@ class Reminders(commands.Cog):
                 )
                 embed.add_field(
                     name="Examples",
-                    value="`s.remind <time> <message>`\n\n"
-                          "`s.remind 1h Take a break`\n"
-                          "`s.remind 30m Check the oven`\n"
-                          "`s.remind 1d2h Meeting tomorrow`",
+                    value="`{ctx.prefix}remind <time> <message>`\n\n"
+                          "`{ctx.prefix}remind 1h Take a break`\n"
+                          "`{ctx.prefix}remind 30m Check the oven`\n"
+                          "`{ctx.prefix}remind 1d2h Meeting tomorrow`",
                     inline=False
                 )
                 await ctx.reply(embed=embed, mention_author=False)
@@ -363,13 +363,13 @@ class Reminders(commands.Cog):
     async def list_reminders(self, ctx):
         """List user's active reminders
         
-        Usage: reminders
+        Usage: `{ctx.prefix}reminders`
         Shows all your personal reminders with time remaining and IDs
         
         Examples:
-        - reminders - View all your active reminders
-        - Shows up to 10 reminders with details
-        - Displays time remaining and full messages
+        - `{ctx.prefix}reminders` - View all your active reminders
+        -  Shows up to 10 reminders with details
+        -  Displays time remaining and full messages
         
         Features:
         - Shows reminder IDs for deletion
@@ -434,14 +434,14 @@ class Reminders(commands.Cog):
     async def delete_reminder(self, ctx, reminder_id: str):
         """Delete a specific reminder
         
-        Usage: delreminder <id>
+        Usage: `{ctx.prefix}delreminder <reminder_id>`
         Permanently removes reminder using its unique ID
         
         Examples:
-        - delreminder abc123 - Delete reminder with ID abc123
+        - `{ctx.prefix}delreminder abc123` - Delete reminder with ID abc123
         
         Common Errors:
-        - ID not found: Use 'reminders' to see valid IDs
+        - ID not found: Use '`{ctx.prefix}reminders' to see valid IDs
         - Case sensitive: ID must match exactly
         - Cannot undo: Deletion is permanent
         
