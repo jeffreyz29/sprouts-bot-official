@@ -8,7 +8,7 @@ from discord.ext import commands
 import logging
 import asyncio
 from datetime import datetime
-from config import EMBED_COLOR_NORMAL, EMBED_COLOR_SUCCESS, EMBED_COLOR_ERROR, EMBED_COLOR_WARNING, SPROUTS_ERROR
+from config import EMBED_COLOR_NORMAL, EMBED_COLOR_SUCCESS, EMBED_COLOR_ERROR, EMBED_COLOR_WARNING, SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +21,11 @@ class Utilities(commands.Cog):
     async def variables(self, ctx):
         """Show comprehensive list of available variables for embeds and auto responses
 
-        Usage: `s.variables`
+        Usage: `{ctx.prefix}variables`
         Displays all 40+ available variables with descriptions and usage syntax
 
         Examples:
-        - `s.variables` - View complete variable reference guide
+        - `{ctx.prefix}variables` - View complete variable reference guide
 
         Variable Categories:
         - User Variables: Display user information like name, avatar, join date
@@ -184,11 +184,11 @@ class Utilities(commands.Cog):
     async def ping(self, ctx):
         """Check bot latency and response time with detailed statistics
 
-        Usage: `s.ping`
+        Usage: `{ctx.prefix}ping`
         Shows bot latency, API response time, and system performance metrics
 
         Examples:
-        - `s.ping` - Check if bot is responsive and view performance stats
+        - `{ctx.prefix}ping` - Check if bot is responsive and view performance stats
 
         Performance metrics:
         - Heartbeat latency to Discord
@@ -259,13 +259,13 @@ class Utilities(commands.Cog):
     async def avatar(self, ctx, member: discord.Member = None):
         """Display user's avatar in high resolution
 
-        Usage: `s.avatar [@user]`
+        Usage: `{ctx.prefix}avatar [@user]`
         Shows high-quality avatar image with download links (defaults to yourself)
 
         Examples:
-        - `s.avatar` - View your own avatar
-        - `s.avatar` @username - View specific user's avatar
-        - `s.avatar 123456789` - View user avatar by user id
+        - `{ctx.prefix}avatar` - View your own avatar
+        - `{ctx.prefix}avatar` @username - View specific user's avatar
+        - `{ctx.prefix}avatar 123456789` - View user avatar by user id
 
         Features:
         - High-resolution image display
@@ -307,13 +307,13 @@ class Utilities(commands.Cog):
     async def userinfo(self, ctx, member: discord.Member = None):
         """Display detailed user information
 
-        Usage: `s.userinfo [@user]`
+        Usage: `{ctx.prefix}userinfo [@user]`
         Shows comprehensive information about user (defaults to yourself)
 
         Examples:
-        - `s.userinfo` - View your own information
-        - `s.userinfo @username` - View specific user's info
-        - `s.userinfo 1234567890` - View user info by user id
+        - `{ctx.prefix}userinfo` - View your own information
+        - `{ctx.prefix}userinfo @username` - View specific user's info
+        - `{ctx.prefix}userinfo 1234567890` - View user info by user id
 
         Information shown:
         - Account creation date and join date
@@ -414,11 +414,11 @@ class Utilities(commands.Cog):
     async def serverinfo(self, ctx):
         """Display comprehensive server information
 
-        Usage: `s.serverinfo`
+        Usage: `{ctx.prefix}serverinfo`
         Shows detailed information about the current server
 
         Examples:
-        - `s.serverinfo` - View complete server statistics
+        - `{ctx.prefix}serverinfo` - View complete server statistics
 
         Information shown:
         - Basic server details (name, ID, owner)
@@ -516,13 +516,13 @@ class Utilities(commands.Cog):
     async def channelinfo(self, ctx, channel: discord.TextChannel = None):
         """Display detailed channel information
 
-        Usage: `s.channelinfo [#channel]`
+        Usage: `{ctx.prefix}channelinfo [#channel]`
         Shows comprehensive information about channel
 
         Examples:
-        - `s.channelinfo` - View current channel information
-        - `s.channelinfo #general` - View specific channel info
-        - `s.channelinfo 123456789` - View channel info by a specific channel id
+        - `{ctx.prefix}channelinfo` - View current channel information
+        - `{ctx.prefix}channelinfo #general` - View specific channel info
+        - `{ctx.prefix}channelinfo 123456789` - View channel info by a specific channel id
 
         Information shown:
         - Channel type, creation date, and category
@@ -580,12 +580,13 @@ class Utilities(commands.Cog):
     async def roleinfo(self, ctx, *, role: discord.Role):
         """Display detailed role information
 
-        Usage: `s.roleinfo <@role|role_name>`
+        Usage: `{ctx.prefix}roleinfo <@role|role_name>`
         Shows comprehensive information about server role
 
         Examples:
-        - `s.roleinfo @Moderator` - View role details by mention
-        - `s.roleinfo Admin` - View role by name
+        - `{ctx.prefix}roleinfo @Moderator` - View role details by mention
+        - `{ctx.prefix}roleinfo Admin` - View role by name
+        - {ctx.prefix}roleinfo 123456789 - View role by role id
 
         Information shown:
         - Role permissions and hierarchy position
@@ -655,12 +656,12 @@ class Utilities(commands.Cog):
     async def inviteinfo(self, ctx, invite_url: str):
         """Display information about Discord invite link
 
-        Usage: `s.inviteinfo <invite_code>`
+        Usage: `{ctx.prefix}inviteinfo <invite_code>`
         Shows detailed information about invite
 
         Examples:
-        - `s.inviteinfo discord.gg/abc123` - Check invite details
-        - `s.inviteinfo abc123` - Check invite by code only
+        - `{ctx.prefix}inviteinfo discord.gg/abc123` - Check invite details
+        - `{ctx.prefix}inviteinfo abc123` - Check invite by code only
 
         Information shown:
         - Target server name and description
@@ -738,13 +739,13 @@ class Utilities(commands.Cog):
     async def setprefix(self, ctx, *, new_prefix: str):
         """Set a custom prefix for this server
 
-        Usage: s.setprefix <new_prefix>
+        Usage: {`ctx.prefix}setprefix <new_prefix>`
         Changes bot prefix for this server (Administrator permission required)
 
         Examples:
-        - s.setprefix ! - Sets prefix to !
-        - s.setprefix >> - Sets prefix to >>
-        - s.setprefix bot. - Sets prefix to bot.
+        - `{ctx.prefix}setprefix !` - Sets prefix to !
+        - `{ctx.prefix}setprefix >>` - Sets prefix to >>
+        - `{ctx.prefix}setprefix bot.` - Sets prefix to bot.
 
         Common Errors:
         - Prefix too long: Must be 5 characters or less
@@ -801,11 +802,11 @@ class Utilities(commands.Cog):
     async def prefix(self, ctx):
         """Show the current server prefix
 
-        Usage: s.prefix
+        Usage: `{ctx.prefix}prefix`
         Displays the current bot prefix for this server with usage instructions
 
         Examples:
-        - s.prefix - Shows current prefix (default: s.)
+        - `{ctx.prefix}prefix` - Shows current prefix (default: s.)
 
         Notes:
         - Bot mention (@bot) always works as backup prefix
