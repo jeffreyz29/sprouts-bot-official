@@ -1659,6 +1659,15 @@ class DevOnly(commands.Cog):
             inline=False
         )
         
+        embed.add_field(
+            name="Communications",
+            value=(
+                "`s.massdm` - Mass DM server owners with changelog updates\n"
+                "**Owner Only - Use for bot announcements and updates**"
+            ),
+            inline=False
+        )
+        
         embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         embed.set_footer(text=f"Developer: {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
         embed.timestamp = discord.utils.utcnow()
