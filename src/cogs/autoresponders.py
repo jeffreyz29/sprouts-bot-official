@@ -329,13 +329,13 @@ class AutoResponders(commands.Cog):
     async def autoresponder_remove(self, ctx, *, trigger):
         """Remove an auto responder
         
-        Usage: `s.autoresponder remove <trigger>`
+        Usage: `{ctx.prefix}autoresponder remove <trigger>`
         Permanently deletes auto responder (cannot be undone)
         
         Examples:
-        - `s.autoresponder remove hello` - Delete 'hello' trigger
-        - `s.autoresponder remove rules` - Remove 'rules' auto responder
-        - `s.autoresponder remove old_command` - Clean up unused triggers
+        - `{ctx.prefix}autoresponder remove hello` - Delete 'hello' trigger
+        - `{ctx.prefix}autoresponder remove rules` - Remove 'rules' auto responder
+        - `{ctx.prefix}autoresponder remove old_command` - Clean up unused triggers
         
         Common Errors:
         - Trigger not found: Use autoresponder list to see available triggers
@@ -379,11 +379,11 @@ class AutoResponders(commands.Cog):
     async def autoresponder_list(self, ctx):
         """List all auto responders
         
-        Usage: `s.autoresponder list`
+        Usage: `{ctx.prefix}autoresponder list`
         Shows all configured auto responders with triggers, responses, and status
         
         Examples:
-        - `s.autoresponder list` - View all server auto responders
+        - `{ctx.prefix}autoresponder list` - View all server auto responders
         - Shows enabled/disabled status for each
         - Displays first 50 characters of each response
         
@@ -407,7 +407,7 @@ class AutoResponders(commands.Cog):
         responders = self.autoresponders[guild_id]
         
         embed = discord.Embed(
-            title=" Auto Responders",
+            title="{SPROUTS_CHECK} Auto Responders",
             description=f"Found {len(responders)} auto responder(s)",
             color=EMBED_COLOR_NORMAL
         )
@@ -431,7 +431,7 @@ class AutoResponders(commands.Cog):
     async def autoresponder_toggle(self, ctx, *, trigger):
         """Toggle an auto responder on/off without deleting it
         
-        Usage: `s.autoresponder toggle <trigger>`
+        Usage: `{ctx.prefix}autoresponder toggle <trigger>`
         
         How to use:
         1. First, check existing responders with 'autoresponder list'
@@ -440,9 +440,9 @@ class AutoResponders(commands.Cog):
         4. The responder will switch between enabled and disabled states
         
         Examples:
-        - `s.autoresponder toggle hello` - Enable/disable the 'hello' responder
-        - `s.autoresponder toggle maintenance` - Toggle maintenance message on/off
-        - `s.autoresponder toggle rules` - Temporarily disable rules reminder
+        - `{ctx.prefix}autoresponder toggle hello` - Enable/disable the 'hello' responder
+        - `{ctx.prefix}autoresponder toggle maintenance` - Toggle maintenance message on/off
+        - `{ctx.prefix}autoresponder toggle rules` - Temporarily disable rules reminder
         
         What this does:
         - Disables the responder: It will stop responding to messages but keep all settings
