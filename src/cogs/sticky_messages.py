@@ -284,7 +284,7 @@ class StickyMessages(commands.Cog):
 
             if channel_id not in self.stickies:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" No Sticky Message",
+                    title=f"{SPROUTS_WARNING} No Sticky Message",
                     description="There is no sticky message in this channel",
                     color=EMBED_COLOR_ERROR
                 )
@@ -322,7 +322,7 @@ class StickyMessages(commands.Cog):
 
             if channel_id not in self.stickies:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" No Sticky Message",
+                    title=f"{SPROUTS_WARNING} No Sticky Message",
                     description="There is no sticky message configured in this channel",
                     color=EMBED_COLOR_ERROR
                 )
