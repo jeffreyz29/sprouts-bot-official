@@ -576,7 +576,7 @@ class ServerStatsMonitor(commands.Cog):
             embed.add_field(
                 name="Notifications",
                 value=f"**Channel:** {notification_channel.mention if notification_channel else 'Not set'}\n"
-                      f"**Status:** {'f"{SPROUTS_CHECK}" Active' if notification_channel else 'f"{SPROUTS_ERROR}" Disabled'}",
+                      f"**Status:** {f'{SPROUTS_CHECK} Active' if notification_channel else f'{SPROUTS_ERROR} Disabled'}",
                 inline=False
             )
             
