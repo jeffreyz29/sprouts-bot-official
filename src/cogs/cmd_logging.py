@@ -273,7 +273,7 @@ class CommandLoggingCog(commands.Cog):
             bot_perms = channel.permissions_for(ctx.guild.me)
             if not bot_perms.send_messages or not bot_perms.embed_links:
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> Insufficient Permissions",
+                    title="{SPROUTS_WARNING} Insufficient Permissions",
                     description=f"I need **Send Messages** and **Embed Links** permissions in {channel.mention}",
                     color=EMBED_COLOR_ERROR
                 )
