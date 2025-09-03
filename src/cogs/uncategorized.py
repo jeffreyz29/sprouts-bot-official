@@ -107,11 +107,11 @@ class Uncategorized(commands.Cog):
     async def about(self, ctx):
         """About command showing detailed bot information
 
-        Usage: `s.about`
+        Usage: `{ctx.prefix}about`
         Shows bot uptime, server count, memory usage, framework info, and system specs
 
         Examples:
-        - `s.about` - View complete bot statistics and performance metrics
+        - `{ctx.prefix}about` - View complete bot statistics and performance metrics
 
         Information shown:
         - Bot uptime since last restart
@@ -175,11 +175,11 @@ class Uncategorized(commands.Cog):
     async def invite(self, ctx):
         """Invite command with bot invite link
 
-        Usage: `s.invite`
+        Usage: `{ctx.prefix}invite`
         Provides bot invite link with proper permissions and support server details
 
         Examples:
-        - `s.invite` - Add bot to your server with correct permissions setup
+        - `{ctx.prefix}invite` - Add bot to your server with correct permissions setup
 
         Features:
         - Pre-configured permission set for full functionality
@@ -252,11 +252,11 @@ class Uncategorized(commands.Cog):
     async def shards(self, ctx):
         """Shard information command with server list pagination
 
-        Usage: `s.shards`
+        Usage: `{ctx.prefix}shards`
         Shows current shard, total shards, and paginated server list with navigation
 
         Examples:
-        - `s.shards` - View bot's shard info and browse through all connected servers
+        - `{ctx.prefix}shards` - View bot's shard info and browse through all connected servers
 
         Information shown:
         - Current shard and total shard count
@@ -298,11 +298,11 @@ class Uncategorized(commands.Cog):
     async def vote(self, ctx):
         """Vote command with voting links
 
-        Usage: `s.vote`
+        Usage: `{ctx.prefix}vote`
         Provides voting links for Top.gg and other bot lists to support development
 
         Examples:
-        - `s.vote` - Support the bot by voting every 12 hours on bot listing sites
+        - `{ctx.prefix}vote` - Support the bot by voting every 12 hours on bot listing sites
 
         Features:
         - Direct links to voting platforms
