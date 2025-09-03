@@ -119,7 +119,7 @@ class DetailedCommandHelpView(discord.ui.View):
                     f"`{self.prefix}setprefix sp.` - Change commands to sp.help, sp.ping, etc.",
                     f"`{self.prefix}setprefix reset` - Go back to default prefix commands"
                 ],
-                "permissions": "**Administrator** required",
+                "permissions": "Administrator",
                 "cooldown": "10 seconds per server",
                 "error_scenarios": [
                     "**Missing permissions:** `You need Administrator permissions to change the server prefix.`",
@@ -145,7 +145,7 @@ class DetailedCommandHelpView(discord.ui.View):
                     f"`{self.prefix}new Bug: Commands not working` - Bug report ticket",
                     f"`{self.prefix}new Need help with Discord roles` - Help request ticket"
                 ],
-                "permissions": "None required (if tickets enabled)",
+                "permissions": "None required",
                 "cooldown": "30 seconds per user", 
                 "error_scenarios": [
                     "**Tickets disabled:** `Ticket system is not enabled in this server.`",
