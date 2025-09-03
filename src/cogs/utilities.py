@@ -184,11 +184,11 @@ class Utilities(commands.Cog):
     async def ping(self, ctx):
         """Check bot latency and response time with detailed statistics
 
-        Usage: `{self.prefix}ping`
+        Usage: `s.ping`
         Shows bot latency, API response time, and system performance metrics
 
         Examples:
-        - `{self.prefix}ping` - Check if bot is responsive and view performance stats
+        - `s.ping` - Check if bot is responsive and view performance stats
 
         Performance metrics:
         - Heartbeat latency to Discord
@@ -259,13 +259,13 @@ class Utilities(commands.Cog):
     async def avatar(self, ctx, member: discord.Member = None):
         """Display user's avatar in high resolution
 
-        Usage: `{self.prefix}avatar [@user]`
+        Usage: `s.avatar [@user]`
         Shows high-quality avatar image with download links (defaults to yourself)
 
         Examples:
-        - `{self.prefix}avatar` - View your own avatar
-        - `{self.prefix}avatar` @username - View specific user's avatar
-        - `{self.prefix}avatar 123456789` - View user avatar by user id
+        - `s.avatar` - View your own avatar
+        - `s.avatar` @username - View specific user's avatar
+        - `s.avatar 123456789` - View user avatar by user id
 
         Features:
         - High-resolution image display
