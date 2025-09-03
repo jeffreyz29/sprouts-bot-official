@@ -1118,39 +1118,17 @@ class DetailedCommandHelpView(discord.ui.View):
         """Create format guide embed explaining command syntax symbols"""
         embed = discord.Embed(
             title="Format Guide",
-            description="Understanding command syntax and parameter types",
+            description="Understanding command syntax",
             color=EMBED_COLOR_NORMAL
         )
         
         embed.add_field(
-            name="Parameter Format Symbols",
-            value="• `<#channelID>` - Required channel parameter (works with channel id or channel mention)\n"
-                  "• `< >` - Required parameter\n"
-                  "• `[ ]` - Optional parameter\n"
-                  "• `[thing 1| thing 2]` - Choose one of the given option\n"
-                  "• `...` - Can repeat multiple times",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="How to Read Command Syntax",
-            value="When you see a command like `s.command <required> [optional]`:\n"
-                  "• You **must** provide the `<required>` part\n"
-                  "• You **can** provide the `[optional]` part\n"
-                  "• Replace `<>` and `[]` with actual values\n"
-                  "• Don't type the brackets themselves",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="Examples",
-            value="• `s.ban <@user> [reason]` means:\n"
-                  "  `s.ban @John` (reason is optional)\n"
-                  "  `s.ban @John spamming` (with reason)\n"
-                  "  `s.ban` - WRONG (missing required user)\n\n"
-                  "• `s.remind <time> <message>` means:\n"
-                  "  `s.remind 5m check the oven`\n"
-                  "  `s.remind 5m` - WRONG (missing message)",
+            name="Syntax Symbols",
+            value="`<#channelID>` - Required channel parameter\n"
+                  "`< >` - Required parameter\n"
+                  "`[ ]` - Optional parameter\n"
+                  "`[thing1|thing2]` - Choose one option\n"
+                  "`...` - Can repeat multiple times",
             inline=False
         )
         
