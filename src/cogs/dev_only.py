@@ -1810,6 +1810,195 @@ class DevOnly(commands.Cog):
             )
             await ctx.reply(embed=embed, mention_author=False)
     
+    @commands.command(name="listdata", description="List data files for users or guilds", hidden=True)
+    @commands.is_owner()
+    async def list_data_files(self, ctx, data_type: str = None, *, identifier: str = None):
+        """
+        List data files for specific users or guilds
+        
+        Usage:
+        - listdata user <user_id> - List all data files for a specific user
+        - listdata guild <guild_id> - List all data files for a specific guild
+        - listdata all - List all data directories and file counts
+        """
+        try:
+            if not data_type:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} List Data Files",
+                    description="List data files for users or guilds.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                embed.add_field(
+                    name="Usage Examples:",
+                    value="```\nlistdata user 123456789 - List all files for user\n"
+                          "listdata guild 987654321 - List all files for guild\n"
+                          "listdata all - List all data directories```",
+                    inline=False
+                )
+                embed.set_footer(text="Data inspection tool")
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            base_paths = ["src/data", "config"]
+            
+            if data_type.lower() == "all":
+                # List all data directories and file counts
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} All Data Overview",
+                    description="Overview of all data files and directories:",
+                    color=EMBED_COLOR_NORMAL
+                )
+                
+                total_files = 0
+                for base_path in base_paths:
+                    if os.path.exists(base_path):
+                        files_info = []
+                        dir_count = 0
+                        file_count = 0
+                        
+                        for root, dirs, files in os.walk(base_path):
+                            dir_count += len(dirs)
+                            file_count += len(files)
+                            total_files += len(files)
+                            
+                            if files:
+                                rel_path = os.path.relpath(root, base_path)
+                                if rel_path == ".":
+                                    rel_path = "root"
+                                files_info.append(f"**{rel_path}**: {len(files)} files")
+                        
+                        if files_info:
+                            embed.add_field(
+                                name=f"{base_path.title()} Directory ({file_count} files, {dir_count} dirs)",
+                                value="\n".join(files_info[:10]) + ("\n..." if len(files_info) > 10 else ""),
+                                inline=False
+                            )
+                
+                embed.add_field(
+                    name="Summary",
+                    value=f"**Total Files:** {total_files}\n**Data Locations:** {', '.join(base_paths)}",
+                    inline=False
+                )
+                
+            elif data_type.lower() == "user":
+                if not identifier:
+                    await ctx.reply("Please provide a user ID.", mention_author=False)
+                    return
+                
+                user_files = []
+                
+                # Check various data files for user data
+                data_files = [
+                    "src/data/reminders.json",
+                    "src/data/tickets.json",
+                    "src/data/embed_builder.json"
+                ]
+                
+                for file_path in data_files:
+                    if os.path.exists(file_path):
+                        try:
+                            with open(file_path, 'r') as f:
+                                data = json.load(f)
+                                if identifier in data:
+                                    user_files.append(f"✅ {os.path.basename(file_path)} - Has data")
+                                else:
+                                    user_files.append(f"❌ {os.path.basename(file_path)} - No data")
+                        except:
+                            user_files.append(f"⚠️ {os.path.basename(file_path)} - Error reading")
+                    else:
+                        user_files.append(f"❌ {os.path.basename(file_path)} - File not found")
+                
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} User Data Files",
+                    description=f"Data files for User ID: `{identifier}`",
+                    color=EMBED_COLOR_NORMAL
+                )
+                
+                if user_files:
+                    embed.add_field(
+                        name="Data Files Status",
+                        value="\n".join(user_files),
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="Result",
+                        value="No data files found for this user.",
+                        inline=False
+                    )
+                    
+            elif data_type.lower() == "guild":
+                if not identifier:
+                    await ctx.reply("Please provide a guild ID.", mention_author=False)
+                    return
+                
+                guild_files = []
+                guild_path = f"config/guild_{identifier}"
+                
+                # Check guild-specific directory
+                if os.path.exists(guild_path):
+                    for root, dirs, files in os.walk(guild_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            rel_path = os.path.relpath(file_path, guild_path)
+                            file_size = os.path.getsize(file_path)
+                            guild_files.append(f"📄 {rel_path} ({file_size} bytes)")
+                
+                # Check other data files for guild data
+                data_files = [
+                    "src/data/autoresponders.json",
+                    "src/data/sticky_messages.json"
+                ]
+                
+                for file_path in data_files:
+                    if os.path.exists(file_path):
+                        try:
+                            with open(file_path, 'r') as f:
+                                data = json.load(f)
+                                if identifier in data:
+                                    guild_files.append(f"✅ {os.path.basename(file_path)} - Has data")
+                                else:
+                                    guild_files.append(f"❌ {os.path.basename(file_path)} - No data")
+                        except:
+                            guild_files.append(f"⚠️ {os.path.basename(file_path)} - Error reading")
+                
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Guild Data Files",
+                    description=f"Data files for Guild ID: `{identifier}`",
+                    color=EMBED_COLOR_NORMAL
+                )
+                
+                if guild_files:
+                    embed.add_field(
+                        name="Data Files",
+                        value="\n".join(guild_files[:15]) + ("\n..." if len(guild_files) > 15 else ""),
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="Summary",
+                        value=f"**Total Files:** {len([f for f in guild_files if f.startswith('📄')])}\n"
+                              f"**Guild Directory:** `{guild_path}`",
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="Result",
+                        value="No data files found for this guild.",
+                        inline=False
+                    )
+            else:
+                await ctx.reply("Invalid data type. Use: `user`, `guild`, or `all`", mention_author=False)
+                return
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error in listdata command: {e}")
+            await ctx.reply("An error occurred while listing data files.", mention_author=False)
+
     @commands.command(name="deletedata", description="Safely delete specific user data", hidden=True)
     @commands.is_owner()
     async def delete_user_data(self, ctx, data_type: str = None, *, identifier: str = None):
