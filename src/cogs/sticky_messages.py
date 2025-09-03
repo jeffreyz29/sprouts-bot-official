@@ -252,7 +252,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error creating sticky: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Error",
+                title=f"{SPROUTS_WARNING} Error",
                 description="Failed to create sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -265,7 +265,7 @@ class StickyMessages(commands.Cog):
         """Create a slow sticky message (message is required)"""
         if not content.strip():
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Message Required",
+                title=f"{SPROUTS_WARNING} Message Required",
                 description="You must provide a message for the sticky.\n\n**Usage:** `s.stickslow <message>`",
                 color=EMBED_COLOR_ERROR
             )
@@ -307,7 +307,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error stopping sticky: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Error",
+                title=f"{SPROUTS_WARNING} Error",
                 description="Failed to stop sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -348,7 +348,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error starting sticky: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Error",
+                title=f"{SPROUTS_WARNING} Error",
                 description="Failed to start sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -462,7 +462,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error listing stickies: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Error",
+                title=f"{SPROUTS_WARNING} Error",
                 description="Failed to list sticky messages",
                 color=EMBED_COLOR_ERROR
             )
