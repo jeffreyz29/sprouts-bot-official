@@ -15,6 +15,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_CHECK, SPROUTS_ERROR
 from src.utils.variables import VariableParser
 
 logger = logging.getLogger(__name__)

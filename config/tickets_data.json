@@ -32,5 +32,25 @@
     ],
     "tags": [],
     "log_channel_id": null
+  },
+  "1412915886016172042": {
+    "id": "ticket-002",
+    "creator_id": 764874247646085151,
+    "creator_name": "jeffreyz29",
+    "guild_id": 1412650062517108789,
+    "channel_id": 1412915886016172042,
+    "status": "closed",
+    "claimed_by": null,
+    "created_at": "2025-09-03T21:43:19.527484",
+    "priority": "medium",
+    "topic": "adsfd",
+    "members": [
+      764874247646085151
+    ],
+    "tags": [],
+    "log_channel_id": null,
+    "closed_by": 764874247646085151,
+    "closed_at": "2025-09-03T21:43:55.322732",
+    "close_reason": "No reason provided"
   }
 }
