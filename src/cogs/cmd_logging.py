@@ -212,7 +212,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog command: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Command Logging Error",
+                title="{SPROUTS_ERROR} Command Logging Error",
                 description="An error occurred while accessing command logging settings.",
                 color=EMBED_COLOR_ERROR
             )
@@ -338,7 +338,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting command log channel: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Configuration Error",
+                title="{SPROUTS_ERROR} Configuration Error",
                 description="An error occurred while setting the command logging channel.",
                 color=EMBED_COLOR_ERROR
             )
@@ -390,7 +390,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error disabling command logging: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Configuration Error",
+                title="{SPROUTS_ERROR} Configuration Error",
                 description="An error occurred while disabling command logging.",
                 color=EMBED_COLOR_ERROR
             )
@@ -495,7 +495,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog status: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Status Error",
+                title="{SPROUTS_ERROR} Status Error",
                 description="An error occurred while checking command logging status.",
                 color=EMBED_COLOR_ERROR
             )
@@ -583,7 +583,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog stats: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Statistics Error",
+                title="{SPROUTS_ERROR} Statistics Error",
                 description="An error occurred while fetching command statistics.",
                 color=EMBED_COLOR_ERROR
             )
@@ -609,7 +609,7 @@ class CommandLoggingCog(commands.Cog):
             channel = ctx.guild.get_channel(current_channel)
             if not channel:
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Channel Not Found",
+                    title="{SPROUTS_ERROR} Channel Not Found",
                     description="The configured command logging channel no longer exists.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -672,7 +672,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog test: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Test Error",
+                title="{SPROUTS_ERROR} Test Error",
                 description="An error occurred while sending the test message.",
                 color=EMBED_COLOR_ERROR
             )
@@ -848,7 +848,7 @@ class CommandLoggingCog(commands.Cog):
             
             # Create log embed for command error
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {error_type}",
+                title=f"{SPROUTS_ERROR} {error_type}",
                 color=error_color
             )
             
