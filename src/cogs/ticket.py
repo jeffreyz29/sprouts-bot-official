@@ -2761,6 +2761,28 @@ class TicketSystem(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting priority: {e}")
 
+    @set_priority.error
+    async def set_priority_error(self, ctx, error):
+        """Handle priority command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Priority",
+                description="Please specify a priority level.\n\n**Usage:** `s.priority <level>`\n**Valid levels:** low, medium, high, urgent",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Manage Channels** permission to set ticket priority.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
     @commands.command(
         name="release",
         help="Release ownership of claimed ticket for other staff to handle")
@@ -3178,6 +3200,19 @@ class TicketSystem(commands.Cog):
             except:
                 pass
 
+    @set_topic.error
+    async def set_topic_error(self, ctx, error):
+        """Handle topic command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Topic",
+                description="Please specify a topic for the ticket.\n\n**Usage:** `s.topic <your topic here>`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
     @commands.command(name="transfer",
                       help="Transfer ticket ownership to another staff member")
     @commands.has_permissions(manage_channels=True)
@@ -3237,6 +3272,28 @@ class TicketSystem(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error transferring ticket: {e}")
+
+    @transfer_ticket.error
+    async def transfer_ticket_error(self, ctx, error):
+        """Handle transfer command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Member",
+                description="Please specify a staff member to transfer the ticket to.\n\n**Usage:** `s.transfer @staff-member`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Manage Channels** permission to transfer tickets.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
 
     @commands.command(name="rename",
                       help="Rename the current ticket channel with new name")

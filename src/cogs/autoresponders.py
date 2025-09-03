@@ -488,6 +488,87 @@ class AutoResponders(commands.Cog):
         await ctx.send(embed=embed)
 
 
+    @autoresponder_add.error
+    async def autoresponder_add_error(self, ctx, error):
+        """Handle autoresponder add command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Arguments",
+                description="Please provide the trigger and reply.\n\n**Usage:** `s.autoresponder add trigger:<trigger> reply:<response>`\n**Example:** `s.autoresponder add trigger:hello reply:Hello there!`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Administrator** permission to add auto responders.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @autoresponder_editreply.error
+    async def autoresponder_editreply_error(self, ctx, error):
+        """Handle autoresponder editreply command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Arguments",
+                description="Please provide the trigger and new reply.\n\n**Usage:** `s.autoresponder editreply trigger:<trigger> reply:<new response>`\n**Example:** `s.autoresponder editreply trigger:hello reply:Updated message!`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Administrator** permission to edit auto responders.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @autoresponder_remove.error
+    async def autoresponder_remove_error(self, ctx, error):
+        """Handle autoresponder remove command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Trigger",
+                description="Please specify which auto responder to remove.\n\n**Usage:** `s.autoresponder remove <trigger>`\n**Example:** `s.autoresponder remove hello`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Administrator** permission to remove auto responders.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @autoresponder_toggle.error
+    async def autoresponder_toggle_error(self, ctx, error):
+        """Handle autoresponder toggle command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Trigger",
+                description="Please specify which auto responder to toggle.\n\n**Usage:** `s.autoresponder toggle <trigger>`\n**Example:** `s.autoresponder toggle hello`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Administrator** permission to toggle auto responders.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+
 async def setup(bot):
     """Setup function for the cog"""
     await bot.add_cog(AutoResponders(bot))

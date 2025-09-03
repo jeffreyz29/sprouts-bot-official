@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 import logging
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
 
 logger = logging.getLogger(__name__)
 
