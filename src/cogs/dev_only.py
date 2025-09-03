@@ -223,6 +223,9 @@ class DevOnly(commands.Cog):
         # Track current presence state independently
         self.current_status = discord.Status.online
         self.current_activity = None
+        # Track original activity text for variable processing
+        self.current_activity_text = None
+        self.current_activity_type = None
         # Get developer ID from environment variables
         try:
             from config import BOT_OWNER_ID
@@ -237,6 +240,63 @@ class DevOnly(commands.Cog):
         self.maintenance_file = 'data/maintenance.json'
         self.maintenance_mode = self.load_maintenance_state()
         self.disabled_commands = set()
+    
+    async def _process_activity_variables(self, text: str) -> str:
+        """Process variables in activity text"""
+        if not text:
+            return text
+        
+        try:
+            # Replace server count variable
+            if '$(server.count)' in text:
+                server_count = len(self.bot.guilds)
+                text = text.replace('$(server.count)', str(server_count))
+            
+            # Replace shard ID variable
+            if '$(shard.id)' in text:
+                shard_id = self.bot.shard_id if self.bot.shard_id is not None else 0
+                text = text.replace('$(shard.id)', str(shard_id))
+            
+            return text
+        except Exception as e:
+            logger.error(f"Error processing activity variables: {e}")
+            return text
+    
+    async def update_activity_variables(self):
+        """Update current activity with fresh variable values"""
+        if not self.current_activity_text:
+            return
+        
+        try:
+            # Process variables again with current values
+            processed_text = await self._process_activity_variables(self.current_activity_text)
+            
+            # Recreate activity with updated text
+            if self.current_activity_type == "streaming":
+                new_activity = discord.Streaming(
+                    name=processed_text,
+                    url="https://twitch.tv/example"
+                )
+            else:
+                activity_types = {
+                    'playing': discord.ActivityType.playing,
+                    'watching': discord.ActivityType.watching,
+                    'listening': discord.ActivityType.listening,
+                    'competing': discord.ActivityType.competing
+                }
+                activity_type_obj = activity_types.get(self.current_activity_type, discord.ActivityType.playing)
+                new_activity = discord.Activity(
+                    type=activity_type_obj,
+                    name=processed_text
+                )
+            
+            # Update presence
+            self.current_activity = new_activity
+            await self.bot.change_presence(status=self.current_status, activity=self.current_activity)
+            logger.info(f"Activity variables updated: {processed_text}")
+            
+        except Exception as e:
+            logger.error(f"Error updating activity variables: {e}")
     
     def load_maintenance_state(self):
         """Load maintenance mode state from file"""
@@ -556,7 +616,7 @@ class DevOnly(commands.Cog):
     @commands.command(name="setactivity", help="Change bot activity")
     @commands.is_owner()
     async def set_activity(self, ctx, activity_type: str, *, activity_text: str):
-        """Change bot activity"""
+        """Change bot activity with support for $(server.count) and $(shard.id) variables"""
         try:
             # Define valid activity types
             valid_activities = {
@@ -571,7 +631,10 @@ class DevOnly(commands.Cog):
             if activity_type.lower() not in valid_activities:
                 embed = discord.Embed(
                     title=f"{SPROUTS_ERROR} Invalid Activity Type",
-                    description="Valid activity types: playing, watching, listening, competing, streaming",
+                    description="Valid activity types: playing, watching, listening, competing, streaming\n\n"
+                               "**Supported Variables:**\n"
+                               "`$(server.count)` - Total number of servers\n"
+                               "`$(shard.id)` - Current shard ID",
                     color=EMBED_COLOR_ERROR
                 )
                 embed.set_thumbnail(url=self.bot.user.display_avatar.url)
@@ -580,31 +643,39 @@ class DevOnly(commands.Cog):
                 await ctx.reply(embed=embed, mention_author=False)
                 return
             
+            # Process variables in activity text
+            processed_text = await self._process_activity_variables(activity_text)
+            
             # Create activity
             activity_type_obj = valid_activities[activity_type.lower()]
             if activity_type.lower() == "streaming":
                 discord_activity = discord.Streaming(
-                    name=activity_text,
+                    name=processed_text,
                     url="https://twitch.tv/example"
                 )
             else:
                 discord_activity = discord.Activity(
                     type=activity_type_obj,
-                    name=activity_text
+                    name=processed_text
                 )
+            
+            # Store the original text with variables for future updates
+            self.current_activity_text = activity_text
+            self.current_activity_type = activity_type.lower()
             
             # Update tracked activity
             self.current_activity = discord_activity
             
             # Only change the activity, preserve current status  
-            logger.info(f"Setting activity to: {activity_type.lower()} {activity_text}")
+            logger.info(f"Setting activity to: {activity_type.lower()} {processed_text}")
             
             await self.bot.change_presence(status=self.current_status, activity=self.current_activity)
             
             # Success message
             embed = discord.Embed(
                 title=f"{SPROUTS_CHECK} Activity Updated",
-                description=f"Activity: {activity_type.lower()} {activity_text}",
+                description=f"Activity: {activity_type.lower()} {processed_text}\n\n"
+                           f"Raw input: `{activity_text}`",
                 color=EMBED_COLOR_NORMAL
             )
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
