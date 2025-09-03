@@ -69,5 +69,22 @@
     ],
     "tags": [],
     "log_channel_id": null
+  },
+  "1412916344076112097": {
+    "id": "ticket-004",
+    "creator_id": 764874247646085151,
+    "creator_name": "jeffreyz29",
+    "guild_id": 1412650062517108789,
+    "channel_id": 1412916344076112097,
+    "status": "open",
+    "claimed_by": null,
+    "created_at": "2025-09-03T21:45:07.619039",
+    "priority": "medium",
+    "topic": "adsfd",
+    "members": [
+      764874247646085151
+    ],
+    "tags": [],
+    "log_channel_id": null
   }
 }

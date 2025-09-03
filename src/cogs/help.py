@@ -1383,8 +1383,17 @@ class HelpCommand(commands.Cog):
             await ctx.reply(embed=embed, view=help_view, mention_author=False)
             
         except Exception as e:
-            logger.error(f"Error showing command help: {e}")
-            await ctx.reply("An error occurred while showing command help.", mention_author=False)
+            logger.error(f"Error showing command help for '{command_name}': {e}")
+            # If it's likely a command not found, show proper error
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Command Not Found",
+                description=f"No command named `{command_name}` was found.\n"
+                           f"Use `{prefix}help` to see all available commands.",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
 
 async def setup_help(bot):
     """Setup help command for the bot"""
