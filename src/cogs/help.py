@@ -1169,8 +1169,8 @@ class HelpCommand(commands.Cog):
             embed = discord.Embed(
                 title="Sprouts Commands List",
                 description=f"Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.\n\n"
-                           f"Use `{prefix}help <command>` for detailed info.\n"
-                           f"This server prefix: `{prefix}`, <@{self.bot.user.id}>",
+                           f"Use `{ctx.prefix}help <command>` for detailed info.\n"
+                           f"This server prefix: `{ctx.prefix}`, <@{self.bot.user.id}>",
                 color=EMBED_COLOR_NORMAL
             )
             
@@ -1258,11 +1258,11 @@ class HelpCommand(commands.Cog):
             
             # Auto Responders commands - SIMPLE SYSTEM
             auto_responder_commands = [
-                f"`{prefix}autoresponder add` - Add simple auto responder",
-                f"`{prefix}autoresponder editreply` - Edit responder reply", 
-                f"`{prefix}autoresponder remove` - Remove auto responder",
-                f"`{prefix}autoresponder list` - List all auto responders",
-                f"`{prefix}autoresponder toggle` - Enable/disable responder",
+                f"`{ctx.prefix}autoresponder add` - Add simple auto responder",
+                f"`{ctx.prefix}autoresponder editreply` - Edit responder reply", 
+                f"`{ctx.prefix}autoresponder remove` - Remove auto responder",
+                f"`{ctx.prefix}autoresponder list` - List all auto responders",
+                f"`{ctx.prefix}autoresponder toggle` - Enable/disable responder",
                 "**Format:** `trigger:<text> reply:<response>`",
                 "Simple trigger and reply system without complex functions"
             ]
@@ -1338,7 +1338,7 @@ class HelpCommand(commands.Cog):
                 embed = discord.Embed(
                     title="Command Not Found",
                     description=f"No command named `{command_name}` was found.\n"
-                               f"Use `{prefix}help` to see all available commands.",
+                               f"Use `{ctx.prefix}help` to see all available commands.",
                     color=EMBED_COLOR_ERROR
                 )
                 await ctx.reply(embed=embed, mention_author=False)
