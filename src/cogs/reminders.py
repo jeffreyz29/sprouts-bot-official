@@ -295,7 +295,7 @@ class Reminders(commands.Cog):
             # Check time limits
             if time_delta.total_seconds() < 60:  # Minimum 1 minute
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" Time Too Short",
+                    title=f"{SPROUTS_WARNING} Time Too Short",
                     description="Reminders must be at least 1 minute in the future",
                     color=EMBED_COLOR_ERROR
                 )
@@ -304,7 +304,7 @@ class Reminders(commands.Cog):
             
             if time_delta.total_seconds() > 31536000:  # Maximum 1 year
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" Time Too Long",
+                    title=f"{SPROUTS_WARNING} Time Too Long",
                     description="Reminders cannot be more than 1 year in the future",
                     color=EMBED_COLOR_ERROR
                 )
