@@ -755,7 +755,7 @@ class Utilities(commands.Cog):
         try:
             if len(new_prefix) > 5:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_ERROR}" Prefix Too Long",
+                    title=f"{SPROUTS_ERROR} Prefix Too Long",
                     description="Prefix must be 5 characters or less.",
                     color=EMBED_COLOR_ERROR
                 )
