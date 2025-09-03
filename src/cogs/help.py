@@ -1006,32 +1006,36 @@ class DetailedCommandHelpView(discord.ui.View):
         return embed
     
     def create_detailed_usage_embed(self):
-        """Create detailed usage examples embed"""
+        """Create detailed usage embed showing how to use the command"""
         info = self.get_detailed_command_info()
         
         embed = discord.Embed(
-            title=f"{self.command.name.title()} - Detailed Usage",
-            description="All the different ways to use this command:",
+            title=f"Detailed Usage: {self.command.name}",
+            description=f"How to use the `{self.command.name}` command",
             color=EMBED_COLOR_NORMAL
         )
         
-        # Clean usage formatting with bullet points
-        usage_items = [f"• {usage}" for usage in info['detailed_usage']]
-        usage_text = "\n".join(usage_items)
+        # Show the detailed usage patterns from the command data
+        detailed_usage = info.get('detailed_usage', [f"`{self.prefix}{self.command.name}` - Basic usage"])
+        usage_text = "\n".join(detailed_usage)
         
         embed.add_field(
-            name="Usage Formats",
+            name="Usage Patterns", 
             value=usage_text,
             inline=False
         )
         
+        # Show examples from the command data
+        examples = info.get('examples', [f"`{self.prefix}{self.command.name}` - Example"])
+        examples_text = "\n".join(examples)
+        
         embed.add_field(
-            name="Format Guide",
-            value="```\n<required>  - Must provide this\n[optional]  - Can provide this\n|           - Choose one option\n...         - Can repeat multiple times\n```",
+            name="Examples",
+            value=examples_text,
             inline=False
         )
         
-        embed.set_footer(text=f"Requested by {self.user.display_name} • Page 2/4", icon_url=self.user.display_avatar.url)
+        embed.set_footer(text=f"Requested by {self.user.display_name} • Detailed Usage", icon_url=self.user.display_avatar.url)
         embed.timestamp = discord.utils.utcnow()
         
         return embed
