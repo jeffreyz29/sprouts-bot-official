@@ -803,7 +803,7 @@ class DevOnly(commands.Cog):
                 status = "enabled"
                 color = EMBED_COLOR_ERROR  # Red for maintenance enabled
                 description = "Bot is now in maintenance mode. Only you can use commands."
-                emoji = "<a:sprouts_error_dns:1411790004652605500>"
+                emoji = SPROUTS_ERROR
             else:
                 status = "disabled"
                 color = EMBED_COLOR_SUCCESS  # Green for maintenance disabled
