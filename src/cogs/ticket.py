@@ -2542,8 +2542,8 @@ class TicketSystem(commands.Cog):
 
             if not ticket_id or ticket_id not in self.tickets_data:
                 embed = discord.Embed(
-                    title=f"{SPROUTS_ERROR} Not Found",
-                    description="Ticket not found.",
+                    title=f"{SPROUTS_ERROR} Ticket Not Found",
+                    description="This is not a valid ticket please try again",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
                     text=f"Requested by {ctx.author.display_name}",
@@ -2676,6 +2676,28 @@ class TicketSystem(commands.Cog):
 
         except Exception as e:
             logger.error(f"Error moving ticket: {e}")
+
+    @move_ticket.error
+    async def move_ticket_error(self, ctx, error):
+        """Handle move command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Missing Category",
+                description="Please specify a category to move the ticket to.\n\n**Usage:** `s.move #category-name`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+        elif isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Access Denied",
+                description="You need **Manage Channels** permission to move tickets.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
 
     @commands.command(
         name="priority",
@@ -3662,9 +3684,9 @@ class TicketSystem(commands.Cog):
                     except discord.Forbidden:
                         message_status = f"{SPROUTS_ERROR} No permission to delete message"
                     except Exception as e:
-                        message_status = ff"{SPROUTS_ERROR} Error deleting message: {str(e)[:50]}"
+                        message_status = f"{SPROUTS_ERROR} Error deleting message: {str(e)[:50]}"
             except Exception as e:
-                message_status = ff"{SPROUTS_ERROR} Error accessing channel: {str(e)[:50]}"
+                message_status = f"{SPROUTS_ERROR} Error accessing channel: {str(e)[:50]}"
 
             # Remove from data
             del self.panels_data[panel_id]
