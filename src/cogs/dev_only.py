@@ -1662,8 +1662,8 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="Communications",
             value=(
-                "`s.massdm` - Mass DM server owners with changelog updates\n"
-                "**Owner Only - Use for bot announcements and updates**"
+                f"{SPROUTS_CHECK} `s.announce` - Send announcements to all server owners\n"
+                "**Owner Only - Use for bot updates and important notices**"
             ),
             inline=False
         )
@@ -1675,13 +1675,13 @@ class DevOnly(commands.Cog):
         await ctx.reply(embed=embed, mention_author=False)
         logger.info(f"Developer help accessed by {ctx.author}")
 
-    @commands.command(name="massdm", description="Mass DM server owners with updates", hidden=True)
+    @commands.command(name="announce", description="Send announcement to all server owners", hidden=True)
     @commands.is_owner()
-    async def mass_dm_owners(self, ctx, *, message: str):
-        """Send a direct message to all server owners (for changelog updates)"""
+    async def announce_to_owners(self, ctx, *, message: str):
+        """Send announcement to all server owners (for changelog updates)"""
         if len(message) > 1900:
             embed = discord.Embed(
-                title="Message Too Long",
+                title=f"{SPROUTS_ERROR} Message Too Long",
                 description="Message must be under 1900 characters to ensure delivery.",
                 color=EMBED_COLOR_ERROR
             )
@@ -1690,8 +1690,8 @@ class DevOnly(commands.Cog):
         
         # Confirmation step
         confirm_embed = discord.Embed(
-            title="Mass DM Confirmation",
-            description=f"You are about to send this message to **{len(self.bot.guilds)}** server owners:",
+            title=f"{SPROUTS_WARNING} Announcement Confirmation",
+            description=f"You are about to send this announcement to **{len(self.bot.guilds)}** server owners:",
             color=EMBED_COLOR_WARNING
         )
         confirm_embed.add_field(
@@ -1704,7 +1704,7 @@ class DevOnly(commands.Cog):
             value=f"{len(self.bot.guilds)} servers will receive this message",
             inline=True
         )
-        confirm_embed.set_footer(text="React with ✅ to confirm or ❌ to cancel")
+        confirm_embed.set_footer(text=f"React with {SPROUTS_CHECK} to confirm or {SPROUTS_ERROR} to cancel")
         
         confirm_msg = await ctx.reply(embed=confirm_embed, mention_author=False)
         await confirm_msg.add_reaction("✅")
@@ -1717,7 +1717,7 @@ class DevOnly(commands.Cog):
             reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
         except:
             embed = discord.Embed(
-                title="Mass DM Cancelled",
+                title=f"{SPROUTS_ERROR} Announcement Cancelled",
                 description="Confirmation timed out. No messages were sent.",
                 color=EMBED_COLOR_ERROR
             )
@@ -1726,7 +1726,7 @@ class DevOnly(commands.Cog):
         
         if str(reaction.emoji) == "❌":
             embed = discord.Embed(
-                title="Mass DM Cancelled",
+                title=f"{SPROUTS_ERROR} Announcement Cancelled",
                 description="Operation cancelled by user. No messages were sent.",
                 color=EMBED_COLOR_ERROR
             )
@@ -1735,7 +1735,7 @@ class DevOnly(commands.Cog):
         
         # Start mass DM process
         processing_embed = discord.Embed(
-            title="Sending Mass DMs...",
+            title=f"{SPROUTS_CHECK} Sending Announcements...",
             description="Processing... This may take a while.",
             color=EMBED_COLOR_NORMAL
         )
@@ -1747,11 +1747,19 @@ class DevOnly(commands.Cog):
         
         # Create the DM message
         dm_embed = discord.Embed(
-            title="Bot Update from Sprouts Team",
+            title=f"{SPROUTS_CHECK} Sprouts Bot Announcement",
             description=message,
             color=EMBED_COLOR_NORMAL
         )
-        dm_embed.set_footer(text="This message was sent to all server owners using Sprouts bot")
+        dm_embed.add_field(
+            name=f"{SPROUTS_WARNING} Important Notice",
+            value="This is an official announcement from the Sprouts development team.",
+            inline=False
+        )
+        dm_embed.set_footer(
+            text="Sprouts Bot • Official Team Communication",
+            icon_url=self.bot.user.display_avatar.url
+        )
         dm_embed.timestamp = discord.utils.utcnow()
         
         for guild in self.bot.guilds:
@@ -1759,7 +1767,7 @@ class DevOnly(commands.Cog):
                 if guild.owner:
                     await guild.owner.send(embed=dm_embed)
                     successful += 1
-                    logger.info(f"Mass DM sent to {guild.owner} (Owner of {guild.name})")
+                    logger.info(f"Announcement sent to {guild.owner} (Owner of {guild.name})")
                 else:
                     failed += 1
                     failed_owners.append(f"{guild.name} (No owner found)")
@@ -1770,34 +1778,34 @@ class DevOnly(commands.Cog):
             except discord.Forbidden:
                 failed += 1
                 failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - DMs disabled")
-                logger.warning(f"Failed to DM {guild.owner} (Owner of {guild.name}) - DMs disabled")
+                logger.warning(f"Failed to send announcement to {guild.owner} (Owner of {guild.name}) - DMs disabled")
             except discord.HTTPException as e:
                 failed += 1
                 failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - Error: {str(e)}")
-                logger.error(f"Failed to DM {guild.owner} (Owner of {guild.name}) - Error: {e}")
+                logger.error(f"Failed to send announcement to {guild.owner} (Owner of {guild.name}) - Error: {e}")
             except Exception as e:
                 failed += 1
                 failed_owners.append(f"{guild.name} - Unexpected error")
-                logger.error(f"Unexpected error DMing owner of {guild.name}: {e}")
+                logger.error(f"Unexpected error sending announcement to owner of {guild.name}: {e}")
         
         # Results embed
         results_embed = discord.Embed(
-            title="Mass DM Complete",
+            title=f"{SPROUTS_CHECK} Announcement Complete",
             color=EMBED_COLOR_NORMAL if successful > 0 else EMBED_COLOR_ERROR
         )
         
         results_embed.add_field(
-            name="✅ Successful",
+            name=f"{SPROUTS_CHECK} Successful",
             value=f"{successful} messages sent",
             inline=True
         )
         results_embed.add_field(
-            name="❌ Failed", 
+            name=f"{SPROUTS_ERROR} Failed", 
             value=f"{failed} messages failed",
             inline=True
         )
         results_embed.add_field(
-            name="📊 Success Rate",
+            name=f"{SPROUTS_WARNING} Success Rate",
             value=f"{(successful/(successful+failed)*100):.1f}%" if (successful+failed) > 0 else "0%",
             inline=True
         )
@@ -1818,11 +1826,11 @@ class DevOnly(commands.Cog):
                 inline=False
             )
         
-        results_embed.set_footer(text=f"Mass DM executed by {ctx.author.display_name}")
+        results_embed.set_footer(text=f"Announcement executed by {ctx.author.display_name}")
         results_embed.timestamp = discord.utils.utcnow()
         
         await confirm_msg.edit(embed=results_embed)
-        logger.info(f"Mass DM completed: {successful} successful, {failed} failed - Executed by {ctx.author}")
+        logger.info(f"Announcement completed: {successful} successful, {failed} failed - Executed by {ctx.author}")
 
     @commands.command(name="resetdata", description="Complete bot data reset (DANGER)", hidden=True)
     @commands.is_owner()
