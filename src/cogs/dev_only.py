@@ -1585,7 +1585,7 @@ class DevOnly(commands.Cog):
         
         # Command categories
         embed.add_field(
-            name="Bot Management",
+            name=f"{SPROUTS_CHECK} Bot Management",
             value=(
                 "`s.reload` - Reload a specific cog\n"
                 "`s.reloadall` - Reload all cogs\n"
@@ -1597,7 +1597,7 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="Bot Status",
+            name=f"{SPROUTS_CHECK} Bot Status",
             value=(
                 "`s.setstatus` - Set bot status (online/idle/dnd/invisible)\n"
                 "`s.setactivity` - Set bot activity (playing/watching/listening/competing/streaming)"
@@ -1606,7 +1606,7 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="Global Logging System", 
+            name=f"{SPROUTS_CHECK} Global Logging System", 
             value=(
                 "`s.cmdlogs set` - Set global command logging channel\n"
                 "`s.dmlogs set` - Set global DM logging channel\n"
@@ -1620,7 +1620,7 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="System Management",
+            name=f"{SPROUTS_WARNING} System Management",
             value=(
                 "`s.cooldown` - Set global command cooldown (supports 1s, 5m, 2h, 1d)\n"
                 "`s.maintenance` - Toggle maintenance mode (complete silence for others)\n"
@@ -1631,7 +1631,7 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="Server Stats & Monitoring",
+            name=f"{SPROUTS_CHECK} Server Stats & Monitoring",
             value=(
                 "`s.serverstats start` - Start server stats monitoring\n"
                 "`s.serverstats stop` - Stop server stats monitoring\n"
@@ -1646,7 +1646,7 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="Data Management",
+            name=f"{SPROUTS_WARNING} Data Management",
             value=(
                 "`s.listdata user` - List data files for a user\n"
                 "`s.listdata guild` - List data files for a guild\n"
