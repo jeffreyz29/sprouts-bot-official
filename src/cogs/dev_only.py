@@ -623,7 +623,7 @@ class DevOnly(commands.Cog):
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
     
-    @commands.command(name="setactivity", help="Change bot activity")
+    @commands.command(name="setactivity", description="Change bot activity", hidden=True)
     @commands.is_owner()
     async def set_activity(self, ctx, activity_type: str, *, activity_text: str):
         """Change bot activity with support for $(server.count) and $(shard.id) variables"""
@@ -1663,7 +1663,7 @@ class DevOnly(commands.Cog):
         await ctx.reply(embed=embed, mention_author=False)
         logger.info(f"Developer help accessed by {ctx.author}")
 
-    @commands.command(name="resetdata", hidden=True)
+    @commands.command(name="resetdata", description="Complete bot data reset (DANGER)", hidden=True)
     @commands.is_owner()
     async def reset_data(self, ctx, confirmation: str = None):
         """Clear ALL bot data and cache (Owner Only)"""
