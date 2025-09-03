@@ -8,6 +8,7 @@ from discord.ext import commands
 import logging
 from typing import Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR
 
 # Add success color if not in config
 EMBED_COLOR_SUCCESS = 0x77DD77
@@ -1385,10 +1386,11 @@ class HelpCommand(commands.Cog):
         except Exception as e:
             logger.error(f"Error showing command help for '{command_name}': {e}")
             # If it's likely a command not found, show proper error
+            current_prefix = guild_settings.get_prefix(ctx.guild.id) if ctx.guild else "s."
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Command Not Found",
                 description=f"No command named `{command_name}` was found.\n"
-                           f"Use `{prefix}help` to see all available commands.",
+                           f"Use `{current_prefix}help` to see all available commands.",
                 color=EMBED_COLOR_ERROR
             )
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
