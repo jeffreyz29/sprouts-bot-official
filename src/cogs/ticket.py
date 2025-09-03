@@ -2081,7 +2081,7 @@ class TicketSystem(commands.Cog):
                 title=
                 f"{SPROUTS_CHECK} Close Ticket Confirmation",
                 description=
-                f"Are you sure you want to close this ticket?\n\n**Reason:** {reason}\n**Channel:** {ctx.channel.mention}\n\nf"{SPROUTS_ERROR}" This action cannot be undone!",
+                f"Are you sure you want to close this ticket?\n\n**Reason:** {reason}\n**Channel:** {ctx.channel.mention}\n\n{SPROUTS_ERROR} This action cannot be undone!",
                 color=EMBED_COLOR_NORMAL)
             embed.set_footer(
                 text="This confirmation will timeout in 30 seconds",

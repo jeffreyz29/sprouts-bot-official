@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class ShardsPaginationView(discord.ui.View):
     """Pagination view for shards server list"""
     
-    def __init__(self, guilds, author, total_shards, current_shard, total_servers, total_users):
+    def __init__(self, guilds, author, total_shards, current_shard, total_servers, total_users, bot):
         super().__init__(timeout=300)  # 5 minute timeout
         self.guilds = guilds
         self.author = author
@@ -23,32 +23,42 @@ class ShardsPaginationView(discord.ui.View):
         self.current_shard = current_shard
         self.total_servers = total_servers
         self.total_users = total_users
+        self.bot = bot
         self.current_page = 0
         self.per_page = 10
-        self.max_pages = (len(guilds) - 1) // self.per_page + 1
+        self.max_pages = 1  # Single page for shard table
         self.message = None
         
-        # Update button states for single page
-        if self.max_pages == 1:
-            self.next_page.disabled = True
+        # Disable pagination buttons since we only have one page now
+        self.next_page.disabled = True
+        self.previous_page.disabled = True
         
     async def create_embed(self, page):
-        """Create embed for specific page"""
-        start_idx = page * self.per_page
-        end_idx = start_idx + self.per_page
-        guilds_slice = self.guilds[start_idx:end_idx]
+        """Create embed with shard statistics table"""
+        # Build the shard table header
+        description = "```\nShard - Latency - Servers - Members\n"
+        description += "--------------------------------------\n"
         
-        # Build description with all content
-        description = f"Shards: {self.total_shards} | Current: {self.current_shard} | Servers: {self.total_servers} | Users: {self.total_users}\n\n"
-        description += f"Server List (Page {page + 1}/{self.max_pages})\n"
+        # For AutoShardedBot, get actual shard information
+        if hasattr(self.guilds[0].me.bot, 'shards') and self.guilds[0].me.bot.shards:
+            # Get shard statistics
+            for shard_id, shard in self.guilds[0].me.bot.shards.items():
+                # Count guilds and members for this shard
+                shard_guilds = [g for g in self.guilds if g.shard_id == shard_id]
+                guild_count = len(shard_guilds)
+                member_count = sum(g.member_count for g in shard_guilds)
+                
+                # Get latency in milliseconds
+                latency_ms = int(shard.latency * 1000)
+                
+                # Format the row
+                description += f"{shard_id:4d} - {latency_ms:4d} ms - {guild_count:7,d} - {member_count:9,d}\n"
+        else:
+            # Single shard or no sharding
+            latency_ms = int(self.guilds[0].me.bot.latency * 1000) if self.guilds else 0
+            description += f"   0 - {latency_ms:4d} ms - {self.total_servers:7,d} - {self.total_users:9,d}\n"
         
-        # Create clean server list in code block
-        server_list = []
-        for guild in guilds_slice:
-            server_list.append(f"• {guild.name} ({guild.member_count} members)")
-        
-        if server_list:
-            description += "```\n" + "\n".join(server_list) + "\n```"
+        description += "```"
         
         embed = discord.Embed(
             title="Shard Information",
@@ -56,6 +66,15 @@ class ShardsPaginationView(discord.ui.View):
             color=0xc2ffe0
         )
         embed.set_thumbnail(url=self.guilds[0].me.display_avatar.url if self.guilds else None)
+        
+        # Add summary information
+        embed.add_field(
+            name="Summary",
+            value=f"**Total Shards:** {self.total_shards}\n"
+                  f"**Total Servers:** {self.total_servers:,}\n"
+                  f"**Total Users:** {self.total_users:,}",
+            inline=True
+        )
         
         embed.set_footer(text=f"Requested by {self.author.display_name}", 
                         icon_url=self.author.display_avatar.url)
@@ -275,8 +294,8 @@ class Uncategorized(commands.Cog):
             total_servers = len(self.bot.guilds)
             total_users = len(self.bot.users)
             
-            # Create paginated view for servers
-            view = ShardsPaginationView(self.bot.guilds, ctx.author, total_shards, current_shard, total_servers, total_users)
+            # Create shard information view
+            view = ShardsPaginationView(self.bot.guilds, ctx.author, total_shards, current_shard, total_servers, total_users, self.bot)
             embed = await view.create_embed(0)
             
             message = await ctx.reply(embed=embed, view=view, mention_author=False)
