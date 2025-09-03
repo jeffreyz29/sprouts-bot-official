@@ -1,0 +1,85 @@
+# Docker Compose configuration for bot clustering
+# Use this for large-scale deployments with multiple clusters
+
+version: '3.8'
+
+services:
+  # Redis for inter-cluster communication (optional)
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Cluster 0 - Shards 0-3
+  cluster-0:
+    build: .
+    restart: unless-stopped
+    environment:
+      - IS_CLUSTERED=true
+      - CLUSTER_ID=0
+      - TOTAL_SHARDS=16
+      - SHARDS_PER_CLUSTER=4
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - BOT_OWNER_ID=${BOT_OWNER_ID}
+      - DEFAULT_PREFIX=${DEFAULT_PREFIX:-s.}
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      - redis
+    command: python cluster.py
+
+  # Cluster 1 - Shards 4-7
+  cluster-1:
+    build: .
+    restart: unless-stopped
+    environment:
+      - IS_CLUSTERED=true
+      - CLUSTER_ID=1
+      - TOTAL_SHARDS=16
+      - SHARDS_PER_CLUSTER=4
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - BOT_OWNER_ID=${BOT_OWNER_ID}
+      - DEFAULT_PREFIX=${DEFAULT_PREFIX:-s.}
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      - redis
+    command: python cluster.py
+
+  # Cluster 2 - Shards 8-11
+  cluster-2:
+    build: .
+    restart: unless-stopped
+    environment:
+      - IS_CLUSTERED=true
+      - CLUSTER_ID=2
+      - TOTAL_SHARDS=16
+      - SHARDS_PER_CLUSTER=4
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - BOT_OWNER_ID=${BOT_OWNER_ID}
+      - DEFAULT_PREFIX=${DEFAULT_PREFIX:-s.}
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      - redis
+    command: python cluster.py
+
+  # Cluster 3 - Shards 12-15
+  cluster-3:
+    build: .
+    restart: unless-stopped
+    environment:
+      - IS_CLUSTERED=true
+      - CLUSTER_ID=3
+      - TOTAL_SHARDS=16
+      - SHARDS_PER_CLUSTER=4
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - BOT_OWNER_ID=${BOT_OWNER_ID}
+      - DEFAULT_PREFIX=${DEFAULT_PREFIX:-s.}
+      - MONGO_URI=${MONGO_URI}
+    depends_on:
+      - redis
+    command: python cluster.py
+
+volumes:
+  redis_data:

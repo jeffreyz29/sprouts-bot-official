@@ -12,8 +12,8 @@ from web_viewer import bot_stats
 
 logger = logging.getLogger(__name__)
 
-class DiscordBot(commands.Bot):
-    """Main Discord Bot Class"""
+class DiscordBot(commands.AutoShardedBot):
+    """Main Discord Bot Class with Sharding Support"""
     
     async def get_prefix(self, message):
         """Get custom prefix for each guild - supports both custom prefix and bot mentions"""
@@ -34,18 +34,23 @@ class DiscordBot(commands.Bot):
         # Return prefixes + bot mentions
         return commands.when_mentioned_or(*base_prefixes)(self, message)
     
-    def __init__(self):
+    def __init__(self, cluster_id=None, shard_ids=None, shard_count=None):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.guilds = True
         intents.members = True
+        
+        # Store cluster info
+        self.cluster_id = cluster_id
         
         super().__init__(
             command_prefix=self.get_prefix,
             intents=intents,
             help_command=None,
             case_insensitive=True,
-            owner_id=BOT_OWNER_ID
+            owner_id=BOT_OWNER_ID,
+            shard_ids=shard_ids,
+            shard_count=shard_count
         )
         
         # Track bot start time for uptime calculation
@@ -181,8 +186,14 @@ class DiscordBot(commands.Bot):
     
     async def on_ready(self):
         """Called when bot is ready and connected"""
-        logger.info(f'{self.user} has connected to Discord!')
+        cluster_info = f" (Cluster {self.cluster_id})" if self.cluster_id is not None else ""
+        shard_info = f" with {self.shard_count} shards" if self.shard_count else ""
+        
+        logger.info(f'{self.user} has connected to Discord{cluster_info}{shard_info}!')
         logger.info(f'Bot is in {len(self.guilds)} guilds')
+        
+        if self.shard_count:
+            logger.info(f'Shard IDs: {list(self.shards.keys()) if self.shards else "None"}')
         
         # Store bot user and guild count for web dashboard
         bot_stats.bot_user = self.user
@@ -190,3 +201,24 @@ class DiscordBot(commands.Bot):
         
         # Start with clean presence
         logger.info("Bot started with clean presence - use setstatus/setactivity commands to customize")
+    
+    async def on_shard_ready(self, shard_id):
+        """Called when a specific shard is ready"""
+        guild_count = len([guild for guild in self.guilds if guild.shard_id == shard_id])
+        cluster_info = f" [Cluster {self.cluster_id}]" if self.cluster_id is not None else ""
+        logger.info(f'Shard {shard_id}{cluster_info} is ready! ({guild_count} guilds)')
+    
+    async def on_shard_connect(self, shard_id):
+        """Called when a shard connects"""
+        cluster_info = f" [Cluster {self.cluster_id}]" if self.cluster_id is not None else ""
+        logger.info(f'Shard {shard_id}{cluster_info} connected')
+    
+    async def on_shard_disconnect(self, shard_id):
+        """Called when a shard disconnects"""
+        cluster_info = f" [Cluster {self.cluster_id}]" if self.cluster_id is not None else ""
+        logger.warning(f'Shard {shard_id}{cluster_info} disconnected')
+    
+    async def on_shard_resumed(self, shard_id):
+        """Called when a shard resumes"""
+        cluster_info = f" [Cluster {self.cluster_id}]" if self.cluster_id is not None else ""
+        logger.info(f'Shard {shard_id}{cluster_info} resumed')

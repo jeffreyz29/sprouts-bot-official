@@ -254,8 +254,16 @@ class DevOnly(commands.Cog):
             
             # Replace shard ID variable
             if '$(shard.id)' in text:
-                shard_id = self.bot.shard_id if self.bot.shard_id is not None else 0
-                text = text.replace('$(shard.id)', str(shard_id))
+                # For AutoShardedBot, get the first shard ID or show count
+                if hasattr(self.bot, 'shards') and self.bot.shards:
+                    shard_id = list(self.bot.shards.keys())[0]  # Get first shard ID
+                    text = text.replace('$(shard.id)', str(shard_id))
+                elif hasattr(self.bot, 'shard_count') and self.bot.shard_count:
+                    # Show shard count if multiple shards
+                    text = text.replace('$(shard.id)', f"0-{self.bot.shard_count-1}")
+                else:
+                    # Single shard bot
+                    text = text.replace('$(shard.id)', "0")
             
             return text
         except Exception as e:
