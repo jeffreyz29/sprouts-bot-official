@@ -1662,8 +1662,8 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="Communications",
             value=(
-                f"{SPROUTS_CHECK} `s.announce` - Send announcements to all server owners\n"
-                "**Owner Only - Use for bot updates and important notices**"
+                f"{SPROUTS_CHECK} `s.changelog` - Send changelog updates to all server owners\n"
+                "**Owner Only - Use for bot changelog updates and version releases**"
             ),
             inline=False
         )
@@ -1675,10 +1675,10 @@ class DevOnly(commands.Cog):
         await ctx.reply(embed=embed, mention_author=False)
         logger.info(f"Developer help accessed by {ctx.author}")
 
-    @commands.command(name="announce", description="Send announcement to all server owners", hidden=True)
+    @commands.command(name="changelog", description="Send changelog update to all server owners", hidden=True)
     @commands.is_owner()
-    async def announce_to_owners(self, ctx, *, message: str):
-        """Send announcement to all server owners (for changelog updates)"""
+    async def send_changelog(self, ctx, *, message: str):
+        """Send changelog update to all server owners"""
         if len(message) > 1900:
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Message Too Long",
@@ -1690,8 +1690,8 @@ class DevOnly(commands.Cog):
         
         # Confirmation step
         confirm_embed = discord.Embed(
-            title=f"{SPROUTS_WARNING} Announcement Confirmation",
-            description=f"You are about to send this announcement to **{len(self.bot.guilds)}** server owners:",
+            title=f"{SPROUTS_WARNING} Changelog Confirmation",
+            description=f"You are about to send this changelog to **{len(self.bot.guilds)}** server owners:",
             color=EMBED_COLOR_WARNING
         )
         confirm_embed.add_field(
@@ -1717,7 +1717,7 @@ class DevOnly(commands.Cog):
             reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
         except:
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Announcement Cancelled",
+                title=f"{SPROUTS_ERROR} Changelog Cancelled",
                 description="Confirmation timed out. No messages were sent.",
                 color=EMBED_COLOR_ERROR
             )
@@ -1726,7 +1726,7 @@ class DevOnly(commands.Cog):
         
         if str(reaction.emoji) == "❌":
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Announcement Cancelled",
+                title=f"{SPROUTS_ERROR} Changelog Cancelled",
                 description="Operation cancelled by user. No messages were sent.",
                 color=EMBED_COLOR_ERROR
             )
@@ -1735,7 +1735,7 @@ class DevOnly(commands.Cog):
         
         # Start mass DM process
         processing_embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Sending Announcements...",
+            title=f"{SPROUTS_CHECK} Sending Changelog...",
             description="Processing... This may take a while.",
             color=EMBED_COLOR_NORMAL
         )
@@ -1747,13 +1747,13 @@ class DevOnly(commands.Cog):
         
         # Create the DM message
         dm_embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Sprouts Bot Announcement",
+            title=f"{SPROUTS_CHECK} Sprouts Changelog Update",
             description=message,
             color=EMBED_COLOR_NORMAL
         )
         dm_embed.add_field(
-            name=f"{SPROUTS_WARNING} Important Notice",
-            value="This is an official announcement from the Sprouts development team.",
+            name=f"{SPROUTS_WARNING} Changelog Notice",
+            value="This is an official changelog update from the Sprouts development team.",
             inline=False
         )
         dm_embed.set_footer(
@@ -1767,7 +1767,7 @@ class DevOnly(commands.Cog):
                 if guild.owner:
                     await guild.owner.send(embed=dm_embed)
                     successful += 1
-                    logger.info(f"Announcement sent to {guild.owner} (Owner of {guild.name})")
+                    logger.info(f"Changelog sent to {guild.owner} (Owner of {guild.name})")
                 else:
                     failed += 1
                     failed_owners.append(f"{guild.name} (No owner found)")
@@ -1778,19 +1778,19 @@ class DevOnly(commands.Cog):
             except discord.Forbidden:
                 failed += 1
                 failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - DMs disabled")
-                logger.warning(f"Failed to send announcement to {guild.owner} (Owner of {guild.name}) - DMs disabled")
+                logger.warning(f"Failed to send changelog to {guild.owner} (Owner of {guild.name}) - DMs disabled")
             except discord.HTTPException as e:
                 failed += 1
                 failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - Error: {str(e)}")
-                logger.error(f"Failed to send announcement to {guild.owner} (Owner of {guild.name}) - Error: {e}")
+                logger.error(f"Failed to send changelog to {guild.owner} (Owner of {guild.name}) - Error: {e}")
             except Exception as e:
                 failed += 1
                 failed_owners.append(f"{guild.name} - Unexpected error")
-                logger.error(f"Unexpected error sending announcement to owner of {guild.name}: {e}")
+                logger.error(f"Unexpected error sending changelog to owner of {guild.name}: {e}")
         
         # Results embed
         results_embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Announcement Complete",
+            title=f"{SPROUTS_CHECK} Changelog Complete",
             color=EMBED_COLOR_NORMAL if successful > 0 else EMBED_COLOR_ERROR
         )
         
@@ -1826,11 +1826,11 @@ class DevOnly(commands.Cog):
                 inline=False
             )
         
-        results_embed.set_footer(text=f"Announcement executed by {ctx.author.display_name}")
+        results_embed.set_footer(text=f"Changelog executed by {ctx.author.display_name}")
         results_embed.timestamp = discord.utils.utcnow()
         
         await confirm_msg.edit(embed=results_embed)
-        logger.info(f"Announcement completed: {successful} successful, {failed} failed - Executed by {ctx.author}")
+        logger.info(f"Changelog completed: {successful} successful, {failed} failed - Executed by {ctx.author}")
 
     @commands.command(name="resetdata", description="Complete bot data reset (DANGER)", hidden=True)
     @commands.is_owner()
