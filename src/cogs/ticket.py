@@ -162,7 +162,7 @@ class CloseConfirmation(discord.ui.View):
             return
 
         embed = discord.Embed(
-            title="Ticket Close Cancelled",
+            title="{SPROUTS_CHECK} Ticket Close Cancelled",
             description="The ticket close has been cancelled.",
             color=EMBED_COLOR_NORMAL)
         await interaction.response.edit_message(embed=embed, view=None)
@@ -213,29 +213,29 @@ class StaffPanel(discord.ui.View):
                 color=EMBED_COLOR_NORMAL)
 
             embed.add_field(name="Basic Commands",
-                            value="`s.add @user` - Add member to ticket\n"
-                            "`s.remove @user` - Remove member from ticket\n"
-                            "`s.topic <topic>` - Set ticket topic\n"
-                            "`s.rename <name>` - Rename ticket channel",
+                            value="`{ctx.prefix}add @user` - Add member to ticket\n"
+                            "`{ctx.prefix}remove @user` - Remove member from ticket\n"
+                            "`{ctx.prefix}topic <topic>` - Set ticket topic\n"
+                            "`s{ctx.prefix}rename <name>` - Rename ticket channel",
                             inline=True)
 
             embed.add_field(name="Advanced Commands",
-                            value="`s.move <category>` - Move to category\n"
-                            "`s.priority <high/medium/low>` - Set priority\n"
-                            "`s.transfer @staff` - Transfer to staff",
+                            value="`{ctx.prefix}move <category>` - Move to category\n"
+                            "`{ctx.prefix}priority <high/medium/low>` - Set priority\n"
+                            "`{ctx.prefix}transfer @staff` - Transfer to staff",
                             inline=True)
 
             embed.add_field(name="Quick Actions",
-                            value="`s.release` - Release claimed ticket\n"
-                            "`s.forceclose` - Force close ticket\n"
-                            "`s.listtickets` - List all open tickets",
+                            value="`{ctx.prefix}release` - Release claimed ticket\n"
+                            "`{ctx.prefix}forceclose` - Force close ticket\n"
+                            "`{ctx.prefix}listtickets` - List all open tickets",
                             inline=False)
 
             embed.add_field(
                 name="Panel Management",
-                value="`s.panel <title>` - Create ticket panel\n"
-                "`s.panels` - List all panels\n"
-                "`s.delpanel <panel_id>` - Deletes an active panel",
+                value="`{ctx.prefix}panel <title>` - Create ticket panel\n"
+                "`{ctx.prefix}panels` - List all panels\n"
+                "`{ctx.prefix}delpanel <panel_id>` - Deletes an active panel",
                 inline=False)
 
             embed.set_footer(text=f"Staff: {interaction.user.display_name}",
@@ -354,7 +354,7 @@ class TicketSetupSelect(discord.ui.Select):
 
         if not channels:
             embed = discord.Embed(
-                title="No Channels",
+                title="{SPROUTS_ERROR} No Channels",
                 description="No available text channels found",
                 color=EMBED_COLOR_ERROR)
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -434,9 +434,9 @@ class TicketSetupSelect(discord.ui.Select):
 
         embed.add_field(
             name="Available Commands",
-            value="`s.embedcreate` - Create custom welcome embed\n"
-            "`s.embedlist` - List saved embeds\n"
-            "`s.ticketuseembed <name>` - Use saved embed for tickets",
+            value="`{ctx.prefix}embedcreate` - Create custom welcome embed\n"
+            "`{ctx.prefix}embedlist` - List saved embeds\n"
+            "`{ctx.prefix}ticketuseembed <name>` - Use saved embed for tickets",
             inline=False)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
@@ -505,7 +505,7 @@ class ChannelSelectView(discord.ui.View):
 
             # Send confirmation as followup message
             success_embed = discord.Embed(
-                title="<a:sprouts_check_dns:1411790001565466725> Channel Set",
+                title="{SPROUTS_CHECK} Channel Set",
                 description=f"Ticket logging channel set to {channel.mention}",
                 color=EMBED_COLOR_NORMAL)
 
@@ -517,7 +517,7 @@ class ChannelSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error setting log channel: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="{SPROUTS_ERROR} Error",
                 description="Failed to set the logging channel.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -566,13 +566,13 @@ class RoleSelectView(discord.ui.View):
 
                 success_embed = discord.Embed(
                     title=
-                    "<a:sprouts_check_dns:1411790001565466725> Staff Role Added",
+                    "{SPROUTS_CHECK} Staff Role Added",
                     description=f"{role.mention} added as staff role",
                     color=EMBED_COLOR_NORMAL)
             else:
                 success_embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Already Added",
+                    "{SPROUTS_WARNING} Already Added",
                     description=f"{role.mention} is already a staff role",
                     color=EMBED_COLOR_ERROR)
 
@@ -584,7 +584,7 @@ class RoleSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error adding staff role: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="{SPROUTS_ERROR} Error",
                 description="Failed to add the staff role.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -626,7 +626,7 @@ class CategorySelectView(discord.ui.View):
 
             # Send confirmation as followup message
             success_embed = discord.Embed(
-                title="<a:sprouts_check_dns:1411790001565466725> Category Set",
+                title="{SPROUTS_CHECK} Category Set",
                 description=f"Ticket category set to **{category.name}**",
                 color=EMBED_COLOR_NORMAL)
 
@@ -638,7 +638,7 @@ class CategorySelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error setting category: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="{SPROUTS_ERROR} Error",
                 description="Failed to set the ticket category.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -689,7 +689,7 @@ class NamingSelectView(discord.ui.View):
             # Send confirmation as followup message
             success_embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> Naming Style Set",
+                "{SPROUTS_CHECK} Naming Style Set",
                 description=
                 f"Ticket naming style set to **{style_name}**\nExample: {example}",
                 color=EMBED_COLOR_NORMAL)
@@ -702,7 +702,7 @@ class NamingSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error setting naming style: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="{SPROUTS_ERROR} Error",
                 description="Failed to set the naming style.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -1110,7 +1110,7 @@ class TicketSystem(commands.Cog):
         except Exception as e:
             logger.error(f"Error in ticket setup: {e}")
             error_embed = discord.Embed(
-                title="Error",
+                title="{SPROUTS_ERROR} Error",
                 description=
                 f"An error occurred while setting up the ticket system: {str(e)}",
                 color=EMBED_COLOR_ERROR)
@@ -1132,7 +1132,7 @@ class TicketSystem(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(
                 title=
-                "<a:sprouts_warning_dns:1412200379206336522> Permission Denied",
+                "{SPROUTS_WARNING} Permission Denied",
                 description=
                 "You don't have permission to use this command. Only server administrators can configure the ticket system.",
                 color=EMBED_COLOR_ERROR)
@@ -1191,7 +1191,7 @@ class TicketSystem(commands.Cog):
 
             scope_text = "server" if is_guild_embed else "personal"
             embed = discord.Embed(
-                title="Welcome Embed Set",
+                title="{SPROUTS_CHECK} Welcome Embed Set",
                 description=
                 f"Ticket system will now use {scope_text} embed '**{embed_name}**' for welcome messages",
                 color=EMBED_COLOR_NORMAL)
@@ -1569,13 +1569,13 @@ class TicketSystem(commands.Cog):
     async def new_ticket(self, ctx, *, reason: str):
         """Create a new ticket command
         
-        Usage: new <reason>
+        Usage: `{ctx.prefix}new [reason]`
         Creates a private ticket channel with automatic permissions and staff notification
         
         Examples:
-        - new Account issues - Create ticket with specific reason
-        - new Cannot access premium features - Detailed reason for better support
-        - new Need help with billing - Clear reason helps staff assist you better
+        - `{ctx.prefix}new Account issues` - Create ticket with specific reason
+        - `{ctx.prefix}new Cannot access premium features` - Detailed reason for better support
+        - `{ctx.prefix}new Need help with billing` - Clear reason helps staff assist you better
         
         Common Errors:
         - Ticket limit reached: Close existing tickets before creating new ones
@@ -1774,13 +1774,13 @@ class TicketSystem(commands.Cog):
     async def add_member(self, ctx, member: discord.Member):
         """Add member to ticket command
         
-        Usage: add <@user|user_id>
+        Usage: `{ctx.prefix}add <@user|user_id>`
         Adds a user to the current ticket channel (staff or ticket owner only)
         
         Examples:
-        - add @username - Add user by mention
-        - add 123456789012345678 - Add user by ID
-        - add @TeamLead - Add supervisor to ticket
+        - `{ctx.prefix}add @username` - Add user by mention
+        - `{ctx.prefix}add 123456789012345678` - Add user by ID
+        - `{ctx.prefix}add @TeamLead` - Add supervisor to ticket
         
         Common Errors:
         - Not in ticket channel: Command only works in ticket channels
