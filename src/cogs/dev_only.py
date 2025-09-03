@@ -12,6 +12,8 @@ import asyncio
 import json
 import time
 import re
+import shutil
+from pathlib import Path
 from typing import Optional
 from config import BOT_CONFIG, EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING
 
