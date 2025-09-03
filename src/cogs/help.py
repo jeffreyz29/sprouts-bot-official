@@ -36,12 +36,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "ping": {
                 "category": "Utility",
                 "description": "Check bot latency and response time with detailed system statistics",
-                "usage": f"`{self.prefix}ping`",
+                "usage": f"`{ctx.prefix}ping`",
                 "detailed_usage": [
-                    f"`{self.prefix}ping` - Shows bot latency, API response time, and system stats"
+                    f"`{ctx.prefix}ping` - Shows bot latency, API response time, and system stats"
                 ],
                 "examples": [
-                    f"`{self.prefix}ping` - Shows bot response time and system performance",
+                    f"`{ctx.prefix}ping` - Shows bot response time and system performance",
                     "Example output: Bot latency: 45ms, API ping: 120ms, Memory: 234MB"
                 ],
                 "permissions": "None required",
@@ -49,25 +49,25 @@ class DetailedCommandHelpView(discord.ui.View):
                 "error_scenarios": [
                     "**No errors possible** - This command always works",
                     "If bot is offline, command won't respond at all",
-                    f"**Note:** Just type `{self.prefix}ping` with no additional text"
+                    f"**Note:** Just type `{ctx.prefix}ping` with no additional text"
                 ]
             },
             
             "userinfo": {
                 "category": "Utility", 
                 "description": "Display comprehensive user information including roles, join dates, and account details",
-                "usage": f"`{self.prefix}userinfo [@user]`",
+                "usage": f"`{ctx.prefix}userinfo [@user]`",
                 "detailed_usage": [
-                    f"`{self.prefix}userinfo` - Shows YOUR information",
-                    f"`{self.prefix}userinfo @username` - Shows MENTIONED user's info",
-                    f"`{self.prefix}userinfo username` - Shows info by username",
-                    f"`{self.prefix}userinfo 123456789` - Shows info by user ID"
+                    f"`{ctx.prefix}userinfo` - Shows YOUR information",
+                    f"`{ctx.prefix}userinfo @username` - Shows MENTIONED user's info",
+                    f"`{ctx.prefix}userinfo username` - Shows info by username",
+                    f"`{ctx.prefix}userinfo 123456789` - Shows info by user ID"
                 ],
                 "examples": [
-                    f"`{self.prefix}userinfo` - Shows your own detailed information",
-                    f"`{self.prefix}userinfo @John` - Shows John's user information",
-                    f"`{self.prefix}userinfo John` - Search for user named John",
-                    f"`{self.prefix}userinfo 123456789` - Get user info by ID"
+                    f"`{ctx.prefix}userinfo` - Shows your own detailed information",
+                    f"`{ctx.prefix}userinfo @John` - Shows John's user information",
+                    f"`{ctx.prefix}userinfo John` - Search for user named John",
+                    f"`{ctx.prefix}userinfo 123456789` - Get user info by ID"
                 ],
                 "permissions": "None required",
                 "cooldown": "10 seconds per user",
@@ -75,57 +75,57 @@ class DetailedCommandHelpView(discord.ui.View):
                     "**User not found:** `User 'xyz' not found in this server.`",
                     "**Invalid ID:** `Invalid user ID format.`",
                     "**User left server:** `User no longer in this server.`",
-                    f"**Solution:** Use `{self.prefix}userinfo @username` or make sure user is in server"
+                    f"**Solution:** Use `{ctx.prefix}userinfo @username` or make sure user is in server"
                 ]
             },
             
             "avatar": {
                 "category": "Utility",
                 "description": "Display a user's avatar in full resolution with download links",
-                "usage": f"`{self.prefix}avatar [@user]`", 
+                "usage": f"`{ctx.prefix}avatar [@user]`", 
                 "detailed_usage": [
-                    f"`{self.prefix}avatar` - Shows YOUR avatar",
-                    f"`{self.prefix}avatar @username` - Shows mentioned user's avatar",
-                    f"`{self.prefix}avatar username` - Shows avatar by username"
+                    f"`{ctx.prefix}avatar` - Shows YOUR avatar",
+                    f"`{ctx.prefix}avatar @username` - Shows mentioned user's avatar",
+                    f"`{ctx.prefix}avatar username` - Shows avatar by username"
                 ],
                 "examples": [
-                    f"`{self.prefix}avatar` - Shows your own profile picture",
-                    f"`{self.prefix}avatar @John` - Shows John's profile picture",
-                    f"`{self.prefix}avatar John` - Search for John's avatar by name",
-                    f"`{self.prefix}avatar 123456789` - Get avatar by user ID"
+                    f"`{ctx.prefix}avatar` - Shows your own profile picture",
+                    f"`{ctx.prefix}avatar @John` - Shows John's profile picture",
+                    f"`{ctx.prefix}avatar John` - Search for John's avatar by name",
+                    f"`{ctx.prefix}avatar 123456789` - Get avatar by user ID"
                 ],
                 "permissions": "None required", 
                 "cooldown": "5 seconds per user",
                 "error_scenarios": [
                     "**User not found:** Shows error embed with suggestion to check spelling",
                     "**Default avatar:** Shows Discord's default avatar if user has none",
-                    f"**Solution:** Use `{self.prefix}avatar @username` to mention the user directly"
+                    f"**Solution:** Use `{ctx.prefix}avatar @username` to mention the user directly"
                 ]
             },
             
             "setprefix": {
                 "category": "Server Management",
                 "description": "Change the bot's command prefix for this server (Administrator only)",
-                "usage": f"{self.prefix}setprefix <new_prefix>",
+                "usage": f"{ctx.prefix}setprefix <new_prefix>",
                 "detailed_usage": [
-                    f"`{self.prefix}setprefix !` - Changes prefix to !",
-                    f"`{self.prefix}setprefix bot.` - Changes prefix to bot.",
-                    f"`{self.prefix}setprefix >>` - Changes prefix to >>",
-                    f"`{self.prefix}setprefix reset` - Reset to default prefix (s.)"
+                    f"`{ctx.prefix}setprefix !` - Changes prefix to !",
+                    f"`{ctx.prefix}setprefix bot.` - Changes prefix to bot.",
+                    f"`{ctx.prefix}setprefix >>` - Changes prefix to >>",
+                    f"`{ctx.prefix}setprefix reset` - Reset to default prefix (s.)"
                 ],
                 "examples": [
-                    f"`{self.prefix}setprefix !` - Change commands to !help, !ping, etc.",
-                    f"`{self.prefix}setprefix ?` - Change commands to ?help, ?ping, etc.", 
-                    f"`{self.prefix}setprefix sp.` - Change commands to sp.help, sp.ping, etc.",
-                    f"`{self.prefix}setprefix reset` - Go back to default prefix commands"
+                    f"`{ctx.prefix}setprefix !` - Change commands to !help, !ping, etc.",
+                    f"`{ctx.prefix}setprefix ?` - Change commands to ?help, ?ping, etc.", 
+                    f"`{ctx.prefix}setprefix sp.` - Change commands to sp.help, sp.ping, etc.",
+                    f"`{ctx.prefix}setprefix reset` - Go back to default prefix commands"
                 ],
                 "permissions": "**Administrator** required",
                 "cooldown": "10 seconds per server",
                 "error_scenarios": [
                     "**Missing permissions:** `You need Administrator permissions to change the server prefix.`",
-                    f"**No prefix provided:** `Please provide a new prefix. Example: {self.prefix}setprefix !`",
+                    f"**No prefix provided:** `Please provide a new prefix. Example: {ctx.prefix}setprefix !`",
                     "**Prefix too long:** `Prefix must be 5 characters or less.`",
-                    f"**Solution:** Make sure you type: `{self.prefix}setprefix <your_new_prefix>`"
+                    f"**Solution:** Make sure you type: `{ctx.prefix}setprefix <your_new_prefix>`"
                 ]
             },
             
@@ -133,17 +133,17 @@ class DetailedCommandHelpView(discord.ui.View):
             "new": {
                 "category": "Ticket System",
                 "description": "Create a new support ticket with optional reason",
-                "usage": f"{self.prefix}new [reason]",
+                "usage": f"{ctx.prefix}new [reason]",
                 "detailed_usage": [
-                    f"`{self.prefix}new` - Creates ticket with no reason",
-                    f"`{self.prefix}new I need help with billing` - Creates ticket with reason",
-                    f"`{self.prefix}new Bug report: Bot not responding` - Detailed reason"
+                    f"`{ctx.prefix}new` - Creates ticket with no reason",
+                    f"`{ctx.prefix}new I need help with billing` - Creates ticket with reason",
+                    f"`{ctx.prefix}new Bug report: Bot not responding` - Detailed reason"
                 ],
                 "examples": [
-                    f"`{self.prefix}new` - Creates a simple support ticket",
-                    f"`{self.prefix}new I can't access my account` - Ticket with specific issue",
-                    f"`{self.prefix}new Bug: Commands not working` - Bug report ticket",
-                    f"`{self.prefix}new Need help with Discord roles` - Help request ticket"
+                    f"`{ctx.prefix}new` - Creates a simple support ticket",
+                    f"`{ctx.prefix}new I can't access my account` - Ticket with specific issue",
+                    f"`{ctx.prefix}new Bug: Commands not working` - Bug report ticket",
+                    f"`{ctx.prefix}new Need help with Discord roles` - Help request ticket"
                 ],
                 "permissions": "None required (if tickets enabled)",
                 "cooldown": "30 seconds per user", 
@@ -151,23 +151,23 @@ class DetailedCommandHelpView(discord.ui.View):
                     "**Tickets disabled:** `Ticket system is not enabled in this server.`",
                     "**Too many tickets:** `You already have the maximum number of open tickets.`",
                     "**Channel creation failed:** `Failed to create ticket channel. Contact an administrator.`",
-                    f"**Solution:** Ask an admin to run `{self.prefix}ticketsetup` to enable tickets"
+                    f"**Solution:** Ask an admin to run `{ctx.prefix}ticketsetup` to enable tickets"
                 ]
             },
             
             "add": {
                 "category": "Ticket System",
                 "description": "Add a member to the current ticket (Staff only)",
-                "usage": f"{self.prefix}add <member>",
+                "usage": f"{ctx.prefix}add <member>",
                 "detailed_usage": [
-                    f"`{self.prefix}add @username` - Add user by mention",
-                    f"`{self.prefix}add username` - Add user by username",
-                    f"`{self.prefix}add 123456789` - Add user by ID"
+                    f"`{ctx.prefix}add @username` - Add user by mention",
+                    f"`{ctx.prefix}add username` - Add user by username",
+                    f"`{ctx.prefix}add 123456789` - Add user by ID"
                 ],
                 "examples": [
-                    f"`{self.prefix}add @John` - Add John to ticket",
-                    f"`{self.prefix}add Support Team` - Add by username",
-                    f"`{self.prefix}add 351738977602887681` - Add by user ID"
+                    f"`{ctx.prefix}add @John` - Add John to ticket",
+                    f"`{ctx.prefix}add Support Team` - Add by username",
+                    f"`{ctx.prefix}add 351738977602887681` - Add by user ID"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "5 seconds per user",
@@ -183,20 +183,20 @@ class DetailedCommandHelpView(discord.ui.View):
             "autoresponder": {
                 "category": "Auto Responders",
                 "description": "Simple auto-response system with trigger and reply functionality",
-                "usage": f"{self.prefix}autoresponder <add|editreply|remove|list|toggle> [arguments]",
+                "usage": f"{ctx.prefix}autoresponder <add|editreply|remove|list|toggle> [arguments]",
                 "detailed_usage": [
-                    f"`{self.prefix}autoresponder add trigger:<trigger> reply:<response>` - Add new auto responder",
-                    f"`{self.prefix}autoresponder editreply trigger:<trigger> reply:<new response>` - Edit responder reply",
-                    f"`{self.prefix}autoresponder remove <trigger>` - Remove auto responder",
-                    f"`{self.prefix}autoresponder list` - List all auto responders", 
-                    f"`{self.prefix}autoresponder toggle <trigger>` - Enable/disable responder"
+                    f"`{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>` - Add new auto responder",
+                    f"`{ctx.prefix}autoresponder editreply trigger:<trigger> reply:<new response>` - Edit responder reply",
+                    f"`{ctx.prefix}autoresponder remove <trigger>` - Remove auto responder",
+                    f"`{ctx.prefix}autoresponder list` - List all auto responders", 
+                    f"`{ctx.prefix}autoresponder toggle <trigger>` - Enable/disable responder"
                 ],
                 "examples": [
-                    f"`{self.prefix}autoresponder add trigger:hello reply:Hello there! Welcome!` - Basic responder",
-                    f"`{self.prefix}autoresponder add trigger:rules reply:Please check #rules channel` - Rules reminder",
-                    f"`{self.prefix}autoresponder editreply trigger:hello reply:Hi there! Welcome to our server!` - Edit existing responder",
-                    f"`{self.prefix}autoresponder remove hello` - Remove responder",
-                    f"`{self.prefix}autoresponder list` - See all server auto responders"
+                    f"`{ctx.prefix}autoresponder add trigger:hello reply:Hello there! Welcome!` - Basic responder",
+                    f"`{ctx.prefix}autoresponder add trigger:rules reply:Please check #rules channel` - Rules reminder",
+                    f"`{ctx.prefix}autoresponder editreply trigger:hello reply:Hi there! Welcome to our server!` - Edit existing responder",
+                    f"`{ctx.prefix}autoresponder remove hello` - Remove responder",
+                    f"`{ctx.prefix}autoresponder list` - See all server auto responders"
                 ],
                 "permissions": "**Administrator** required for all autoresponder commands",
                 "cooldown": "5 seconds per user",
@@ -212,18 +212,18 @@ class DetailedCommandHelpView(discord.ui.View):
             "remind": {
                 "category": "Reminders",
                 "description": "Set a personal reminder that will notify you after specified time",
-                "usage": f"{self.prefix}remind <time> <message>",
+                "usage": f"{ctx.prefix}remind <time> <message>",
                 "detailed_usage": [
-                    f"`{self.prefix}remind 1h Take a break` - 1 hour reminder",
-                    f"`{self.prefix}remind 30m Check the oven` - 30 minute reminder", 
-                    f"`{self.prefix}remind 1d2h3m Meeting tomorrow` - Complex time",
-                    f"`{self.prefix}remind 45s Quick reminder` - 45 second reminder"
+                    f"`{ctx.prefix}remind 1h Take a break` - 1 hour reminder",
+                    f"`{ctx.prefix}remind 30m Check the oven` - 30 minute reminder", 
+                    f"`{ctx.prefix}remind 1d2h3m Meeting tomorrow` - Complex time",
+                    f"`{ctx.prefix}remind 45s Quick reminder` - 45 second reminder"
                 ],
                 "examples": [
-                    f"`{self.prefix}remind 2h Meeting with team` - 2 hour reminder",
-                    f"`{self.prefix}remind 1d Birthday party` - 1 day reminder",
-                    f"`{self.prefix}remind 30m Take medication` - 30 minute reminder",
-                    f"`{self.prefix}remind 1w Weekend plans` - 1 week reminder"
+                    f"`{ctx.prefix}remind 2h Meeting with team` - 2 hour reminder",
+                    f"`{ctx.prefix}remind 1d Birthday party` - 1 day reminder",
+                    f"`{ctx.prefix}remind 30m Take medication` - 30 minute reminder",
+                    f"`{ctx.prefix}remind 1w Weekend plans` - 1 week reminder"
                 ],
                 "permissions": "None required",
                 "cooldown": "10 seconds per user",
@@ -239,17 +239,17 @@ class DetailedCommandHelpView(discord.ui.View):
             "serverstats": {
                 "category": "Server Monitoring",
                 "description": "Monitor and display real-time server statistics",
-                "usage": f"{self.prefix}serverstats <start|stop|show|list>",
+                "usage": f"{ctx.prefix}serverstats <start|stop|show|list>",
                 "detailed_usage": [
-                    f"`{self.prefix}serverstats start` - Start monitoring this server",
-                    f"`{self.prefix}serverstats stop` - Stop monitoring this server",
-                    f"`{self.prefix}serverstats show` - Display current stats",
-                    f"`{self.prefix}serverstats list` - List all monitored servers"
+                    f"`{ctx.prefix}serverstats start` - Start monitoring this server",
+                    f"`{ctx.prefix}serverstats stop` - Stop monitoring this server",
+                    f"`{ctx.prefix}serverstats show` - Display current stats",
+                    f"`{ctx.prefix}serverstats list` - List all monitored servers"
                 ],
                 "examples": [
-                    f"`{self.prefix}serverstats start` - Begin monitoring",
-                    f"`{self.prefix}serverstats show` - View statistics",
-                    f"`{self.prefix}serverstats stop` - Stop monitoring"
+                    f"`{ctx.prefix}serverstats start` - Begin monitoring",
+                    f"`{ctx.prefix}serverstats show` - View statistics",
+                    f"`{ctx.prefix}serverstats stop` - Stop monitoring"
                 ],
                 "permissions": "**Manage Guild** required for start/stop",
                 "cooldown": "15 seconds per server",
@@ -265,12 +265,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "serverinfo": {
                 "category": "Utility",
                 "description": "Display comprehensive server information including stats, features, and settings",
-                "usage": f"{self.prefix}serverinfo",
+                "usage": f"{ctx.prefix}serverinfo",
                 "detailed_usage": [
-                    f"`{self.prefix}serverinfo` - Shows complete server information"
+                    f"`{ctx.prefix}serverinfo` - Shows complete server information"
                 ],
                 "examples": [
-                    f"`{self.prefix}serverinfo` - Get server details, member count, channels, roles",
+                    f"`{ctx.prefix}serverinfo` - Get server details, member count, channels, roles",
                     "Shows: Creation date, verification level, boost status, features"
                 ],
                 "permissions": "None required",
@@ -284,16 +284,16 @@ class DetailedCommandHelpView(discord.ui.View):
             "channelinfo": {
                 "category": "Utility",
                 "description": "Display detailed information about any server channel",
-                "usage": f"{self.prefix}channelinfo [#channel]",
+                "usage": f"{ctx.prefix}channelinfo [#channel]",
                 "detailed_usage": [
-                    f"`{self.prefix}channelinfo` - Shows info about current channel",
-                    f"`{self.prefix}channelinfo #general` - Shows info about mentioned channel",
-                    f"`{self.prefix}channelinfo 123456789` - Shows info by channel ID"
+                    f"`{ctx.prefix}channelinfo` - Shows info about current channel",
+                    f"`{ctx.prefix}channelinfo #general` - Shows info about mentioned channel",
+                    f"`{ctx.prefix}channelinfo 123456789` - Shows info by channel ID"
                 ],
                 "examples": [
-                    f"`{self.prefix}channelinfo` - Current channel details",
-                    f"`{self.prefix}channelinfo #announcements` - Specific channel info",
-                    f"`{self.prefix}channelinfo 987654321` - Channel info by ID"
+                    f"`{ctx.prefix}channelinfo` - Current channel details",
+                    f"`{ctx.prefix}channelinfo #announcements` - Specific channel info",
+                    f"`{ctx.prefix}channelinfo 987654321` - Channel info by ID"
                 ],
                 "permissions": "None required",
                 "cooldown": "8 seconds per user",
@@ -307,37 +307,37 @@ class DetailedCommandHelpView(discord.ui.View):
             "roleinfo": {
                 "category": "Utility",
                 "description": "Display detailed information about any server role",
-                "usage": f"{self.prefix}roleinfo <@role|role_name>",
+                "usage": f"{ctx.prefix}roleinfo <@role|role_name>",
                 "detailed_usage": [
-                    f"`{self.prefix}roleinfo @Admin` - Shows info about mentioned role",
-                    f"`{self.prefix}roleinfo Admin` - Shows info by role name",
-                    f"`{self.prefix}roleinfo 123456789` - Shows info by role ID"
+                    f"`{ctx.prefix}roleinfo @Admin` - Shows info about mentioned role",
+                    f"`{ctx.prefix}roleinfo Admin` - Shows info by role name",
+                    f"`{ctx.prefix}roleinfo 123456789` - Shows info by role ID"
                 ],
                 "examples": [
-                    f"`{self.prefix}roleinfo @Moderator` - Moderator role details",
-                    f"`{self.prefix}roleinfo Member` - Member role by name",
-                    f"`{self.prefix}roleinfo 456789123` - Role info by ID"
+                    f"`{ctx.prefix}roleinfo @Moderator` - Moderator role details",
+                    f"`{ctx.prefix}roleinfo Member` - Member role by name",
+                    f"`{ctx.prefix}roleinfo 456789123` - Role info by ID"
                 ],
                 "permissions": "None required",
                 "cooldown": "8 seconds per user",
                 "error_scenarios": [
                     "**Role not found:** `Role 'name' not found in this server.`",
                     "**Invalid ID:** `Invalid role ID format.`",
-                    "**Solution:** Use `{self.prefix}roleinfo @rolename` to mention the role"
+                    "**Solution:** Use `{ctx.prefix}roleinfo @rolename` to mention the role"
                 ]
             },
             
             "inviteinfo": {
                 "category": "Utility",
                 "description": "Display information about a Discord invite link",
-                "usage": f"{self.prefix}inviteinfo <invite_code>",
+                "usage": f"{ctx.prefix}inviteinfo <invite_code>",
                 "detailed_usage": [
-                    f"`{self.prefix}inviteinfo abc123` - Info about invite code",
-                    f"`{self.prefix}inviteinfo discord.gg/abc123` - Info from full invite URL"
+                    f"`{ctx.prefix}inviteinfo abc123` - Info about invite code",
+                    f"`{ctx.prefix}inviteinfo discord.gg/abc123` - Info from full invite URL"
                 ],
                 "examples": [
-                    f"`{self.prefix}inviteinfo abc123` - Shows server, channel, member count",
-                    f"`{self.prefix}inviteinfo https://discord.gg/abc123` - From full URL"
+                    f"`{ctx.prefix}inviteinfo abc123` - Shows server, channel, member count",
+                    f"`{ctx.prefix}inviteinfo https://discord.gg/abc123` - From full URL"
                 ],
                 "permissions": "None required",
                 "cooldown": "10 seconds per user",
@@ -351,12 +351,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "variables": {
                 "category": "Utility",
                 "description": "Display all available variables for embed builder and auto-responses",
-                "usage": f"{self.prefix}variables",
+                "usage": f"{ctx.prefix}variables",
                 "detailed_usage": [
-                    f"`{self.prefix}variables` - Shows all 80+ available variables"
+                    f"`{ctx.prefix}variables` - Shows all 80+ available variables"
                 ],
                 "examples": [
-                    f"`{self.prefix}variables` - View variables like $(user.name), $(server.name)",
+                    f"`{ctx.prefix}variables` - View variables like $(user.name), $(server.name)",
                     "Use variables in embeds and auto-responses for dynamic content"
                 ],
                 "permissions": "None required",
@@ -370,12 +370,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "about": {
                 "category": "Bot Info",
                 "description": "Display detailed bot statistics, uptime, and system information",
-                "usage": f"{self.prefix}about",
+                "usage": f"{ctx.prefix}about",
                 "detailed_usage": [
-                    f"`{self.prefix}about` - Shows bot stats, uptime, system info"
+                    f"`{ctx.prefix}about` - Shows bot stats, uptime, system info"
                 ],
                 "examples": [
-                    f"`{self.prefix}about` - View bot uptime, server count, memory usage",
+                    f"`{ctx.prefix}about` - View bot uptime, server count, memory usage",
                     "Shows: Framework version, Python version, system specs"
                 ],
                 "permissions": "None required",
@@ -388,12 +388,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "invite": {
                 "category": "Bot Info",
                 "description": "Get bot invite link and support server information",
-                "usage": f"{self.prefix}invite",
+                "usage": f"{ctx.prefix}invite",
                 "detailed_usage": [
-                    f"`{self.prefix}invite` - Shows bot invite link and support server"
+                    f"`{ctx.prefix}invite` - Shows bot invite link and support server"
                 ],
                 "examples": [
-                    f"`{self.prefix}invite` - Add bot to your server with proper permissions",
+                    f"`{ctx.prefix}invite` - Add bot to your server with proper permissions",
                     "Includes: Bot invite link, support server, key features"
                 ],
                 "permissions": "None required",
@@ -406,12 +406,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "shards": {
                 "category": "Bot Info",
                 "description": "Display shard information and server distribution",
-                "usage": f"{self.prefix}shards",
+                "usage": f"{ctx.prefix}shards",
                 "detailed_usage": [
-                    f"`{self.prefix}shards` - Shows shard info and server list with pagination"
+                    f"`{ctx.prefix}shards` - Shows shard info and server list with pagination"
                 ],
                 "examples": [
-                    f"`{self.prefix}shards` - View current shard, total shards, server distribution",
+                    f"`{ctx.prefix}shards` - View current shard, total shards, server distribution",
                     "Use arrow buttons to navigate through server pages"
                 ],
                 "permissions": "None required",
@@ -424,12 +424,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "vote": {
                 "category": "Bot Info",
                 "description": "Get voting links to support the bot on bot lists",
-                "usage": f"{self.prefix}vote",
+                "usage": f"{ctx.prefix}vote",
                 "detailed_usage": [
-                    f"`{self.prefix}vote` - Shows voting links and current bot stats"
+                    f"`{ctx.prefix}vote` - Shows voting links and current bot stats"
                 ],
                 "examples": [
-                    f"`{self.prefix}vote` - Vote on Top.gg and other bot lists",
+                    f"`{ctx.prefix}vote` - Vote on Top.gg and other bot lists",
                     "Help support bot development by voting every 12 hours"
                 ],
                 "permissions": "None required",
@@ -443,16 +443,16 @@ class DetailedCommandHelpView(discord.ui.View):
             "close": {
                 "category": "Ticket System",
                 "description": "Close the current ticket with optional reason",
-                "usage": f"{self.prefix}close [reason]",
+                "usage": f"{ctx.prefix}close [reason]",
                 "detailed_usage": [
-                    f"`{self.prefix}close` - Close ticket with no reason",
-                    f"`{self.prefix}close Issue resolved` - Close with reason",
-                    f"`{self.prefix}close Duplicate ticket` - Close with explanation"
+                    f"`{ctx.prefix}close` - Close ticket with no reason",
+                    f"`{ctx.prefix}close Issue resolved` - Close with reason",
+                    f"`{ctx.prefix}close Duplicate ticket` - Close with explanation"
                 ],
                 "examples": [
-                    f"`{self.prefix}close` - Simple ticket closure",
-                    f"`{self.prefix}close Issue has been resolved` - Close with resolution note",
-                    f"`{self.prefix}close User no longer needs help` - Close with status update"
+                    f"`{ctx.prefix}close` - Simple ticket closure",
+                    f"`{ctx.prefix}close Issue has been resolved` - Close with resolution note",
+                    f"`{ctx.prefix}close User no longer needs help` - Close with status update"
                 ],
                 "permissions": "**Manage Channels** or ticket creator",
                 "cooldown": "5 seconds per user",
@@ -466,15 +466,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "forceclose": {
                 "category": "Ticket System", 
                 "description": "Force close any ticket without confirmation (Staff only)",
-                "usage": f"{self.prefix}forceclose [ticket_id]",
+                "usage": f"{ctx.prefix}forceclose [ticket_id]",
                 "detailed_usage": [
-                    f"`{self.prefix}forceclose` - Force close current ticket",
-                    f"`{self.prefix}forceclose ticket-001` - Force close specific ticket by ID"
+                    f"`{ctx.prefix}forceclose` - Force close current ticket",
+                    f"`{ctx.prefix}forceclose ticket-001` - Force close specific ticket by ID"
                 ],
                 "examples": [
-                    f"`{self.prefix}forceclose` - Immediately close current ticket",
-                    f"`{self.prefix}forceclose ticket-001` - Force close ticket-001",
-                    f"`{self.prefix}forceclose 12345` - Force close ticket by number"
+                    f"`{ctx.prefix}forceclose` - Immediately close current ticket",
+                    f"`{ctx.prefix}forceclose ticket-001` - Force close ticket-001",
+                    f"`{ctx.prefix}forceclose 12345` - Force close ticket by number"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "5 seconds per user", 
@@ -488,12 +488,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "claim": {
                 "category": "Ticket System",
                 "description": "Claim ownership of the current ticket",
-                "usage": f"{self.prefix}claim",
+                "usage": f"{ctx.prefix}claim",
                 "detailed_usage": [
-                    f"`{self.prefix}claim` - Claim ownership of current ticket"
+                    f"`{ctx.prefix}claim` - Claim ownership of current ticket"
                 ],
                 "examples": [
-                    f"`{self.prefix}claim` - Take ownership of the ticket",
+                    f"`{ctx.prefix}claim` - Take ownership of the ticket",
                     "Shows your name as the assigned staff member"
                 ],
                 "permissions": "**Manage Channels** required",
@@ -508,12 +508,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "release": {
                 "category": "Ticket System",
                 "description": "Release ownership of a claimed ticket",
-                "usage": f"{self.prefix}release",
+                "usage": f"{ctx.prefix}release",
                 "detailed_usage": [
-                    f"`{self.prefix}release` - Release ownership of current ticket"
+                    f"`{ctx.prefix}release` - Release ownership of current ticket"
                 ],
                 "examples": [
-                    f"`{self.prefix}release` - Remove yourself as assigned staff",
+                    f"`{ctx.prefix}release` - Remove yourself as assigned staff",
                     "Makes ticket available for other staff to claim"
                 ],
                 "permissions": "**Manage Channels** required",
@@ -528,16 +528,16 @@ class DetailedCommandHelpView(discord.ui.View):
             "remove": {
                 "category": "Ticket System",
                 "description": "Remove a member from the current ticket",
-                "usage": f"{self.prefix}remove <member>",
+                "usage": f"{ctx.prefix}remove <member>",
                 "detailed_usage": [
-                    f"`{self.prefix}remove @username` - Remove user by mention",
-                    f"`{self.prefix}remove username` - Remove user by username",
-                    f"`{self.prefix}remove 123456789` - Remove user by ID"
+                    f"`{ctx.prefix}remove @username` - Remove user by mention",
+                    f"`{ctx.prefix}remove username` - Remove user by username",
+                    f"`{ctx.prefix}remove 123456789` - Remove user by ID"
                 ],
                 "examples": [
-                    f"`{self.prefix}remove @John` - Remove John from ticket",
-                    f"`{self.prefix}remove BadUser` - Remove by username",
-                    f"`{self.prefix}remove 351738977602887681` - Remove by user ID"
+                    f"`{ctx.prefix}remove @John` - Remove John from ticket",
+                    f"`{ctx.prefix}remove BadUser` - Remove by username",
+                    f"`{ctx.prefix}remove 351738977602887681` - Remove by user ID"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "5 seconds per user",
@@ -552,12 +552,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "listtickets": {
                 "category": "Ticket System",
                 "description": "List all open tickets in the server",
-                "usage": f"{self.prefix}listtickets",
+                "usage": f"{ctx.prefix}listtickets",
                 "detailed_usage": [
-                    f"`{self.prefix}listtickets` - Shows all open tickets with details"
+                    f"`{ctx.prefix}listtickets` - Shows all open tickets with details"
                 ],
                 "examples": [
-                    f"`{self.prefix}listtickets` - View ticket list with creators, status, priority",
+                    f"`{ctx.prefix}listtickets` - View ticket list with creators, status, priority",
                     "Shows: Ticket ID, creator, claimed status, priority level"
                 ],
                 "permissions": "**Manage Channels** required",
@@ -571,15 +571,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "topic": {
                 "category": "Ticket System",
                 "description": "Set or change the ticket topic/subject",
-                "usage": f"{self.prefix}topic <new_topic>",
+                "usage": f"{ctx.prefix}topic <new_topic>",
                 "detailed_usage": [
-                    f"`{self.prefix}topic Billing Issue` - Set ticket topic",
-                    f"`{self.prefix}topic Bug Report: Login Problem` - Detailed topic"
+                    f"`{ctx.prefix}topic Billing Issue` - Set ticket topic",
+                    f"`{ctx.prefix}topic Bug Report: Login Problem` - Detailed topic"
                 ],
                 "examples": [
-                    f"`{self.prefix}topic Account Recovery` - Set topic to account recovery",
-                    f"`{self.prefix}topic Server Issues` - Set topic to server problems",
-                    f"`{self.prefix}topic Feature Request` - Set topic for new feature"
+                    f"`{ctx.prefix}topic Account Recovery` - Set topic to account recovery",
+                    f"`{ctx.prefix}topic Server Issues` - Set topic to server problems",
+                    f"`{ctx.prefix}topic Feature Request` - Set topic for new feature"
                 ],
                 "permissions": "**Manage Channels** or ticket creator",
                 "cooldown": "5 seconds per user",
@@ -593,14 +593,14 @@ class DetailedCommandHelpView(discord.ui.View):
             "transfer": {
                 "category": "Ticket System",
                 "description": "Transfer ticket ownership to another staff member",
-                "usage": f"{self.prefix}transfer <@staff>",
+                "usage": f"{ctx.prefix}transfer <@staff>",
                 "detailed_usage": [
-                    f"`{self.prefix}transfer @StaffMember` - Transfer to mentioned staff",
-                    f"`{self.prefix}transfer StaffName` - Transfer by username"
+                    f"`{ctx.prefix}transfer @StaffMember` - Transfer to mentioned staff",
+                    f"`{ctx.prefix}transfer StaffName` - Transfer by username"
                 ],
                 "examples": [
-                    f"`{self.prefix}transfer @ModeratorJohn` - Transfer to ModeratorJohn",
-                    f"`{self.prefix}transfer SupportTeam` - Transfer to SupportTeam user"
+                    f"`{ctx.prefix}transfer @ModeratorJohn` - Transfer to ModeratorJohn",
+                    f"`{ctx.prefix}transfer SupportTeam` - Transfer to SupportTeam user"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "5 seconds per user",
@@ -615,15 +615,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "rename": {
                 "category": "Ticket System",
                 "description": "Rename the ticket channel",
-                "usage": f"{self.prefix}rename <new_name>",
+                "usage": f"{ctx.prefix}rename <new_name>",
                 "detailed_usage": [
-                    f"`{self.prefix}rename billing-issue` - Rename to billing-issue",
-                    f"`{self.prefix}rename urgent-bug-report` - Rename with description"
+                    f"`{ctx.prefix}rename billing-issue` - Rename to billing-issue",
+                    f"`{ctx.prefix}rename urgent-bug-report` - Rename with description"
                 ],
                 "examples": [
-                    f"`{self.prefix}rename account-help` - Rename to account-help",
-                    f"`{self.prefix}rename server-problem` - Rename to server-problem",
-                    f"`{self.prefix}rename feature-request` - Rename to feature-request"
+                    f"`{ctx.prefix}rename account-help` - Rename to account-help",
+                    f"`{ctx.prefix}rename server-problem` - Rename to server-problem",
+                    f"`{ctx.prefix}rename feature-request` - Rename to feature-request"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "10 seconds per user",
@@ -638,15 +638,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "move": {
                 "category": "Ticket System",
                 "description": "Move ticket to a different category",
-                "usage": f"{self.prefix}move <#category>",
+                "usage": f"{ctx.prefix}move <#category>",
                 "detailed_usage": [
-                    f"`{self.prefix}move #Support` - Move to Support category",
-                    f"`{self.prefix}move #Urgent` - Move to Urgent category"
+                    f"`{ctx.prefix}move #Support` - Move to Support category",
+                    f"`{ctx.prefix}move #Urgent` - Move to Urgent category"
                 ],
                 "examples": [
-                    f"`{self.prefix}move #General-Support` - Move to general support",
-                    f"`{self.prefix}move #Billing-Issues` - Move to billing category",
-                    f"`{self.prefix}move #Bug-Reports` - Move to bug reports"
+                    f"`{ctx.prefix}move #General-Support` - Move to general support",
+                    f"`{ctx.prefix}move #Billing-Issues` - Move to billing category",
+                    f"`{ctx.prefix}move #Bug-Reports` - Move to bug reports"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "5 seconds per user",
@@ -661,16 +661,16 @@ class DetailedCommandHelpView(discord.ui.View):
             "priority": {
                 "category": "Ticket System",
                 "description": "Set ticket priority level",
-                "usage": f"{self.prefix}priority <high|medium|low>",
+                "usage": f"{ctx.prefix}priority <high|medium|low>",
                 "detailed_usage": [
-                    f"`{self.prefix}priority high` - Set to high priority",
-                    f"`{self.prefix}priority medium` - Set to medium priority",
-                    f"`{self.prefix}priority low` - Set to low priority"
+                    f"`{ctx.prefix}priority high` - Set to high priority",
+                    f"`{ctx.prefix}priority medium` - Set to medium priority",
+                    f"`{ctx.prefix}priority low` - Set to low priority"
                 ],
                 "examples": [
-                    f"`{self.prefix}priority high` - Mark as urgent/critical issue",
-                    f"`{self.prefix}priority medium` - Standard priority level",
-                    f"`{self.prefix}priority low` - Non-urgent or general inquiry"
+                    f"`{ctx.prefix}priority high` - Mark as urgent/critical issue",
+                    f"`{ctx.prefix}priority medium` - Standard priority level",
+                    f"`{ctx.prefix}priority low` - Non-urgent or general inquiry"
                 ],
                 "permissions": "**Manage Channels** required",
                 "cooldown": "5 seconds per user",
@@ -685,21 +685,21 @@ class DetailedCommandHelpView(discord.ui.View):
             "embed": {
                 "category": "Embed Builder",
                 "description": "Advanced embed creation and management system",
-                "usage": f"{self.prefix}embed <create|edit|list|view|delete|export|import>",
+                "usage": f"{ctx.prefix}embed <create|edit|list|view|delete|export|import>",
                 "detailed_usage": [
-                    f"`{self.prefix}embed create` - Create new embed with visual editor",
-                    f"`{self.prefix}embed edit EmbedName` - Edit existing embed",
-                    f"`{self.prefix}embed list` - List all saved embeds",
-                    f"`{self.prefix}embed view EmbedName` - Preview saved embed",
-                    f"`{self.prefix}embed delete EmbedName` - Delete saved embed",
-                    f"`{self.prefix}embed export EmbedName` - Export as YAML template",
-                    f"`{self.prefix}embed import` - Import from YAML template"
+                    f"`{ctx.prefix}embed create` - Create new embed with visual editor",
+                    f"`{ctx.prefix}embed edit EmbedName` - Edit existing embed",
+                    f"`{ctx.prefix}embed list` - List all saved embeds",
+                    f"`{ctx.prefix}embed view EmbedName` - Preview saved embed",
+                    f"`{ctx.prefix}embed delete EmbedName` - Delete saved embed",
+                    f"`{ctx.prefix}embed export EmbedName` - Export as YAML template",
+                    f"`{ctx.prefix}embed import` - Import from YAML template"
                 ],
                 "examples": [
-                    f"`{self.prefix}embed create` - Start interactive embed creator",
-                    f"`{self.prefix}embed edit WelcomeMessage` - Edit welcome embed",
-                    f"`{self.prefix}embed list` - See all server embeds",
-                    f"`{self.prefix}embed export Rules` - Export rules embed as template"
+                    f"`{ctx.prefix}embed create` - Start interactive embed creator",
+                    f"`{ctx.prefix}embed edit WelcomeMessage` - Edit welcome embed",
+                    f"`{ctx.prefix}embed list` - See all server embeds",
+                    f"`{ctx.prefix}embed export Rules` - Export rules embed as template"
                 ],
                 "permissions": "**Manage Messages** required for create/edit/delete",
                 "cooldown": "10 seconds per user",
@@ -715,15 +715,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "stick": {
                 "category": "Sticky Messages",
                 "description": "Create a sticky message in the current channel",
-                "usage": f"{self.prefix}stick <message>",
+                "usage": f"{ctx.prefix}stick <message>",
                 "detailed_usage": [
-                    f"`{self.prefix}stick Welcome to our server!` - Create sticky text",
-                    f"`{self.prefix}stick EmbedName` - Create sticky from saved embed"
+                    f"`{ctx.prefix}stick Welcome to our server!` - Create sticky text",
+                    f"`{ctx.prefix}stick EmbedName` - Create sticky from saved embed"
                 ],
                 "examples": [
-                    f"`{self.prefix}stick Please read the rules!` - Text sticky message",
-                    f"`{self.prefix}stick WelcomeEmbed` - Sticky from saved embed",
-                    f"`{self.prefix}stick Check out our website: example.com` - Info sticky"
+                    f"`{ctx.prefix}stick Please read the rules!` - Text sticky message",
+                    f"`{ctx.prefix}stick WelcomeEmbed` - Sticky from saved embed",
+                    f"`{ctx.prefix}stick Check out our website: example.com` - Info sticky"
                 ],
                 "permissions": "**Manage Messages** required",
                 "cooldown": "15 seconds per user",
@@ -737,12 +737,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "stickstop": {
                 "category": "Sticky Messages",
                 "description": "Stop the sticky message in current channel",
-                "usage": f"{self.prefix}stickstop",
+                "usage": f"{ctx.prefix}stickstop",
                 "detailed_usage": [
-                    f"`{self.prefix}stickstop` - Stop sticky in current channel"
+                    f"`{ctx.prefix}stickstop` - Stop sticky in current channel"
                 ],
                 "examples": [
-                    f"`{self.prefix}stickstop` - Remove sticky message from this channel",
+                    f"`{ctx.prefix}stickstop` - Remove sticky message from this channel",
                     "The sticky message will stop appearing after new messages"
                 ],
                 "permissions": "**Manage Messages** required",
@@ -757,12 +757,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "prefix": {
                 "category": "Server Management",
                 "description": "Show the current server prefix",
-                "usage": f"{self.prefix}prefix",
+                "usage": f"{ctx.prefix}prefix",
                 "detailed_usage": [
-                    f"`{self.prefix}prefix` - Display current server prefix"
+                    f"`{ctx.prefix}prefix` - Display current server prefix"
                 ],
                 "examples": [
-                    f"`{self.prefix}prefix` - Shows current prefix (e.g., 's.' or '!')",
+                    f"`{ctx.prefix}prefix` - Shows current prefix (e.g., 's.' or '!')",
                     "Also shows if bot mention is enabled as prefix"
                 ],
                 "permissions": "None required",
@@ -776,15 +776,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "stickslow": {
                 "category": "Sticky Messages",
                 "description": "Create a slow sticky message (less frequent updates)",
-                "usage": f"{self.prefix}stickslow <message>",
+                "usage": f"{ctx.prefix}stickslow <message>",
                 "detailed_usage": [
-                    f"`{self.prefix}stickslow Welcome message` - Create slow sticky text",
-                    f"`{self.prefix}stickslow EmbedName` - Create slow sticky from embed"
+                    f"`{ctx.prefix}stickslow Welcome message` - Create slow sticky text",
+                    f"`{ctx.prefix}stickslow EmbedName` - Create slow sticky from embed"
                 ],
                 "examples": [
-                    f"`{self.prefix}stickslow Please follow the rules` - Slow text sticky",
-                    f"`{self.prefix}stickslow RulesEmbed` - Slow sticky from saved embed",
-                    f"`{self.prefix}stickslow Join our Discord for updates` - Info sticky"
+                    f"`{ctx.prefix}stickslow Please follow the rules` - Slow text sticky",
+                    f"`{ctx.prefix}stickslow RulesEmbed` - Slow sticky from saved embed",
+                    f"`{ctx.prefix}stickslow Join our Discord for updates` - Info sticky"
                 ],
                 "permissions": "**Manage Messages** required",
                 "cooldown": "15 seconds per user",
@@ -798,12 +798,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "stickstart": {
                 "category": "Sticky Messages", 
                 "description": "Restart a stopped sticky message in current channel",
-                "usage": f"{self.prefix}stickstart",
+                "usage": f"{ctx.prefix}stickstart",
                 "detailed_usage": [
-                    f"`{self.prefix}stickstart` - Restart sticky in current channel"
+                    f"`{ctx.prefix}stickstart` - Restart sticky in current channel"
                 ],
                 "examples": [
-                    f"`{self.prefix}stickstart` - Resume sticky message in this channel",
+                    f"`{ctx.prefix}stickstart` - Resume sticky message in this channel",
                     "The sticky message will start appearing again after new messages"
                 ],
                 "permissions": "**Manage Messages** required",
@@ -818,12 +818,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "stickremove": {
                 "category": "Sticky Messages",
                 "description": "Permanently remove sticky message from current channel",
-                "usage": f"{self.prefix}stickremove",
+                "usage": f"{ctx.prefix}stickremove",
                 "detailed_usage": [
-                    f"`{self.prefix}stickremove` - Remove sticky from current channel"
+                    f"`{ctx.prefix}stickremove` - Remove sticky from current channel"
                 ],
                 "examples": [
-                    f"`{self.prefix}stickremove` - Delete sticky message completely",
+                    f"`{ctx.prefix}stickremove` - Delete sticky message completely",
                     "This permanently removes the sticky message configuration"
                 ],
                 "permissions": "**Manage Messages** required",
@@ -837,12 +837,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "getstickies": {
                 "category": "Sticky Messages",
                 "description": "List all sticky messages in the server",
-                "usage": f"{self.prefix}getstickies",
+                "usage": f"{ctx.prefix}getstickies",
                 "detailed_usage": [
-                    f"`{self.prefix}getstickies` - Show all server sticky messages"
+                    f"`{ctx.prefix}getstickies` - Show all server sticky messages"
                 ],
                 "examples": [
-                    f"`{self.prefix}getstickies` - View all stickies with channel info, status",
+                    f"`{ctx.prefix}getstickies` - View all stickies with channel info, status",
                     "Shows: Channel, message content, status (active/stopped), speed"
                 ],
                 "permissions": "**Manage Messages** required",
@@ -856,16 +856,16 @@ class DetailedCommandHelpView(discord.ui.View):
             "stickspeed": {
                 "category": "Sticky Messages",
                 "description": "View or change sticky message update speed",
-                "usage": f"{self.prefix}stickspeed [speed]",
+                "usage": f"{ctx.prefix}stickspeed [speed]",
                 "detailed_usage": [
-                    f"`{self.prefix}stickspeed` - View current speed",
-                    f"`{self.prefix}stickspeed fast` - Set to fast updates",
-                    f"`{self.prefix}stickspeed slow` - Set to slow updates"
+                    f"`{ctx.prefix}stickspeed` - View current speed",
+                    f"`{ctx.prefix}stickspeed fast` - Set to fast updates",
+                    f"`{ctx.prefix}stickspeed slow` - Set to slow updates"
                 ],
                 "examples": [
-                    f"`{self.prefix}stickspeed` - Check current update speed",
-                    f"`{self.prefix}stickspeed fast` - Update after every message",
-                    f"`{self.prefix}stickspeed slow` - Update every 5 messages"
+                    f"`{ctx.prefix}stickspeed` - Check current update speed",
+                    f"`{ctx.prefix}stickspeed fast` - Update after every message",
+                    f"`{ctx.prefix}stickspeed slow` - Update every 5 messages"
                 ],
                 "permissions": "**Manage Messages** required",
                 "cooldown": "5 seconds per user",
@@ -880,12 +880,12 @@ class DetailedCommandHelpView(discord.ui.View):
             "reminders": {
                 "category": "Reminders",
                 "description": "List all your active reminders",
-                "usage": f"{self.prefix}reminders",
+                "usage": f"{ctx.prefix}reminders",
                 "detailed_usage": [
-                    f"`{self.prefix}reminders` - Show all your active reminders"
+                    f"`{ctx.prefix}reminders` - Show all your active reminders"
                 ],
                 "examples": [
-                    f"`{self.prefix}reminders` - View your reminder list with times and messages",
+                    f"`{ctx.prefix}reminders` - View your reminder list with times and messages",
                     "Shows: Reminder ID, time remaining, message content"
                 ],
                 "permissions": "None required",
@@ -898,15 +898,15 @@ class DetailedCommandHelpView(discord.ui.View):
             "delreminder": {
                 "category": "Reminders",
                 "description": "Delete a specific reminder by ID",
-                "usage": f"{self.prefix}delreminder <reminder_id>",
+                "usage": f"{ctx.prefix}delreminder <reminder_id>",
                 "detailed_usage": [
-                    f"`{self.prefix}delreminder 1` - Delete reminder ID 1",
-                    f"`{self.prefix}delreminder 5` - Delete reminder ID 5"
+                    f"`{ctx.prefix}delreminder 1` - Delete reminder ID 1",
+                    f"`{ctx.prefix}delreminder 5` - Delete reminder ID 5"
                 ],
                 "examples": [
-                    f"`{self.prefix}delreminder 1` - Remove your first reminder",
-                    f"`{self.prefix}delreminder 3` - Remove your third reminder",
-                    f"Use `{self.prefix}reminders` to see all IDs first"
+                    f"`{ctx.prefix}delreminder 1` - Remove your first reminder",
+                    f"`{ctx.prefix}delreminder 3` - Remove your third reminder",
+                    f"Use `{ctx.prefix}reminders` to see all IDs first"
                 ],
                 "permissions": "None required",
                 "cooldown": "5 seconds per user",
@@ -923,9 +923,9 @@ class DetailedCommandHelpView(discord.ui.View):
         return detailed_info.get(cmd_name, {
             "category": "Unknown",
             "description": self.command.help or "No description available",
-            "usage": f"{self.prefix}{self.command.name}",
-            "detailed_usage": [f"`{self.prefix}{self.command.name}` - Basic usage"],
-            "examples": [f"`{self.prefix}{self.command.name}` - Example usage"],
+            "usage": f"{ctx.prefix}{self.command.name}",
+            "detailed_usage": [f"`{ctx.prefix}{self.command.name}` - Basic usage"],
+            "examples": [f"`{ctx.prefix}{self.command.name}` - Example usage"],
             "permissions": "Check command documentation",
             "cooldown": "Varies per command",
             "error_scenarios": ["Use the command correctly to avoid errors"]
@@ -1126,7 +1126,7 @@ class DetailedCommandHelpView(discord.ui.View):
         embed = discord.Embed(
             title="Help Closed",
             description=f"Help for `{self.command.name}` has been closed.\n"
-                       f"Use `{self.prefix}help {self.command.name}` to reopen.",
+                       f"Use `{ctx.prefix}help {self.command.name}` to reopen.",
             color=EMBED_COLOR_SUCCESS
         )
         embed.set_footer(text=f"Closed by {self.user.display_name}", icon_url=self.user.display_avatar.url)
