@@ -253,8 +253,8 @@ class EmbedEditorView(discord.ui.View):
         
         embed = discord.Embed(
             description=f"Embed '**{embed_name}**' saved successfully!\n\n"
-                       f"Use `s.embedlist` to see your saved embeds\n"
-                       f"Use `s.embedview {embed_name}` to preview it",
+                       f"Use `{ctx.prefix}embedlist` to see your saved embeds\n"
+                       f"Use `{ctx.prefix}embedview {embed_name}` to preview it",
             color=EMBED_COLOR_NORMAL
         )
         await interaction.response.edit_message(embed=embed, view=None)
@@ -609,26 +609,26 @@ class EmbedBuilder(commands.Cog):
                 # Core Commands
                 embed.add_field(
                     name="Core Commands",
-                    value="``s.embedcreate [name]` - Create a new embed\n"
-                          "`s.embedlist` - List your saved embeds\n"
-                          "`s.embedview <name>` - View a saved embed\n"
-                          "`s.embededit <name>` - Edit an existing embed",
+                    value="``{ctx.prefix}embedcreate [name]` - Create a new embed\n"
+                          "`{ctx.prefix}embedlist` - List your saved embeds\n"
+                          "`{ctx.prefix}embedview <name>` - View a saved embed\n"
+                          "`{ctx.prefix}embededit <name>` - Edit an existing embed",
                     inline=False
                 )
                 
                 # Management Commands
                 embed.add_field(
                     name="Management",
-                    value="`s.embeddelete <name>` - Delete a saved embed\n"
-                          "`s.embedexport <name>` - Export as YAML\n"
-                          "`s.embedimport <yaml>` - Import from YAML",
+                    value="`{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
+                          "`{ctx.prefix}embedexport <name>` - Export as YAML\n"
+                          "`{ctx.prefix}embedimport <yaml>` - Import from YAML",
                     inline=False
                 )
                 
                 # Help Reference
                 embed.add_field(
                     name="Need More Help?",
-                    value="Use `s.embed` to see all available commands with detailed descriptions.",
+                    value="Use `{ctx.prefix}embed` to see all available commands with detailed descriptions.",
                     inline=False
                 )
                 await ctx.reply(embed=embed, mention_author=False)
@@ -644,19 +644,19 @@ class EmbedBuilder(commands.Cog):
             # Core Commands
             embed.add_field(
                 name="Core Commands",
-                value="`s.embedcreate [name]` - Create a new embed with enhanced editor\n"
-                      "`s.embedlist` - List your saved embeds\n"
-                      "`s.embedview <name>` - View a saved embed\n"
-                      "`s.embededit <name>` - Edit an existing embed",
+                value="`{ctx.prefix}embedcreate [name]` - Create a new embed with enhanced editor\n"
+                      "`{ctx.prefix}embedlist` - List your saved embeds\n"
+                      "`{ctx.prefix}embedview <name>` - View a saved embed\n"
+                      "`{ctx.prefix}embededit <name>` - Edit an existing embed",
                 inline=False
             )
             
             # Management Commands
             embed.add_field(
                 name="Management",
-                value="`s.embeddelete <name>` - Delete a saved embed\n"
-                      "`s.embedexport <name>` - Export as YAML template\n"
-                      "`s.embedimport <yaml>` - Import from YAML template",
+                value="`{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
+                      "`{ctx.prefix}embedexport <name>` - Export as YAML template\n"
+                      "`{ctx.prefix}embedimport <yaml>` - Import from YAML template",
                 inline=False
             )
             
@@ -664,7 +664,7 @@ class EmbedBuilder(commands.Cog):
             embed.add_field(
                 name="Additional Help",
                 value="`variables` - View all available variables\n"
-                      "`s.embedoldedit <name>` - Use legacy editing mode",
+                      "`{ctx.prefix}embedoldedit <name>` - Use legacy editing mode",
                 inline=False
             )
             
@@ -692,13 +692,13 @@ class EmbedBuilder(commands.Cog):
     async def embed_create(self, ctx, *, name: str = None):
         """Create a new embed with enhanced interface
         
-        Usage: `s.embedcreate [name]`
+        Usage: `{ctx.prefix}embedcreate [name]`
         Opens interactive visual editor with organized dropdowns for all embed elements
         
         Examples:
-        - `s.embedcreate` - Auto-generates name (embed_1, embed_2, etc.)
-        - embedcreate welcome - Creates embed named 'welcome'
-        - embedcreate support_info - Creates embed with specific name
+        - `{ctx.prefix}embedcreate` - Auto-generates name (embed_1, embed_2, etc.)
+        - `{ctx.prefix}embedcreate` welcome - Creates embed named 'welcome'
+        - `{ctx.prefix}embedcreate` support_info - Creates embed with specific name
         
         Common Errors:
         - Name exists: Use embededit to modify existing embeds
@@ -761,13 +761,13 @@ class EmbedBuilder(commands.Cog):
     async def embed_edit(self, ctx, *, name: str):
         """Edit an existing embed with enhanced interface
         
-        Usage: embededit <name>
+        Usage: `{ctx.prefix}embededit <name>`
         Opens visual editor to modify existing embed with dropdown menus
         
         Examples:
-        - embededit welcome - Edit the 'welcome' embed
-        - embededit support_info - Modify support information embed
-        - embededit rules - Update server rules embed
+        - `{ctx.prefix}embededit welcome` - Edit the 'welcome' embed
+        - `{ctx.prefix}embededit support_info` - Modify support information embed
+        - `{ctx.prefix}embededit rules` - Update server rules embed
         
         Common Errors:
         - Embed not found: Use embedlist to see available embeds
@@ -820,18 +820,16 @@ class EmbedBuilder(commands.Cog):
     async def embed_list(self, ctx):
         """List saved embeds
         
-        Usage: embedlist
+        Usage: `{ctx.prefix}embedlist`
         Shows all personal embeds and server embeds (if Administrator)
         
         Examples:
-        - embedlist - View all your saved embeds
+        - `{ctx.prefix}embedlist` - View all your saved embeds
         - Shows personal embeds for your account
         - Shows server embeds if you're Administrator
         
         Features:
-        - Personal embeds: Private to your account per server
-        - Server embeds: Available to all Administrators
-        - Quick command references for each embed
+
         """
         user_id = str(ctx.author.id)
         guild_id = str(ctx.guild.id) if ctx.guild else "dm"
@@ -870,9 +868,9 @@ class EmbedBuilder(commands.Cog):
         else:
             embed.add_field(
                 name="Commands",
-                value="`s.embedview <name>` - Preview an embed\n"
-                      "`s.embededit <name>` - Edit an embed\n"
-                      "`s.embeddelete <name>` - Delete an embed",
+                value="`{ctx.prefix}embedview <name>` - Preview an embed\n"
+                      "`{ctx.prefix}embededit <name>` - Edit an embed\n"
+                      "`{ctx.prefix}embeddelete <name>` - Delete an embed",
                 inline=False
             )
         
@@ -885,16 +883,16 @@ class EmbedBuilder(commands.Cog):
     async def embed_view(self, ctx, *, name: str):
         """View a saved embed
         
-        Usage: embedview <name>
+        Usage: `{ctx.prefix}embedview <name>`
         Displays saved embed with all variables processed and formatted
         
         Examples:
-        - embedview welcome - Preview welcome embed with current data
-        - embedview rules - Show rules embed as it would appear
-        - embedview support_info - View support information with variables
+        - `{ctx.prefix}embedview welcome` - Preview welcome embed with current data
+        - `{ctx.prefix}embedview rules` - Show rules embed as it would appear
+        - `{ctx.prefix}embedview support_info` - View support information with variables
         
         Features:
-        - Processes all variables like $(user.name), $(server.name)
+        - Processes all variables like `$(user.name)`, `$(server.name)`
         - Shows exactly how embed appears to users
         - Works with both personal and server embeds
         """
@@ -999,13 +997,13 @@ class EmbedBuilder(commands.Cog):
     async def embed_delete(self, ctx, *, name: str):
         """Delete a saved embed
         
-        Usage: embeddelete <name>
+        Usage: ``{ctx.prefix}embeddelete <name>`
         Permanently removes an embed from your saved collection
         
         Examples:
-        - embeddelete old_welcome - Delete outdated welcome embed
-        - embeddelete test_embed - Remove test/experimental embed
-        - embeddelete unused_rules - Clean up unused embed
+        - `{ctx.prefix}embeddelete old_welcome` - Delete outdated welcome embed
+        - `{ctx.prefix}embeddelete test_embed` - Remove test/experimental embed
+        - `{ctx.prefix}embeddelete unused_rules` - Clean up unused embed
         
         Warning:
         - This action cannot be undone
@@ -1057,13 +1055,13 @@ class EmbedBuilder(commands.Cog):
     async def embed_create_empty(self, ctx, *, name: str = None):
         """Create an empty embed to edit later
         
-        Usage: embedcreateempty [name]
+        Usage: `{ctx.prefix}embedcreateempty [name]`
         Creates blank embed template saved for later editing
         
         Examples:
-        - embedcreateempty - Auto-generates name (empty_embed_1, etc.)
-        - embedcreateempty draft_rules - Create named empty embed
-        - embedcreateempty template_info - Blank template for future use
+        - `{ctx.prefix}embedcreateempt`y - Auto-generates name (empty_embed_1, etc.)
+        - `{ctx.prefix}embedcreateempty draft_rules` - Create named empty embed
+        - `{ctx.prefix}embedcreateempty template_info` - Blank template for future use
         
         Features:
         - Saves empty embed structure immediately
@@ -1149,13 +1147,13 @@ class EmbedBuilder(commands.Cog):
     async def embed_export(self, ctx, *, name: str):
         """Export embed as YAML template
         
-        Usage: embedexport <name>
+        Usage: `{ctx.prefix}embedexport <name>`
         Downloads embed as YAML file for backup, sharing, or migration
         
         Examples:
-        - embedexport welcome - Export welcome embed as YAML
-        - embedexport server_rules - Backup rules embed to file
-        - embedexport support_template - Share template with others
+        - `{ctx.prefix}embedexport` welcome - Export welcome embed as YAML
+        - `{ctx.prefix}embedexport server_rules` - Backup rules embed to file
+        - `{ctx.prefix}embedexport support_template` - Share template with others
         
         Features:
         - Downloads .yaml file automatically
@@ -1214,12 +1212,12 @@ class EmbedBuilder(commands.Cog):
     async def embed_import(self, ctx, *, name: str = None):
         """Import embed from YAML template
         
-        Usage: embedimport [name] (attach YAML file)
+        Usage: `{ctx.prefix}embedimport [name] (attach YAML file)`
         Imports embed from attached YAML file to your collection
         
         Examples:
-        - embedimport welcome - Import with custom name
-        - embedimport - Use filename as embed name
+        - `{ctx.prefix}embedimport welcome` - Import with custom name
+        - `{ctx.prefix}embedimport` - Use filename as embed name
         - Must attach .yaml file to message
         
         Common Errors:
@@ -1323,11 +1321,11 @@ class EmbedBuilder(commands.Cog):
     async def embed_old_edit(self, ctx, *, name: str):
         """Legacy text-based embed editor
         
-        Usage: embedoldedit <name>
+        Usage: `{ctx.prefix}embedoldedit <name>`
         Opens old text-based editor (use embededit for better experience)
         
         Examples:
-        - embedoldedit welcome - Edit with legacy interface
+        - `{ctx.prefix}embedoldedit welcome` - Edit with legacy interface
         - Deprecated: Use embededit for visual interface
         
         Note:
