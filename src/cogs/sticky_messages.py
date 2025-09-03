@@ -139,7 +139,7 @@ class StickyMessages(commands.Cog):
                 else:
                     # Fallback to simple embed if custom embed not found
                     embed = discord.Embed(
-                        title="f"{SPROUTS_WARNING}" Sticky Embed Not Found",
+                        title=f"{SPROUTS_WARNING} Sticky Embed Not Found",
                         description=f"Custom embed '{embed_name}' not found. Please recreate the sticky.",
                         color=EMBED_COLOR_ERROR
                     )
