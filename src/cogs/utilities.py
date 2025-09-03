@@ -790,7 +790,7 @@ class Utilities(commands.Cog):
         """Handle setprefix command errors"""
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(
-                title="f"{SPROUTS_ERROR}" Missing Permissions",
+                title=f"{SPROUTS_ERROR} Missing Permissions",
                 description="You need **Administrator** permissions to change the server prefix.",
                 color=EMBED_COLOR_ERROR
             )
