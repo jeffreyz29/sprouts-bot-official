@@ -1124,12 +1124,18 @@ class DetailedCommandHelpView(discord.ui.View):
         usage = command_info.get('usage', f"`{self.prefix}{self.command.name}`")
         embed.add_field(
             name="Basic Syntax",
-            value=f"{usage}\n\n**Format Explanation:**\n"
-                  "• `<required>` - Required arguments (must provide)\n"
-                  "• `[optional]` - Optional arguments (can skip)\n"
-                  "• `@user` - Mention a user\n"
-                  "• `#channel` - Mention a channel\n"
-                  "• `@role` - Mention a role",
+            value=f"{usage}",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Format Guide",
+            value="**Parameter Types:**\n"
+                  "• `<#channelID>` - Required channel parameter (works with channel id or channel mention)\n"
+                  "• `< >` - Required parameter\n"
+                  "• `[ ]` - Optional parameter\n"
+                  "• `[thing 1| thing 2]` - Choose one of the given option\n"
+                  "• `...` - Can repeat multiple times",
             inline=False
         )
         
