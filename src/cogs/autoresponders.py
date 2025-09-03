@@ -10,6 +10,7 @@ import os
 import logging
 from datetime import datetime
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ class AutoResponders(commands.Cog):
             # Parse trigger: and reply: format
             if 'trigger:' not in args or 'reply:' not in args:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Invalid Format",
+                    title=f"{SPROUTS_ERROR} Invalid Format",
                     description=f"**Correct format:** `{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>`\n\n"
                                f"**Example:** `{ctx.prefix}autoresponder add trigger:hello reply:Hello there! Welcome!`",
                     color=EMBED_COLOR_ERROR
@@ -165,7 +166,7 @@ class AutoResponders(commands.Cog):
             
             if not trigger or not reply:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Missing Information",
+                    title=f"{SPROUTS_ERROR} Missing Information",
                     description=f"**Both trigger and reply are required!**\n\n"
                                f"**Correct format:** `{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>`\n\n"
                                f"**Example:** `{ctx.prefix}autoresponder add trigger:hello reply:Welcome to our server!`",
@@ -187,7 +188,7 @@ class AutoResponders(commands.Cog):
             if trigger in self.autoresponders[guild_id]:
                 current_response = self.autoresponders[guild_id][trigger]['response']
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Auto Responder Already Exists",
+                    title=f"{SPROUTS_ERROR} Auto Responder Already Exists",
                     description=f"**An auto responder for trigger `{trigger}` already exists!**\n\n"
                                f"**Available options:**\n"
                                f"`{ctx.prefix}autoresponder editreply trigger:{trigger} reply:<new response>` - Edit existing responder\n"
@@ -214,7 +215,7 @@ class AutoResponders(commands.Cog):
             self.save_autoresponders()
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Auto Responder Added",
+                title=f"{SPROUTS_CHECK} Auto Responder Added",
                 description=f"Successfully added auto responder for trigger: `{trigger}`",
                 color=EMBED_COLOR_NORMAL
             )
@@ -226,7 +227,7 @@ class AutoResponders(commands.Cog):
         except Exception as e:
             logger.error(f"Error adding auto responder: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to add auto responder. Please check your syntax.",
                 color=EMBED_COLOR_ERROR
             )
@@ -253,7 +254,7 @@ class AutoResponders(commands.Cog):
             # Parse trigger: and reply: format
             if 'trigger:' not in args or 'reply:' not in args:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Invalid Format",
+                    title=f"{SPROUTS_ERROR} Invalid Format",
                     description=f"**Correct format:** `{ctx.prefix}autoresponder editreply trigger:<trigger> reply:<new response>`\n\n"
                                f"**Example:** `{ctx.prefix}autoresponder editreply trigger:hello reply:Hi there! Updated message!`",
                     color=EMBED_COLOR_ERROR
@@ -282,7 +283,7 @@ class AutoResponders(commands.Cog):
             guild_id = str(ctx.guild.id)
             if guild_id not in self.autoresponders or trigger not in self.autoresponders[guild_id]:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Auto Responder Not Found",
+                    title=f"{SPROUTS_ERROR} Auto Responder Not Found",
                     description=f"**No auto responder found for trigger:** `{trigger}`\n\n"
                                f"**Available commands:**\n"
                                f"`{ctx.prefix}autoresponder list` - View all auto responders\n"
@@ -306,7 +307,7 @@ class AutoResponders(commands.Cog):
             self.save_autoresponders()
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Auto Responder Updated",
+                title=f"{SPROUTS_CHECK} Auto Responder Updated",
                 description=f"Successfully updated auto responder for trigger: `{trigger}`",
                 color=EMBED_COLOR_NORMAL
             )
@@ -318,7 +319,7 @@ class AutoResponders(commands.Cog):
         except Exception as e:
             logger.error(f"Error editing auto responder: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to edit auto responder. Please check your syntax.",
                 color=EMBED_COLOR_ERROR
             )
@@ -346,7 +347,7 @@ class AutoResponders(commands.Cog):
         
         if guild_id not in self.autoresponders or trigger not in self.autoresponders[guild_id]:
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Auto Responder Not Found",
+                title=f"{SPROUTS_ERROR} Auto Responder Not Found",
                 description=f"**No auto responder found for trigger:** `{trigger}`\n\n"
                            f"**Available commands:**\n"
                            f"`{ctx.prefix}autoresponder list` - View all auto responders\n"
@@ -366,7 +367,7 @@ class AutoResponders(commands.Cog):
         self.save_autoresponders()
         
         embed = discord.Embed(
-            title="{SPROUTS_CHECK} Auto Responder Removed",
+            title=f"{SPROUTS_CHECK} Auto Responder Removed",
             description=f"Successfully removed auto responder for trigger: `{trigger}`",
             color=EMBED_COLOR_NORMAL
         )
@@ -407,13 +408,13 @@ class AutoResponders(commands.Cog):
         responders = self.autoresponders[guild_id]
         
         embed = discord.Embed(
-            title="{SPROUTS_CHECK} Auto Responders",
+            title=f"{SPROUTS_CHECK} Auto Responders",
             description=f"Found {len(responders)} auto responder(s)",
             color=EMBED_COLOR_NORMAL
         )
         
         for trigger, data in list(responders.items())[:10]:  # Show first 10
-            status = "{SPROUTS_CHECK} Enabled" if data.get('enabled', True) else "{SPROUTS_ERROR} Disabled"
+            status = f"{SPROUTS_CHECK} Enabled" if data.get('enabled', True) else f"{SPROUTS_ERROR} Disabled"
             response = data['response'][:50] + "..." if len(data['response']) > 50 else data['response']
             embed.add_field(
                 name=f"{trigger} ({status})",
@@ -456,7 +457,7 @@ class AutoResponders(commands.Cog):
         
         if guild_id not in self.autoresponders or trigger not in self.autoresponders[guild_id]:
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Auto Responder Not Found",
+                title=f"{SPROUTS_ERROR} Auto Responder Not Found",
                 description=f"**No auto responder found for trigger:** `{trigger}`\n\n"
                            f"**Available commands:**\n"
                            f"`{ctx.prefix}autoresponder list` - View all auto responders\n"
@@ -479,7 +480,7 @@ class AutoResponders(commands.Cog):
         
         status_text = "enabled" if new_status else "disabled"
         embed = discord.Embed(
-            title="{SPROUTS_CHECK} Auto Responder Toggled",
+            title=f"{SPROUTS_CHECK} Auto Responder Toggled",
             description=f"Auto responder for trigger `{trigger}` has been **{status_text}**",
             color=EMBED_COLOR_NORMAL
         )

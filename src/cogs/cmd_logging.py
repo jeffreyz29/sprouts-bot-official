@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime, timezone
 import logging
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
 from src.cogs.guild_settings import guild_settings
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog command: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Command Logging Error",
+                title=f"{SPROUTS_ERROR} Command Logging Error",
                 description="An error occurred while accessing command logging settings.",
                 color=EMBED_COLOR_ERROR
             )
@@ -263,7 +264,7 @@ class CommandLoggingCog(commands.Cog):
             # Make sure it's a text channel in this guild
             if not isinstance(channel, discord.TextChannel) or channel.guild.id != ctx.guild.id:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Invalid Channel",
+                    title=f"{SPROUTS_ERROR} Invalid Channel",
                     description="Please specify a text channel from this server.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -273,7 +274,7 @@ class CommandLoggingCog(commands.Cog):
             bot_perms = channel.permissions_for(ctx.guild.me)
             if not bot_perms.send_messages or not bot_perms.embed_links:
                 embed = discord.Embed(
-                    title="{SPROUTS_WARNING} Insufficient Permissions",
+                    title=f"{SPROUTS_WARNING} Insufficient Permissions",
                     description=f"I need **Send Messages** and **Embed Links** permissions in {channel.mention}",
                     color=EMBED_COLOR_ERROR
                 )
@@ -284,7 +285,7 @@ class CommandLoggingCog(commands.Cog):
             cmd_logging.set_cmd_log_channel(ctx.guild.id, channel.id)
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Command Logging Configured",
+                title=f"{SPROUTS_CHECK} Command Logging Configured",
                 description=f"Command logging has been set to {channel.mention}",
                 color=EMBED_COLOR_NORMAL
             )
@@ -315,7 +316,7 @@ class CommandLoggingCog(commands.Cog):
             
             # Send test message to the channel
             test_embed = discord.Embed(
-                title="{SPROUTS_CHECK} Command Logging System Activated",
+                title=f"{SPROUTS_CHECK} Command Logging System Activated",
                 description="This channel will now receive all command logs.",
                 color=EMBED_COLOR_NORMAL
             )
@@ -338,7 +339,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting command log channel: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Configuration Error",
+                title=f"{SPROUTS_ERROR} Configuration Error",
                 description="An error occurred while setting the command logging channel.",
                 color=EMBED_COLOR_ERROR
             )
@@ -354,7 +355,7 @@ class CommandLoggingCog(commands.Cog):
             current_channel = cmd_logging.get_cmd_log_channel(ctx.guild.id)
             if not current_channel:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Already Disabled",
+                    title=f"{SPROUTS_ERROR} Already Disabled",
                     description="Command logging is not currently enabled in this server.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -364,7 +365,7 @@ class CommandLoggingCog(commands.Cog):
             cmd_logging.disable_cmd_logging(ctx.guild.id)
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Command Logging Disabled",
+                title=f"{SPROUTS_CHECK} Command Logging Disabled",
                 description="Command logging has been disabled for this server.",
                 color=EMBED_COLOR_NORMAL
             )
@@ -390,7 +391,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error disabling command logging: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Configuration Error",
+                title=f"{SPROUTS_ERROR} Configuration Error",
                 description="An error occurred while disabling command logging.",
                 color=EMBED_COLOR_ERROR
             )
@@ -404,7 +405,7 @@ class CommandLoggingCog(commands.Cog):
         """View current command logging configuration"""
         try:
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Command Logging Status",
+                title=f"{SPROUTS_CHECK} Command Logging Status",
                 color=EMBED_COLOR_NORMAL
             )
             
@@ -495,7 +496,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog status: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Status Error",
+                title=f"{SPROUTS_ERROR} Status Error",
                 description="An error occurred while checking command logging status.",
                 color=EMBED_COLOR_ERROR
             )
@@ -512,7 +513,7 @@ class CommandLoggingCog(commands.Cog):
             
             if guild_key not in cmd_logging.command_stats or not cmd_logging.command_stats[guild_key]:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Command Statistics",
+                    title=f"{SPROUTS_ERROR} Command Statistics",
                     description="No command usage data available yet.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -583,7 +584,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog stats: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Statistics Error",
+                title=f"{SPROUTS_ERROR} Statistics Error",
                 description="An error occurred while fetching command statistics.",
                 color=EMBED_COLOR_ERROR
             )
@@ -599,7 +600,7 @@ class CommandLoggingCog(commands.Cog):
             current_channel = cmd_logging.get_cmd_log_channel(ctx.guild.id)
             if not current_channel:
                 embed = discord.Embed(
-                    title="{SPROUTS_CHECK} Command Logging Disabled",
+                    title=f"{SPROUTS_CHECK} Command Logging Disabled",
                     description="Command logging is not enabled. Use `{ctx.prefix}cmdlogs set <#channel_ID>` first.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -609,7 +610,7 @@ class CommandLoggingCog(commands.Cog):
             channel = ctx.guild.get_channel(current_channel)
             if not channel:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Channel Not Found",
+                    title=f"{SPROUTS_ERROR} Channel Not Found",
                     description="The configured command logging channel no longer exists.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -660,7 +661,7 @@ class CommandLoggingCog(commands.Cog):
             await channel.send(embed=log_embed)
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Test Message Sent",
+                title=f"{SPROUTS_CHECK} Test Message Sent",
                 description=f"A test command log has been sent to {channel.mention}",
                 color=EMBED_COLOR_NORMAL
             )
@@ -672,7 +673,7 @@ class CommandLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in cmdlog test: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Test Error",
+                title=f"{SPROUTS_ERROR} Test Error",
                 description="An error occurred while sending the test message.",
                 color=EMBED_COLOR_ERROR
             )

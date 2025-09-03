@@ -385,7 +385,7 @@ def run_web_server():
         stats_thread.start()
         
         logger.info("Starting web viewer on port 5000")
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
     except Exception as e:
         logger.error(f"Error running web server: {e}")
 

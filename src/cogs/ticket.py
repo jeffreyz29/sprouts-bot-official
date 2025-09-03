@@ -1566,7 +1566,7 @@ class TicketSystem(commands.Cog):
         "Create a new support ticket with automated setup and staff notification"
     )
     @commands.cooldown(1, 30, commands.BucketType.user)
-    async def new_ticket(self, ctx, *, reason: str):
+    async def new_ticket(self, ctx, *, reason: str = "No reason provided"):
         """Create a new ticket command
         
         Usage: `{ctx.prefix}new [reason]`
