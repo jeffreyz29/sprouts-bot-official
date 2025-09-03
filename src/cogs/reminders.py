@@ -354,7 +354,7 @@ class Reminders(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting reminder: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_ERROR}" Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to set reminder",
                 color=EMBED_COLOR_ERROR
             )
@@ -425,7 +425,7 @@ class Reminders(commands.Cog):
         except Exception as e:
             logger.error(f"Error listing reminders: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_ERROR}" Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to list reminders",
                 color=EMBED_COLOR_ERROR
             )
@@ -498,7 +498,7 @@ class Reminders(commands.Cog):
         except Exception as e:
             logger.error(f"Error deleting reminder: {e}")
             embed = discord.Embed(
-                title="f"{SPROUTS_ERROR}" Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to delete reminder",
                 color=EMBED_COLOR_ERROR
             )
