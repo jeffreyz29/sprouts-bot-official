@@ -112,10 +112,10 @@ class DMLoggingCog(commands.Cog):
             
             # Available commands
             commands_list = [
-                f"`{prefix}dmlogs set <#channel|ID>` - Set DM logging channel",
-                f"`{prefix}dmlogs disable` - Disable DM logging",
-                f"`{prefix}dmlogs status` - View current configuration",
-                f"`{prefix}dmlogs test` - Send test DM log message"
+                f"`{ctx.prefix} dmlogs set <#channel|ID>` - Set DM logging channel",
+                f"`{ctx.prefix} dmlogs disable` - Disable DM logging",
+                f"`{ctx.prefix} dmlogs status` - View current configuration",
+                f"`{ctx.prefix} dmlogs test` - Send test DM log message"
             ]
             
             embed.add_field(
