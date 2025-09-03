@@ -15,6 +15,7 @@ from typing import Optional, List
 import random
 import string
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
 
 logger = logging.getLogger(__name__)
 
@@ -1817,7 +1818,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Access Denied",
+                    f"{SPROUTS_WARNING} Access Denied",
                     description=
                     "Only staff members or the ticket owner can add members to tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -1850,7 +1851,7 @@ class TicketSystem(commands.Cog):
             try:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Command Error",
+                    f"{SPROUTS_ERROR} Command Error",
                     description=
                     "An error occurred while trying to add the member to this ticket.",
                     color=EMBED_COLOR_ERROR)
@@ -1884,7 +1885,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Permission Denied",
+                    f"{SPROUTS_WARNING} Permission Denied",
                     description=
                     "You don't have permission to use this command. Only staff members and ticket owners can add members to tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -1899,7 +1900,7 @@ class TicketSystem(commands.Cog):
             if not ticket_data:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Invalid Channel",
+                    f"{SPROUTS_WARNING} Invalid Channel",
                     description=
                     "This is not a ticket channel. This command can only be used in ticket channels.",
                     color=EMBED_COLOR_ERROR)
@@ -1912,7 +1913,7 @@ class TicketSystem(commands.Cog):
 
             # Show usage (only for authorized users in ticket channels)
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> add",
+                title=f"{SPROUTS_ERROR} add",
                 description=
                 "Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR)
@@ -1954,7 +1955,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Access Denied",
+                    f"{SPROUTS_WARNING} Access Denied",
                     description="Only staff members can claim tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2017,7 +2018,7 @@ class TicketSystem(commands.Cog):
             try:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Command Error",
+                    f"{SPROUTS_ERROR} Command Error",
                     description=
                     "An error occurred while trying to claim this ticket.",
                     color=EMBED_COLOR_ERROR)
@@ -2064,7 +2065,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description=
                     "Only staff members or the ticket owner can close tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -2078,7 +2079,7 @@ class TicketSystem(commands.Cog):
             # Show confirmation with buttons
             embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> Close Ticket Confirmation",
+                f"{SPROUTS_CHECK} Close Ticket Confirmation",
                 description=
                 f"Are you sure you want to close this ticket?\n\n**Reason:** {reason}\n**Channel:** {ctx.channel.mention}\n\n<a:sprouts_error_dns:1411790004652605500> This action cannot be undone!",
                 color=EMBED_COLOR_NORMAL)
@@ -2094,7 +2095,7 @@ class TicketSystem(commands.Cog):
             try:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Command Error",
+                    f"{SPROUTS_ERROR} Command Error",
                     description=
                     "An error occurred while trying to close this ticket.",
                     color=EMBED_COLOR_ERROR)
@@ -2203,7 +2204,7 @@ class TicketSystem(commands.Cog):
 
             # Send confirmation message in channel BEFORE closing
             embed = discord.Embed(
-                title="<a:sprouts_check_dns:1411790001565466725> Ticket Closed",
+                title=f"{SPROUTS_CHECK} Ticket Closed",
                 description=
                 f"This ticket has been closed by {ctx.author.mention}",
                 color=EMBED_COLOR_NORMAL,
@@ -2248,7 +2249,7 @@ class TicketSystem(commands.Cog):
                 try:
                     log_embed = discord.Embed(
                         title=
-                        "<a:sprouts_error_dns:1411790004652605500> Ticket Closed with Full Transcript",
+                        f"{SPROUTS_ERROR} Ticket Closed with Full Transcript",
                         color=0xff4444,  # Red for closures
                         timestamp=discord.utils.utcnow())
                     log_embed.add_field(name="Ticket ID",
@@ -2373,7 +2374,7 @@ class TicketSystem(commands.Cog):
                 try:
                     dm_embed = discord.Embed(
                         title=
-                        "<a:sprouts_error_dns:1411790004652605500> Your Ticket Has Been Closed",
+                        f"{SPROUTS_ERROR} Your Ticket Has Been Closed",
                         description=
                         f"Your ticket in **{ctx.guild.name}** has been closed.",
                         color=EMBED_COLOR_ERROR)
@@ -2503,7 +2504,7 @@ class TicketSystem(commands.Cog):
         if ctx.invoked_subcommand is None:
             embed = discord.Embed(
                 title=
-                "<a:sprouts_error_dns:1411790004652605500> Invalid Command",
+                f"{SPROUTS_ERROR} Invalid Command",
                 description="Use `force close` to force close a ticket.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
@@ -2522,7 +2523,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can force close tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2541,7 +2542,7 @@ class TicketSystem(commands.Cog):
 
             if not ticket_id or ticket_id not in self.tickets_data:
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Not Found",
+                    title=f"{SPROUTS_ERROR} Not Found",
                     description="Ticket not found.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2563,7 +2564,7 @@ class TicketSystem(commands.Cog):
             # Send confirmation message
             embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> Ticket Force Closed",
+                f"{SPROUTS_CHECK} Ticket Force Closed",
                 description=
                 f"Ticket #{ticket_id} has been force closed by {ctx.author.mention}",
                 color=EMBED_COLOR_NORMAL)
@@ -2657,7 +2658,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can move tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2687,7 +2688,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can set ticket priority.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2728,7 +2729,7 @@ class TicketSystem(commands.Cog):
 
             embed = discord.Embed(
                 title=
-                "<a:sprouts_error_dns:1411790004652605500> Invalid Channel",
+                f"{SPROUTS_ERROR} Invalid Channel",
                 description="This is not a ticket channel.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
@@ -2749,7 +2750,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can release tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2765,7 +2766,7 @@ class TicketSystem(commands.Cog):
                     if ticket_data.get('claimed_by') != ctx.author.id:
                         embed = discord.Embed(
                             title=
-                            "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                            f"{SPROUTS_ERROR} Access Denied",
                             description=
                             "You can only release tickets you have claimed.",
                             color=EMBED_COLOR_ERROR)
@@ -2783,7 +2784,7 @@ class TicketSystem(commands.Cog):
 
                     embed = discord.Embed(
                         title=
-                        "<a:sprouts_check_dns:1411790001565466725> Ticket Released",
+                        f"{SPROUTS_CHECK} Ticket Released",
                         description=
                         "This ticket has been released and can now be claimed by other staff.",
                         color=EMBED_COLOR_NORMAL)
@@ -2795,7 +2796,7 @@ class TicketSystem(commands.Cog):
 
             embed = discord.Embed(
                 title=
-                "<a:sprouts_error_dns:1411790004652605500> Invalid Channel",
+                f"{SPROUTS_ERROR} Invalid Channel",
                 description="This is not a ticket channel.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
@@ -2837,7 +2838,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description=
                     "Only staff members or the ticket owner can remove members from tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -2874,7 +2875,7 @@ class TicketSystem(commands.Cog):
             try:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Command Error",
+                    f"{SPROUTS_ERROR} Command Error",
                     description=
                     "An error occurred while trying to remove the member from this ticket.",
                     color=EMBED_COLOR_ERROR)
@@ -2908,7 +2909,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Permission Denied",
+                    f"{SPROUTS_WARNING} Permission Denied",
                     description=
                     "You don't have permission to use this command. Only staff members and ticket owners can remove members from tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -2923,7 +2924,7 @@ class TicketSystem(commands.Cog):
             if not ticket_data:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Invalid Channel",
+                    f"{SPROUTS_WARNING} Invalid Channel",
                     description=
                     "This is not a ticket channel. This command can only be used in ticket channels.",
                     color=EMBED_COLOR_ERROR)
@@ -2936,7 +2937,7 @@ class TicketSystem(commands.Cog):
 
             # Show usage (only for authorized users in ticket channels)
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> remove",
+                title=f"{SPROUTS_ERROR} remove",
                 description=
                 "Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR)
@@ -2963,7 +2964,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can manage ticket tags.",
                     color=EMBED_COLOR_ERROR)
                 await ctx.reply(embed=embed, mention_author=False)
@@ -3007,7 +3008,7 @@ class TicketSystem(commands.Cog):
 
             embed = discord.Embed(
                 title=
-                "<a:sprouts_error_dns:1411790004652605500> Invalid Channel",
+                f"{SPROUTS_ERROR} Invalid Channel",
                 description="This is not a ticket channel.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
@@ -3028,7 +3029,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can view the ticket list.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3097,7 +3098,7 @@ class TicketSystem(commands.Cog):
             if not ticket_data:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Invalid Channel",
+                    f"{SPROUTS_ERROR} Invalid Channel",
                     description="This is not a ticket channel.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3115,7 +3116,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description=
                     "Only staff members or the ticket owner can set ticket topics.",
                     color=EMBED_COLOR_ERROR)
@@ -3143,7 +3144,7 @@ class TicketSystem(commands.Cog):
             try:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Command Error",
+                    f"{SPROUTS_ERROR} Command Error",
                     description=
                     "An error occurred while trying to set the ticket topic.",
                     color=EMBED_COLOR_ERROR)
@@ -3165,7 +3166,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can transfer tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3178,7 +3179,7 @@ class TicketSystem(commands.Cog):
             if not self.is_staff(member):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Invalid Target",
+                    f"{SPROUTS_ERROR} Invalid Target",
                     description="Can only transfer to staff members.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3205,7 +3206,7 @@ class TicketSystem(commands.Cog):
 
             embed = discord.Embed(
                 title=
-                "<a:sprouts_error_dns:1411790004652605500> Invalid Channel",
+                f"{SPROUTS_ERROR} Invalid Channel",
                 description="This is not a ticket channel.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
@@ -3225,7 +3226,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_warning_dns:1412200379206336522> Access Denied",
+                    f"{SPROUTS_WARNING} Access Denied",
                     description="Only staff members can rename tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3336,7 +3337,7 @@ class TicketSystem(commands.Cog):
             # Create welcome embed
             embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> New Ticket Created",
+                f"{SPROUTS_CHECK} New Ticket Created",
                 description=
                 f"Welcome {interaction.user.mention}! Please describe your issue and our staff will assist you shortly.",
                 color=EMBED_COLOR_NORMAL)
@@ -3358,7 +3359,7 @@ class TicketSystem(commands.Cog):
             # Send success response
             embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> Ticket Created",
+                f"{SPROUTS_CHECK} Ticket Created",
                 description=
                 f"Your ticket has been created: {ticket_channel.mention}",
                 color=EMBED_COLOR_NORMAL)
@@ -3372,7 +3373,7 @@ class TicketSystem(commands.Cog):
                 if log_channel:
                     log_embed = discord.Embed(
                         title=
-                        "<a:sprouts_check_dns:1411790001565466725> New Ticket Created",
+                        f"{SPROUTS_CHECK} New Ticket Created",
                         color=EMBED_COLOR_NORMAL)
                     log_embed.add_field(
                         name="Ticket",
@@ -3415,7 +3416,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can create ticket panels.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3460,7 +3461,7 @@ class TicketSystem(commands.Cog):
 
             # Confirmation message
             confirm_embed = discord.Embed(
-                title="<a:sprouts_check_dns:1411790001565466725> Panel Created",
+                title=f"{SPROUTS_CHECK} Panel Created",
                 description=
                 f"Ticket panel created successfully!\n\n**ID:** `{panel_id}`\n**Title:** {title}",
                 color=EMBED_COLOR_NORMAL)
@@ -3484,7 +3485,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can list ticket panels.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3533,7 +3534,7 @@ class TicketSystem(commands.Cog):
             if not active_panels:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> No Active Panels Found",
+                    f"{SPROUTS_ERROR} No Active Panels Found",
                     description="No active ticket panels found in this server.",
                     color=EMBED_COLOR_ERROR)
                 if panels_to_remove:
@@ -3551,7 +3552,7 @@ class TicketSystem(commands.Cog):
 
             embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> Active Ticket Panels",
+                f"{SPROUTS_CHECK} Active Ticket Panels",
                 description=
                 f"Found {len(active_panels)} active panel(s) in this server:",
                 color=EMBED_COLOR_NORMAL)
@@ -3601,7 +3602,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="Only staff members can delete ticket panels.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3615,7 +3616,7 @@ class TicketSystem(commands.Cog):
             if panel_id not in self.panels_data:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Panel Not Found",
+                    f"{SPROUTS_ERROR} Panel Not Found",
                     description=f"No panel found with ID: `{panel_id}`",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3631,7 +3632,7 @@ class TicketSystem(commands.Cog):
             if panel_data.get('guild_id') != ctx.guild.id:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Access Denied",
+                    f"{SPROUTS_ERROR} Access Denied",
                     description="You can only delete panels from this server.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3646,24 +3647,24 @@ class TicketSystem(commands.Cog):
             try:
                 channel = ctx.guild.get_channel(panel_data.get('channel_id'))
                 if not channel:
-                    message_status = "<a:sprouts_error_dns:1411790004652605500> Channel not found"
+                    message_status = f"{SPROUTS_ERROR} Channel not found"
                 else:
                     try:
                         message = await channel.fetch_message(
                             panel_data.get('message_id'))
                         if message:
                             await message.delete()
-                            message_status = "<a:sprouts_check_dns:1411790001565466725> Panel message deleted"
+                            message_status = f"{SPROUTS_CHECK} Panel message deleted"
                         else:
-                            message_status = "<a:sprouts_error_dns:1411790004652605500> Panel message not found"
+                            message_status = f"{SPROUTS_ERROR} Panel message not found"
                     except discord.NotFound:
-                        message_status = "<a:sprouts_error_dns:1411790004652605500> Panel message was already deleted"
+                        message_status = f"{SPROUTS_ERROR} Panel message was already deleted"
                     except discord.Forbidden:
-                        message_status = "<a:sprouts_error_dns:1411790004652605500> No permission to delete message"
+                        message_status = f"{SPROUTS_ERROR} No permission to delete message"
                     except Exception as e:
-                        message_status = f"<a:sprouts_error_dns:1411790004652605500> Error deleting message: {str(e)[:50]}"
+                        message_status = ff"{SPROUTS_ERROR} Error deleting message: {str(e)[:50]}"
             except Exception as e:
-                message_status = f"<a:sprouts_error_dns:1411790004652605500> Error accessing channel: {str(e)[:50]}"
+                message_status = ff"{SPROUTS_ERROR} Error accessing channel: {str(e)[:50]}"
 
             # Remove from data
             del self.panels_data[panel_id]
@@ -3673,7 +3674,7 @@ class TicketSystem(commands.Cog):
             panel_title = panel_data.get('title', 'Untitled Panel')
 
             embed = discord.Embed(
-                title="<a:sprouts_check_dns:1411790001565466725> Panel Deleted",
+                title=f"{SPROUTS_CHECK} Panel Deleted",
                 description=
                 f"Panel **{panel_title}** has been removed from the database.",
                 color=EMBED_COLOR_NORMAL)
@@ -3684,7 +3685,7 @@ class TicketSystem(commands.Cog):
                 inline=True)
 
             embed.add_field(name="Message Status",
-                            value=message_status or "<a:sprouts_warning_dns:1412200379206336522> Status unknown",
+                            value=message_status or f"{SPROUTS_WARNING} Status unknown",
                             inline=True)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
                              icon_url=ctx.author.display_avatar.url)
@@ -3708,7 +3709,7 @@ class TicketSystem(commands.Cog):
                 # View current limit
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_check_dns:1411790001565466725> Ticket Limit",
+                    f"{SPROUTS_CHECK} Ticket Limit",
                     description=
                     f"**Current Maximum Tickets Per User:** `{current_limit}`\n\nTo change the limit, use: `{ctx.prefix}ticket-limit <number>`",
                     color=EMBED_COLOR_NORMAL)
@@ -3723,7 +3724,7 @@ class TicketSystem(commands.Cog):
             if limit < 1 or limit > 20:
                 embed = discord.Embed(
                     title=
-                    "<a:sprouts_error_dns:1411790004652605500> Invalid Limit",
+                    f"{SPROUTS_ERROR} Invalid Limit",
                     description=
                     "Ticket limit must be between **1** and **20**.",
                     color=EMBED_COLOR_ERROR)
@@ -3740,7 +3741,7 @@ class TicketSystem(commands.Cog):
 
             embed = discord.Embed(
                 title=
-                "<a:sprouts_check_dns:1411790001565466725> Ticket Limit Updated",
+                f"{SPROUTS_CHECK} Ticket Limit Updated",
                 description=
                 f"Maximum tickets per user has been set to **{limit}**.\n\nUsers can now have up to {limit} open tickets at once.",
                 color=EMBED_COLOR_NORMAL)
@@ -3752,7 +3753,7 @@ class TicketSystem(commands.Cog):
         except Exception as e:
             logger.error(f"Error in ticket limit command: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="An error occurred while setting the ticket limit.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
