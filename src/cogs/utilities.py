@@ -21,11 +21,11 @@ class Utilities(commands.Cog):
     async def variables(self, ctx):
         """Show comprehensive list of available variables for embeds and auto responses
 
-        Usage: s.variables
-        Displays all 80+ available variables with descriptions and usage syntax
+        Usage: `s.variables`
+        Displays all 40+ available variables with descriptions and usage syntax
 
         Examples:
-        - s.variables - View complete variable reference guide
+        - `s.variables` - View complete variable reference guide
 
         Variable Categories:
         - User Variables: Display user information like name, avatar, join date
@@ -184,11 +184,11 @@ class Utilities(commands.Cog):
     async def ping(self, ctx):
         """Check bot latency and response time with detailed statistics
 
-        Usage: s.ping
+        Usage: `s.ping`
         Shows bot latency, API response time, and system performance metrics
 
         Examples:
-        - s.ping - Check if bot is responsive and view performance stats
+        - `s.ping` - Check if bot is responsive and view performance stats
 
         Performance metrics:
         - Heartbeat latency to Discord
@@ -221,14 +221,14 @@ class Utilities(commands.Cog):
             uptime_display = f"{uptime_hours:02d}:{uptime_minutes:02d}:{uptime_secs:02d}"
             
             embed = discord.Embed(
-                title="Pong!",
+                title="🏓 Pong!",
                 color=EMBED_COLOR_NORMAL
             )
             
             # Main ping stats
-            ping_stats = f"HB: {heartbeat} ms\n"
-            ping_stats += f"RTT: {response_time} ms\n"
-            ping_stats += f"UT: {uptime_display}"
+            ping_stats = f"💟 HB: {heartbeat} ms\n"
+            ping_stats += f"🔁 RTT: {response_time} ms\n"
+            ping_stats += f"⬆️ UT: {uptime_display}"
             
             embed.add_field(
                 name="",
@@ -259,12 +259,13 @@ class Utilities(commands.Cog):
     async def avatar(self, ctx, member: discord.Member = None):
         """Display user's avatar in high resolution
 
-        Usage: s.avatar [@user]
+        Usage: `s.avatar [@user]`
         Shows high-quality avatar image with download links (defaults to yourself)
 
         Examples:
-        - s.avatar - View your own avatar
-        - s.avatar @username - View specific user's avatar
+        - `s.avatar` - View your own avatar
+        - `s.avatar` @username - View specific user's avatar
+        - `s.avatar 123456789` - View user avatar by user id
 
         Features:
         - High resolution image display
@@ -306,12 +307,13 @@ class Utilities(commands.Cog):
     async def userinfo(self, ctx, member: discord.Member = None):
         """Display detailed user information
 
-        Usage: s.userinfo [@user]
+        Usage: `s.userinfo [@user]`
         Shows comprehensive information about user (defaults to yourself)
 
         Examples:
-        - s.userinfo - View your own information
-        - s.userinfo @username - View specific user's info
+        - `s.userinfo` - View your own information
+        - `s.userinfo @username` - View specific user's info
+        - `s.userinfo 1234567890` - View user info by user id
 
         Information shown:
         - Account creation date and join date
@@ -412,11 +414,11 @@ class Utilities(commands.Cog):
     async def serverinfo(self, ctx):
         """Display comprehensive server information
 
-        Usage: s.serverinfo
+        Usage: `s.serverinfo`
         Shows detailed information about the current server
 
         Examples:
-        - s.serverinfo - View complete server statistics
+        - `s.serverinfo` - View complete server statistics
 
         Information shown:
         - Basic server details (name, ID, owner)
@@ -514,12 +516,13 @@ class Utilities(commands.Cog):
     async def channelinfo(self, ctx, channel: discord.TextChannel = None):
         """Display detailed channel information
 
-        Usage: s.channelinfo [#channel]
+        Usage: `s.channelinfo [#channel]`
         Shows comprehensive information about channel
 
         Examples:
-        - s.channelinfo - View current channel information
-        - s.channelinfo #general - View specific channel info
+        - `s.channelinfo` - View current channel information
+        - `s.channelinfo #general` - View specific channel info
+        - `s.channelinfo 123456789` - View channel info by a specific channel id
 
         Information shown:
         - Channel type, creation date, and category
@@ -577,12 +580,12 @@ class Utilities(commands.Cog):
     async def roleinfo(self, ctx, *, role: discord.Role):
         """Display detailed role information
 
-        Usage: s.roleinfo <@role|role_name>
+        Usage: `s.roleinfo <@role|role_name>`
         Shows comprehensive information about server role
 
         Examples:
-        - s.roleinfo @Moderator - View role details by mention
-        - s.roleinfo Admin - View role by name
+        - `s.roleinfo @Moderator` - View role details by mention
+        - `s.roleinfo Admin` - View role by name
 
         Information shown:
         - Role permissions and hierarchy position
@@ -652,12 +655,12 @@ class Utilities(commands.Cog):
     async def inviteinfo(self, ctx, invite_url: str):
         """Display information about Discord invite link
 
-        Usage: s.inviteinfo <invite_code>
+        Usage: `s.inviteinfo <invite_code>`
         Shows detailed information about invite
 
         Examples:
-        - s.inviteinfo discord.gg/abc123 - Check invite details
-        - s.inviteinfo abc123 - Check invite by code only
+        - `s.inviteinfo discord.gg/abc123` - Check invite details
+        - `s.inviteinfo abc123` - Check invite by code only
 
         Information shown:
         - Target server name and description
