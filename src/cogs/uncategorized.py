@@ -128,8 +128,7 @@ class Uncategorized(commands.Cog):
             
             embed = discord.Embed(
                 title=f"About {self.bot.user.display_name}",
-                description="Sprout is a versatile Discord bot built with Python and discord.py. Designed to enhance server management, it offers customizable commands, seamless ticket handling for APM portals, and tools that help your community stay organized and engaged.\n\n"
-                           "**Vote for us on Top.gg:** https://top.gg/bot/980936828242788422",
+                description="Sprout is a versatile Discord bot built with Python and discord.py. Designed to enhance server management, it offers customizable commands, seamless ticket handling for APM portals, and tools that help your community stay organized and engaged.",
                 color=EMBED_COLOR_NORMAL
             )
             
@@ -318,7 +317,7 @@ class Uncategorized(commands.Cog):
             
             embed.add_field(
                 name="Top.gg",
-                value="[**Vote Here**](https://top.gg/bot/1411758556667056310/vote)\n"
+                value="[**Vote Here**](https://top.gg/bot/980936828242788422)\n"
                       "*Vote every 12 hours*",
                 inline=True
             )
