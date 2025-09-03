@@ -601,7 +601,7 @@ class EmbedBuilder(commands.Cog):
                 invalid_cmd = args.split()[0] if args.split() else args
                 
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Invalid Subcommand",
+                    title="{SPROUTS_WARNING} Invalid Subcommand",
                     description=f"**`{invalid_cmd}`** is not a valid embed subcommand.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -1241,7 +1241,7 @@ class EmbedBuilder(commands.Cog):
             
             if not attachment.filename.endswith(('.yaml', '.yml')):
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Invalid File Type",
+                    title="{SPROUTS_WARNING} Invalid File Type",
                     description="Please attach a YAML file (.yaml or .yml).",
                     color=EMBED_COLOR_ERROR
                 )
@@ -1285,7 +1285,7 @@ class EmbedBuilder(commands.Cog):
             required_fields = ['name', 'title', 'description', 'color']
             if not all(field in yaml_data for field in required_fields):
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Invalid YAML Structure",
+                    title="{SPROUTS_WARNING} Invalid YAML Structure",
                     description="The YAML file doesn't have the required embed structure.",
                     color=EMBED_COLOR_ERROR
                 )
