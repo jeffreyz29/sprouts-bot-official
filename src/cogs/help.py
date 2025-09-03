@@ -1145,12 +1145,12 @@ class DetailedCommandHelpView(discord.ui.View):
         embed.add_field(
             name="Examples",
             value="• `s.ban <@user> [reason]` means:\n"
-                  "  ✅ `s.ban @John` (reason is optional)\n"
-                  "  ✅ `s.ban @John spamming` (with reason)\n"
-                  "  ❌ `s.ban` (missing required user)\n\n"
+                  "  `s.ban @John` (reason is optional)\n"
+                  "  `s.ban @John spamming` (with reason)\n"
+                  "  `s.ban` - WRONG (missing required user)\n\n"
                   "• `s.remind <time> <message>` means:\n"
-                  "  ✅ `s.remind 5m check the oven`\n"
-                  "  ❌ `s.remind 5m` (missing message)",
+                  "  `s.remind 5m check the oven`\n"
+                  "  `s.remind 5m` - WRONG (missing message)",
             inline=False
         )
         
