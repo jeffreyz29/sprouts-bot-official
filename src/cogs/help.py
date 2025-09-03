@@ -1180,8 +1180,8 @@ class HelpCommand(commands.Cog):
             embed = discord.Embed(
                 title="Sprouts Commands List",
                 description=f"Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.\n\n"
-                           f"Use `{self.prefix}help <command>` for detailed info.\n"
-                           f"This server prefix: `{self.prefix}`, <@{self.bot.user.id}>",
+                           f"Use `{prefix}help <command>` for detailed info.\n"
+                           f"This server prefix: `{prefix}`, <@{self.bot.user.id}>",
                 color=EMBED_COLOR_NORMAL
             )
             
