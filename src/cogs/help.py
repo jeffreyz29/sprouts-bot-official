@@ -1118,17 +1118,12 @@ class DetailedCommandHelpView(discord.ui.View):
         """Create format guide embed explaining command syntax symbols"""
         embed = discord.Embed(
             title="Format Guide",
-            description="Understanding command syntax",
             color=EMBED_COLOR_NORMAL
         )
         
         embed.add_field(
-            name="Syntax Symbols",
-            value="`<#channelID>` - Required channel parameter\n"
-                  "`< >` - Required parameter\n"
-                  "`[ ]` - Optional parameter\n"
-                  "`[thing1|thing2]` - Choose one option\n"
-                  "`...` - Can repeat multiple times",
+            name="Format Guide",
+            value="```\n<required>  - Must provide this\n[optional]  - Can provide this\n|           - Choose one option\n...         - Can repeat multiple times\n```",
             inline=False
         )
         
