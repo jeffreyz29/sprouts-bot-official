@@ -364,7 +364,7 @@ class CommandLoggingCog(commands.Cog):
             cmd_logging.disable_cmd_logging(ctx.guild.id)
             
             embed = discord.Embed(
-                title="Command Logging Disabled",
+                title="<a:sprouts_check_dns:1411790001565466725> Command Logging Disabled",
                 description="Command logging has been disabled for this server.",
                 color=EMBED_COLOR_NORMAL
             )
@@ -599,8 +599,8 @@ class CommandLoggingCog(commands.Cog):
             current_channel = cmd_logging.get_cmd_log_channel(ctx.guild.id)
             if not current_channel:
                 embed = discord.Embed(
-                    title="Command Logging Disabled",
-                    description="Command logging is not enabled. Use `cmdlogs set <#channel|ID>` first.",
+                    title="<a:sprouts_check_dns:1411790001565466725> Command Logging Disabled",
+                    description="Command logging is not enabled. Use `{prefix}cmdlogs set <#channel_ID>` first.",
                     color=EMBED_COLOR_ERROR
                 )
                 await ctx.reply(embed=embed, mention_author=False)
@@ -609,7 +609,7 @@ class CommandLoggingCog(commands.Cog):
             channel = ctx.guild.get_channel(current_channel)
             if not channel:
                 embed = discord.Embed(
-                    title="Channel Not Found",
+                    title="<a:sprouts_error_dns:1411790004652605500> Channel Not Found",
                     description="The configured command logging channel no longer exists.",
                     color=EMBED_COLOR_ERROR
                 )
