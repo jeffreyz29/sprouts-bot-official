@@ -77,7 +77,7 @@ class AutoResponders(commands.Cog):
         Simple autoresponder system with trigger and reply functionality.
         Use subcommands to add, edit, remove, list, or toggle auto responders.
 
-        Usage: s.autoresponder <subcommand>
+        Usage: `s.autoresponder <subcommand>`
         Base command that shows available subcommands and examples
 
         Available subcommands:
@@ -121,9 +121,9 @@ class AutoResponders(commands.Cog):
         Creates auto responder that replies when trigger word/phrase is detected
 
         Examples:
-        - s.autoresponder add trigger:hello reply:Hello there! Welcome!
-        - s.autoresponder add trigger:rules reply:Please check #rules channel
-        - s.autoresponder add trigger:support reply:Create a ticket for assistance
+        - `s.autoresponder add trigger:hello reply:Hello there! Welcome!`
+        - `s.autoresponder add trigger:rules reply:Please check #rules channel`
+        - `s.autoresponder add trigger:support reply:Create a ticket for assistance`
 
         Format: trigger:<text> reply:<response>
         Simple trigger and reply system without complex functions
@@ -329,13 +329,13 @@ class AutoResponders(commands.Cog):
     async def autoresponder_remove(self, ctx, *, trigger):
         """Remove an auto responder
         
-        Usage: autoresponder remove <trigger>
+        Usage: `sautoresponder remove <trigger>`
         Permanently deletes auto responder (cannot be undone)
         
         Examples:
-        - autoresponder remove hello - Delete 'hello' trigger
-        - autoresponder remove rules - Remove 'rules' auto responder
-        - autoresponder remove old_command - Clean up unused triggers
+        - `s.autoresponder remove hello` - Delete 'hello' trigger
+        - `s.autoresponder remove rules` - Remove 'rules' auto responder
+        - `s.autoresponder remove old_command` - Clean up unused triggers
         
         Common Errors:
         - Trigger not found: Use autoresponder list to see available triggers
@@ -379,11 +379,11 @@ class AutoResponders(commands.Cog):
     async def autoresponder_list(self, ctx):
         """List all auto responders
         
-        Usage: autoresponder list
+        Usage: `sautoresponder list`
         Shows all configured auto responders with triggers, responses, and status
         
         Examples:
-        - autoresponder list - View all server auto responders
+        - `sautoresponder list` - View all server auto responders
         - Shows enabled/disabled status for each
         - Displays first 50 characters of each response
         
@@ -431,7 +431,7 @@ class AutoResponders(commands.Cog):
     async def autoresponder_toggle(self, ctx, *, trigger):
         """Toggle an auto responder on/off without deleting it
         
-        Usage: autoresponder toggle <trigger>
+        Usage: `s.autoresponder toggle <trigger>`
         
         How to use:
         1. First, check existing responders with 'autoresponder list'
@@ -440,9 +440,9 @@ class AutoResponders(commands.Cog):
         4. The responder will switch between enabled and disabled states
         
         Examples:
-        - autoresponder toggle hello - Enable/disable the 'hello' responder
-        - autoresponder toggle maintenance - Toggle maintenance message on/off
-        - autoresponder toggle rules - Temporarily disable rules reminder
+        - `s.autoresponder toggle hello` - Enable/disable the 'hello' responder
+        - `s.autoresponder toggle maintenance` - Toggle maintenance message on/off
+        - `s.autoresponder toggle rules` - Temporarily disable rules reminder
         
         What this does:
         - Disables the responder: It will stop responding to messages but keep all settings
