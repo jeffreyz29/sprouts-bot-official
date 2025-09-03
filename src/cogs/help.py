@@ -36,7 +36,7 @@ class DetailedCommandHelpView(discord.ui.View):
             "ping": {
                 "category": "Utility",
                 "description": "Check bot latency and response time with detailed system statistics",
-                "usage": f"{self.prefix}ping",
+                "usage": f"`{self.prefix}ping`",
                 "detailed_usage": [
                     f"`{self.prefix}ping` - Shows bot latency, API response time, and system stats"
                 ],
@@ -56,7 +56,7 @@ class DetailedCommandHelpView(discord.ui.View):
             "userinfo": {
                 "category": "Utility", 
                 "description": "Display comprehensive user information including roles, join dates, and account details",
-                "usage": f"{self.prefix}userinfo [user]",
+                "usage": f"`{self.prefix}userinfo [@user]`",
                 "detailed_usage": [
                     f"`{self.prefix}userinfo` - Shows YOUR information",
                     f"`{self.prefix}userinfo @username` - Shows MENTIONED user's info",
@@ -67,7 +67,7 @@ class DetailedCommandHelpView(discord.ui.View):
                     f"`{self.prefix}userinfo` - Shows your own detailed information",
                     f"`{self.prefix}userinfo @John` - Shows John's user information",
                     f"`{self.prefix}userinfo John` - Search for user named John",
-                    f"`{self.prefix}userinfo 351738977602887681` - Get user info by ID"
+                    f"`{self.prefix}userinfo 123456789` - Get user info by ID"
                 ],
                 "permissions": "None required",
                 "cooldown": "10 seconds per user",
@@ -82,7 +82,7 @@ class DetailedCommandHelpView(discord.ui.View):
             "avatar": {
                 "category": "Utility",
                 "description": "Display a user's avatar in full resolution with download links",
-                "usage": f"{self.prefix}avatar [user]", 
+                "usage": f"`{self.prefix}avatar [@user]`", 
                 "detailed_usage": [
                     f"`{self.prefix}avatar` - Shows YOUR avatar",
                     f"`{self.prefix}avatar @username` - Shows mentioned user's avatar",
