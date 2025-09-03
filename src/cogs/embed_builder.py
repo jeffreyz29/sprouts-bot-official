@@ -609,19 +609,19 @@ class EmbedBuilder(commands.Cog):
                 # Core Commands
                 embed.add_field(
                     name="Core Commands",
-                    value="`embedcreate [name]` - Create a new embed\n"
-                          "`embedlist` - List your saved embeds\n"
-                          "`embedview <name>` - View a saved embed\n"
-                          "`embededit <name>` - Edit an existing embed",
+                    value="``s.embedcreate [name]` - Create a new embed\n"
+                          "`s.embedlist` - List your saved embeds\n"
+                          "`s.embedview <name>` - View a saved embed\n"
+                          "`s.embededit <name>` - Edit an existing embed",
                     inline=False
                 )
                 
                 # Management Commands
                 embed.add_field(
                     name="Management",
-                    value="`embeddelete <name>` - Delete a saved embed\n"
-                          "`embedexport <name>` - Export as YAML\n"
-                          "`embedimport <yaml>` - Import from YAML",
+                    value="`s.embeddelete <name>` - Delete a saved embed\n"
+                          "`s.embedexport <name>` - Export as YAML\n"
+                          "`s.embedimport <yaml>` - Import from YAML",
                     inline=False
                 )
                 
@@ -644,19 +644,19 @@ class EmbedBuilder(commands.Cog):
             # Core Commands
             embed.add_field(
                 name="Core Commands",
-                value="`embedcreate [name]` - Create a new embed with enhanced editor\n"
-                      "`embedlist` - List your saved embeds\n"
-                      "`embedview <name>` - View a saved embed\n"
-                      "`embededit <name>` - Edit an existing embed",
+                value="`s.embedcreate [name]` - Create a new embed with enhanced editor\n"
+                      "`s.embedlist` - List your saved embeds\n"
+                      "`s.embedview <name>` - View a saved embed\n"
+                      "`s.embededit <name>` - Edit an existing embed",
                 inline=False
             )
             
             # Management Commands
             embed.add_field(
                 name="Management",
-                value="`embeddelete <name>` - Delete a saved embed\n"
-                      "`embedexport <name>` - Export as YAML template\n"
-                      "`embedimport <yaml>` - Import from YAML template",
+                value="`s.embeddelete <name>` - Delete a saved embed\n"
+                      "`s.embedexport <name>` - Export as YAML template\n"
+                      "`s.embedimport <yaml>` - Import from YAML template",
                 inline=False
             )
             
@@ -664,7 +664,7 @@ class EmbedBuilder(commands.Cog):
             embed.add_field(
                 name="Additional Help",
                 value="`variables` - View all available variables\n"
-                      "`embedoldedit <name>` - Use legacy editing mode",
+                      "`s.embedoldedit <name>` - Use legacy editing mode",
                 inline=False
             )
             
@@ -692,11 +692,11 @@ class EmbedBuilder(commands.Cog):
     async def embed_create(self, ctx, *, name: str = None):
         """Create a new embed with enhanced interface
         
-        Usage: embedcreate [name]
+        Usage: `s.embedcreate [name]`
         Opens interactive visual editor with organized dropdowns for all embed elements
         
         Examples:
-        - embedcreate - Auto-generates name (embed_1, embed_2, etc.)
+        - `s.embedcreate` - Auto-generates name (embed_1, embed_2, etc.)
         - embedcreate welcome - Creates embed named 'welcome'
         - embedcreate support_info - Creates embed with specific name
         
