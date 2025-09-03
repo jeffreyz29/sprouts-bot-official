@@ -382,7 +382,7 @@ class Reminders(commands.Cog):
             
             if user_id not in self.reminders or not self.reminders[user_id]:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" No Reminders",
+                    title=f"{SPROUTS_WARNING} No Reminders",
                     description="You don't have any active reminders",
                     color=EMBED_COLOR_NORMAL
                 )
@@ -453,7 +453,7 @@ class Reminders(commands.Cog):
             
             if user_id not in self.reminders:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" No Reminders",
+                    title=f"{SPROUTS_WARNING} No Reminders",
                     description="You don't have any active reminders",
                     color=EMBED_COLOR_ERROR
                 )
