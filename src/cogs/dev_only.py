@@ -1666,6 +1666,155 @@ class DevOnly(commands.Cog):
         await ctx.reply(embed=embed, mention_author=False)
         logger.info(f"Developer help accessed by {ctx.author}")
 
+    @commands.command(name="massdm", description="Mass DM server owners with updates", hidden=True)
+    @commands.is_owner()
+    async def mass_dm_owners(self, ctx, *, message: str):
+        """Send a direct message to all server owners (for changelog updates)"""
+        if len(message) > 1900:
+            embed = discord.Embed(
+                title="Message Too Long",
+                description="Message must be under 1900 characters to ensure delivery.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            return
+        
+        # Confirmation step
+        confirm_embed = discord.Embed(
+            title="Mass DM Confirmation",
+            description=f"You are about to send this message to **{len(self.bot.guilds)}** server owners:",
+            color=EMBED_COLOR_WARNING
+        )
+        confirm_embed.add_field(
+            name="Message Preview:",
+            value=f"```{message}```",
+            inline=False
+        )
+        confirm_embed.add_field(
+            name="Servers:",
+            value=f"{len(self.bot.guilds)} servers will receive this message",
+            inline=True
+        )
+        confirm_embed.set_footer(text="React with ✅ to confirm or ❌ to cancel")
+        
+        confirm_msg = await ctx.reply(embed=confirm_embed, mention_author=False)
+        await confirm_msg.add_reaction("✅")
+        await confirm_msg.add_reaction("❌")
+        
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
+        
+        try:
+            reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except:
+            embed = discord.Embed(
+                title="Mass DM Cancelled",
+                description="Confirmation timed out. No messages were sent.",
+                color=EMBED_COLOR_ERROR
+            )
+            await confirm_msg.edit(embed=embed)
+            return
+        
+        if str(reaction.emoji) == "❌":
+            embed = discord.Embed(
+                title="Mass DM Cancelled",
+                description="Operation cancelled by user. No messages were sent.",
+                color=EMBED_COLOR_ERROR
+            )
+            await confirm_msg.edit(embed=embed)
+            return
+        
+        # Start mass DM process
+        processing_embed = discord.Embed(
+            title="Sending Mass DMs...",
+            description="Processing... This may take a while.",
+            color=EMBED_COLOR_NORMAL
+        )
+        await confirm_msg.edit(embed=processing_embed)
+        
+        successful = 0
+        failed = 0
+        failed_owners = []
+        
+        # Create the DM message
+        dm_embed = discord.Embed(
+            title="Bot Update from Sprouts Team",
+            description=message,
+            color=EMBED_COLOR_NORMAL
+        )
+        dm_embed.set_footer(text="This message was sent to all server owners using Sprouts bot")
+        dm_embed.timestamp = discord.utils.utcnow()
+        
+        for guild in self.bot.guilds:
+            try:
+                if guild.owner:
+                    await guild.owner.send(embed=dm_embed)
+                    successful += 1
+                    logger.info(f"Mass DM sent to {guild.owner} (Owner of {guild.name})")
+                else:
+                    failed += 1
+                    failed_owners.append(f"{guild.name} (No owner found)")
+                
+                # Rate limiting - wait a bit between sends
+                await asyncio.sleep(1)
+                
+            except discord.Forbidden:
+                failed += 1
+                failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - DMs disabled")
+                logger.warning(f"Failed to DM {guild.owner} (Owner of {guild.name}) - DMs disabled")
+            except discord.HTTPException as e:
+                failed += 1
+                failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - Error: {str(e)}")
+                logger.error(f"Failed to DM {guild.owner} (Owner of {guild.name}) - Error: {e}")
+            except Exception as e:
+                failed += 1
+                failed_owners.append(f"{guild.name} - Unexpected error")
+                logger.error(f"Unexpected error DMing owner of {guild.name}: {e}")
+        
+        # Results embed
+        results_embed = discord.Embed(
+            title="Mass DM Complete",
+            color=EMBED_COLOR_NORMAL if successful > 0 else EMBED_COLOR_ERROR
+        )
+        
+        results_embed.add_field(
+            name="✅ Successful",
+            value=f"{successful} messages sent",
+            inline=True
+        )
+        results_embed.add_field(
+            name="❌ Failed", 
+            value=f"{failed} messages failed",
+            inline=True
+        )
+        results_embed.add_field(
+            name="📊 Success Rate",
+            value=f"{(successful/(successful+failed)*100):.1f}%" if (successful+failed) > 0 else "0%",
+            inline=True
+        )
+        
+        if failed_owners and len(failed_owners) <= 10:
+            failed_text = "\n".join(failed_owners[:10])
+            if len(failed_owners) > 10:
+                failed_text += f"\n... and {len(failed_owners) - 10} more"
+            results_embed.add_field(
+                name="Failed Recipients",
+                value=f"```{failed_text}```",
+                inline=False
+            )
+        elif failed_owners:
+            results_embed.add_field(
+                name="Failed Recipients",
+                value=f"Too many to display ({len(failed_owners)} failed)",
+                inline=False
+            )
+        
+        results_embed.set_footer(text=f"Mass DM executed by {ctx.author.display_name}")
+        results_embed.timestamp = discord.utils.utcnow()
+        
+        await confirm_msg.edit(embed=results_embed)
+        logger.info(f"Mass DM completed: {successful} successful, {failed} failed - Executed by {ctx.author}")
+
     @commands.command(name="resetdata", description="Complete bot data reset (DANGER)", hidden=True)
     @commands.is_owner()
     async def reset_data(self, ctx, confirmation: str = None):
