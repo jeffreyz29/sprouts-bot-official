@@ -1110,12 +1110,60 @@ class DetailedCommandHelpView(discord.ui.View):
         
         return embed
     
+    def create_format_guide_embed(self):
+        """Create format guide embed showing command syntax and structure"""
+        command_info = self.get_detailed_command_info().get(self.command.name, {})
+        
+        embed = discord.Embed(
+            title=f"Format Guide: {self.command.name}",
+            description=f"Learn the basic syntax and format for the `{self.command.name}` command.",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Basic syntax
+        usage = command_info.get('usage', f"`{self.prefix}{self.command.name}`")
+        embed.add_field(
+            name="Basic Syntax",
+            value=f"{usage}\n\n**Format Explanation:**\n"
+                  "• `<required>` - Required arguments (must provide)\n"
+                  "• `[optional]` - Optional arguments (can skip)\n"
+                  "• `@user` - Mention a user\n"
+                  "• `#channel` - Mention a channel\n"
+                  "• `@role` - Mention a role",
+            inline=False
+        )
+        
+        # Permissions and cooldown info
+        permissions = command_info.get('permissions', 'None required')
+        cooldown = command_info.get('cooldown', 'No cooldown')
+        category = command_info.get('category', 'General')
+        
+        embed.add_field(
+            name="Command Information",
+            value=f"**Category:** {category}\n"
+                  f"**Permissions:** {permissions}\n"
+                  f"**Cooldown:** {cooldown}",
+            inline=True
+        )
+        
+        # Quick usage tip
+        embed.add_field(
+            name="Quick Tip",
+            value=f"Use the **Detailed Usage** button to see all the different ways to use `{self.command.name}` with specific examples.",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Requested by {self.user.display_name} • Format Guide", icon_url=self.user.display_avatar.url)
+        embed.timestamp = discord.utils.utcnow()
+        
+        return embed
+    
     @discord.ui.button(label="Format Guide", style=discord.ButtonStyle.primary, row=0)
     async def format_guide_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Show format guide page"""
-        embed = self.create_main_embed()
+        embed = self.create_format_guide_embed()
         await interaction.response.edit_message(embed=embed, view=self)
-        self.current_page = "main"
+        self.current_page = "format"
     
     @discord.ui.button(label="Detailed Usage", style=discord.ButtonStyle.primary, row=0)
     async def detailed_usage_button(self, interaction: discord.Interaction, button: discord.ui.Button):
