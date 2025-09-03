@@ -15,7 +15,7 @@ import random
 import string
 from typing import Dict, List, Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
-from src.emojis import SPROUTS_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_WARNING, SPROUTS_CHECK
 
 logger = logging.getLogger(__name__)
 

@@ -15,6 +15,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_WARNING, SPROUTS_CHECK
 from src.emojis import SPROUTS_CHECK, SPROUTS_ERROR
 from src.utils.variables import VariableParser
 
@@ -557,7 +558,7 @@ class ServerStatsMonitor(commands.Cog):
         """Show current rate limit statistics"""
         try:
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Rate Limit Monitor Status",
+                title=f"{SPROUTS_WARNING} Rate Limit Monitor Status",
                 color=EMBED_COLOR_NORMAL
             )
             
@@ -608,7 +609,7 @@ class ServerStatsMonitor(commands.Cog):
             self.save_stats_config()  # Save the notification channel
             
             embed = discord.Embed(
-                title="f"{SPROUTS_CHECK}" Notification Channel Set",
+                title=f"{SPROUTS_CHECK} Notification Channel Set",
                 description=f"Rate limit alerts will now be sent to {channel.mention}",
                 color=EMBED_COLOR_NORMAL
             )
@@ -621,7 +622,7 @@ class ServerStatsMonitor(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error setting notification channel: {e}")
-            await ctx.reply("f"{SPROUTS_ERROR}" Failed to set notification channel.", mention_author=False)
+            await ctx.reply(f"{SPROUTS_ERROR} Failed to set notification channel.", mention_author=False)
     
     @ratelimit.command(name="threshold", help="Set rate limit alert threshold")
     @commands.has_permissions(manage_guild=True)
@@ -630,7 +631,7 @@ class ServerStatsMonitor(commands.Cog):
         try:
             if threshold < 1 or threshold > 100:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_ERROR}" Invalid Threshold",
+                    title=f"{SPROUTS_ERROR} Invalid Threshold",
                     description="Threshold must be between 1 and 100.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -641,17 +642,17 @@ class ServerStatsMonitor(commands.Cog):
             self.save_stats_config()
             
             embed = discord.Embed(
-                title="f"{SPROUTS_CHECK}" Threshold Updated",
+                title=f"{SPROUTS_CHECK} Threshold Updated",
                 description=f"Rate limit alert threshold set to **{threshold}**",
                 color=EMBED_COLOR_NORMAL
             )
             await ctx.reply(embed=embed, mention_author=False)
             
         except ValueError:
-            await ctx.reply("f"{SPROUTS_ERROR}" Please provide a valid number for the threshold.", mention_author=False)
+            await ctx.reply(f"{SPROUTS_ERROR} Please provide a valid number for the threshold.", mention_author=False)
         except Exception as e:
             logger.error(f"Error setting threshold: {e}")
-            await ctx.reply("f"{SPROUTS_ERROR}" Failed to set threshold.", mention_author=False)
+            await ctx.reply(f"{SPROUTS_ERROR} Failed to set threshold.", mention_author=False)
     
     @ratelimit.command(name="reset", help="Reset rate limit counters")
     @commands.has_permissions(manage_guild=True)
@@ -663,7 +664,7 @@ class ServerStatsMonitor(commands.Cog):
             self.last_rate_limit = None
             
             embed = discord.Embed(
-                title="f"{SPROUTS_CHECK}" Counters Reset",
+                title=f"{SPROUTS_CHECK} Counters Reset",
                 description=f"Rate limit counters have been reset.\n"
                            f"Previous count: **{old_count}**",
                 color=EMBED_COLOR_NORMAL
@@ -672,7 +673,7 @@ class ServerStatsMonitor(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error resetting counters: {e}")
-            await ctx.reply("f"{SPROUTS_ERROR}" Failed to reset counters.", mention_author=False)
+            await ctx.reply(f"{SPROUTS_ERROR} Failed to reset counters.", mention_author=False)
     
     # Rate limit event listeners
     @commands.Cog.listener()
@@ -708,7 +709,7 @@ class ServerStatsMonitor(commands.Cog):
                 return
             
             embed = discord.Embed(
-                title="f"{SPROUTS_WARNING}" Rate Limit Alert",
+                title=f"{SPROUTS_WARNING} Rate Limit Alert",
                 description=f"**Bot is experiencing rate limits**\n\n"
                            f"**Reason:** {reason}\n"
                            f"**Count Today:** {self.rate_limit_count}\n"
