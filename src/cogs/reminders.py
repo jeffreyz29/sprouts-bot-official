@@ -15,6 +15,7 @@ import random
 import string
 from typing import Dict, List, Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR
 
 logger = logging.getLogger(__name__)
 
@@ -501,6 +502,19 @@ class Reminders(commands.Cog):
                 description="Failed to delete reminder",
                 color=EMBED_COLOR_ERROR
             )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @set_reminder.error
+    async def set_reminder_error(self, ctx, error):
+        """Handle remind command errors"""
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Command Error",
+                description="Please provide both time and message for the reminder.\n\n**Usage:** `s.remind <time> <message>`\n**Example:** `s.remind 1h Take a break`",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
 
 async def setup_reminders(bot):
