@@ -677,7 +677,7 @@ class Utilities(commands.Cog):
                 invite = await self.bot.fetch_invite(invite_code)
             except discord.NotFound:
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Invalid Invite",
+                    title="f"{SPROUTS_ERROR}" Invalid Invite",
                     description="The invite link is invalid or has expired.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -755,7 +755,7 @@ class Utilities(commands.Cog):
         try:
             if len(new_prefix) > 5:
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Prefix Too Long",
+                    title="f"{SPROUTS_ERROR}" Prefix Too Long",
                     description="Prefix must be 5 characters or less.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -767,7 +767,7 @@ class Utilities(commands.Cog):
             guild_settings.set_prefix(ctx.guild.id, new_prefix)
             
             embed = discord.Embed(
-                title="<a:sprouts_check_dns:1411790001565466725> Prefix Updated",
+                title="f"{SPROUTS_CHECK}" Prefix Updated",
                 description=f"Server prefix changed from `{old_prefix}` to `{new_prefix}`",
                 color=EMBED_COLOR_NORMAL
             )
@@ -790,7 +790,7 @@ class Utilities(commands.Cog):
         """Handle setprefix command errors"""
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Missing Permissions",
+                title="f"{SPROUTS_ERROR}" Missing Permissions",
                 description="You need **Administrator** permissions to change the server prefix.",
                 color=EMBED_COLOR_ERROR
             )

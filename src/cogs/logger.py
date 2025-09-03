@@ -195,7 +195,7 @@ class EventLogger(commands.Cog):
                 return
                 
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Command Error",
+                title="f"{SPROUTS_ERROR}" Command Error",
                 color=EMBED_COLOR_ERROR,
                 timestamp=discord.utils.utcnow()
             )

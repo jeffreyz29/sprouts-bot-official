@@ -139,7 +139,7 @@ class StickyMessages(commands.Cog):
                 else:
                     # Fallback to simple embed if custom embed not found
                     embed = discord.Embed(
-                        title="<a:sprouts_warning_dns:1412200379206336522> Sticky Embed Not Found",
+                        title="f"{SPROUTS_WARNING}" Sticky Embed Not Found",
                         description=f"Custom embed '{embed_name}' not found. Please recreate the sticky.",
                         color=EMBED_COLOR_ERROR
                     )
@@ -252,7 +252,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error creating sticky: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_warning_dns:1412200379206336522> Error",
+                title="f"{SPROUTS_WARNING}" Error",
                 description="Failed to create sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -265,7 +265,7 @@ class StickyMessages(commands.Cog):
         """Create a slow sticky message (message is required)"""
         if not content.strip():
             embed = discord.Embed(
-                title="<a:sprouts_warning_dns:1412200379206336522> Message Required",
+                title="f"{SPROUTS_WARNING}" Message Required",
                 description="You must provide a message for the sticky.\n\n**Usage:** `s.stickslow <message>`",
                 color=EMBED_COLOR_ERROR
             )
@@ -284,7 +284,7 @@ class StickyMessages(commands.Cog):
 
             if channel_id not in self.stickies:
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> No Sticky Message",
+                    title="f"{SPROUTS_WARNING}" No Sticky Message",
                     description="There is no sticky message in this channel",
                     color=EMBED_COLOR_ERROR
                 )
@@ -307,7 +307,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error stopping sticky: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_warning_dns:1412200379206336522> Error",
+                title="f"{SPROUTS_WARNING}" Error",
                 description="Failed to stop sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -322,7 +322,7 @@ class StickyMessages(commands.Cog):
 
             if channel_id not in self.stickies:
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> No Sticky Message",
+                    title="f"{SPROUTS_WARNING}" No Sticky Message",
                     description="There is no sticky message configured in this channel",
                     color=EMBED_COLOR_ERROR
                 )
@@ -348,7 +348,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error starting sticky: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_warning_dns:1412200379206336522> Error",
+                title="f"{SPROUTS_WARNING}" Error",
                 description="Failed to start sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -462,7 +462,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error listing stickies: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_warning_dns:1412200379206336522> Error",
+                title="f"{SPROUTS_WARNING}" Error",
                 description="Failed to list sticky messages",
                 color=EMBED_COLOR_ERROR
             )

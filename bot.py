@@ -8,6 +8,7 @@ import logging
 import discord
 from discord.ext import commands
 from config import BOT_CONFIG, EMBED_COLOR_ERROR, BOT_OWNER_ID
+from src.emojis import SPROUTS_ERROR
 from web_viewer import bot_stats
 
 logger = logging.getLogger(__name__)
@@ -134,7 +135,7 @@ class DiscordBot(commands.AutoShardedBot):
         if remaining_time > 0:
             # User is on cooldown - using custom emoji
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Cooldown Active",
+                title=f"{SPROUTS_ERROR} Cooldown Active",
                 description=f"You're on cooldown! Try again in **{remaining_time:.1f} seconds**.",
                 color=EMBED_COLOR_ERROR
             )
@@ -166,7 +167,7 @@ class DiscordBot(commands.AutoShardedBot):
                 if ctx.author.id != BOT_OWNER_ID:
                     logger.info(f"MAINTENANCE: Blocked '{ctx.command.name}' from {ctx.author}")
                     try:
-                        await message.add_reaction('<a:sprouts_error_dns:1411790004652605500>')
+                        await message.add_reaction(SPROUTS_ERROR)
                     except discord.HTTPException:
                         try:
                             await message.add_reaction('❌')

@@ -277,7 +277,7 @@ class Reminders(commands.Cog):
             time_delta = self.parse_time(time)
             if not time_delta:
                 embed = discord.Embed(
-                    title="<a:sprouts_error_dns:1411790004652605500> Invalid Time Format",
+                    title="f"{SPROUTS_ERROR}" Invalid Time Format",
                     description="Use formats like: `1d`, `2h`, `30m`, `45s` or combinations like `1d2h30m`",
                     color=EMBED_COLOR_ERROR
                 )
@@ -295,7 +295,7 @@ class Reminders(commands.Cog):
             # Check time limits
             if time_delta.total_seconds() < 60:  # Minimum 1 minute
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> Time Too Short",
+                    title="f"{SPROUTS_WARNING}" Time Too Short",
                     description="Reminders must be at least 1 minute in the future",
                     color=EMBED_COLOR_ERROR
                 )
@@ -304,7 +304,7 @@ class Reminders(commands.Cog):
             
             if time_delta.total_seconds() > 31536000:  # Maximum 1 year
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> Time Too Long",
+                    title="f"{SPROUTS_WARNING}" Time Too Long",
                     description="Reminders cannot be more than 1 year in the future",
                     color=EMBED_COLOR_ERROR
                 )
@@ -354,7 +354,7 @@ class Reminders(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting reminder: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="f"{SPROUTS_ERROR}" Error",
                 description="Failed to set reminder",
                 color=EMBED_COLOR_ERROR
             )
@@ -382,7 +382,7 @@ class Reminders(commands.Cog):
             
             if user_id not in self.reminders or not self.reminders[user_id]:
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> No Reminders",
+                    title="f"{SPROUTS_WARNING}" No Reminders",
                     description="You don't have any active reminders",
                     color=EMBED_COLOR_NORMAL
                 )
@@ -425,7 +425,7 @@ class Reminders(commands.Cog):
         except Exception as e:
             logger.error(f"Error listing reminders: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="f"{SPROUTS_ERROR}" Error",
                 description="Failed to list reminders",
                 color=EMBED_COLOR_ERROR
             )
@@ -453,7 +453,7 @@ class Reminders(commands.Cog):
             
             if user_id not in self.reminders:
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> No Reminders",
+                    title="f"{SPROUTS_WARNING}" No Reminders",
                     description="You don't have any active reminders",
                     color=EMBED_COLOR_ERROR
                 )
@@ -469,7 +469,7 @@ class Reminders(commands.Cog):
             
             if not found_reminder:
                 embed = discord.Embed(
-                    title="<a:sprouts_warning_dns:1412200379206336522> Reminder Not Found",
+                    title="f"{SPROUTS_WARNING}" Reminder Not Found",
                     description=f"No reminder found with ID `{reminder_id}`",
                     color=EMBED_COLOR_ERROR
                 )
@@ -498,7 +498,7 @@ class Reminders(commands.Cog):
         except Exception as e:
             logger.error(f"Error deleting reminder: {e}")
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Error",
+                title="f"{SPROUTS_ERROR}" Error",
                 description="Failed to delete reminder",
                 color=EMBED_COLOR_ERROR
             )
