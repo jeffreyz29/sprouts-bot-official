@@ -467,7 +467,7 @@ class BotEvents(commands.Cog):
             
         elif isinstance(error, commands.CommandOnCooldown):
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Command Cooldown",
+                title=f"{SPROUTS_ERROR} Command Cooldown",
                 description=f"Please wait {error.retry_after:.1f} seconds before using this command again.",
                 color=EMBED_COLOR_ERROR
             )
