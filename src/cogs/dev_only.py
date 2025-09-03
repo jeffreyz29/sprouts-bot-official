@@ -1648,8 +1648,11 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="Data Management",
             value=(
-                "`s.listdata` - List data files for users/guilds\n"
-                "`s.deletedata` - Delete specific user/guild data\n"
+                "`s.listdata user` - List data files for a user\n"
+                "`s.listdata guild` - List data files for a guild\n"
+                "`s.listdata all` - Overview of all data files\n"
+                "`s.deletedata user` - Delete all data for a user\n"
+                "`s.deletedata guild` - Delete all data for a guild\n"
                 "`s.resetdata` - **DANGER** Complete data reset\n"
                 "**Owner Only - Targeted & Safe data operations**"
             ),
