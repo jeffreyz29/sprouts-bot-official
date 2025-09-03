@@ -117,7 +117,7 @@ class AutoResponders(commands.Cog):
     async def autoresponder_add(self, ctx, *, args):
         """Add simple auto responder
 
-        Usage: s.autoresponder add trigger:<trigger> reply:<response>
+        Usage: `s.autoresponder add trigger:<trigger> reply:<response>`
         Creates auto responder that replies when trigger word/phrase is detected
 
         Examples:
@@ -329,7 +329,7 @@ class AutoResponders(commands.Cog):
     async def autoresponder_remove(self, ctx, *, trigger):
         """Remove an auto responder
         
-        Usage: `sautoresponder remove <trigger>`
+        Usage: `s.autoresponder remove <trigger>`
         Permanently deletes auto responder (cannot be undone)
         
         Examples:
@@ -379,11 +379,11 @@ class AutoResponders(commands.Cog):
     async def autoresponder_list(self, ctx):
         """List all auto responders
         
-        Usage: `sautoresponder list`
+        Usage: `s.autoresponder list`
         Shows all configured auto responders with triggers, responses, and status
         
         Examples:
-        - `sautoresponder list` - View all server auto responders
+        - `s.autoresponder list` - View all server auto responders
         - Shows enabled/disabled status for each
         - Displays first 50 characters of each response
         
