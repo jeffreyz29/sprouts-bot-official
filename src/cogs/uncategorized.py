@@ -48,14 +48,20 @@ class ShardsPaginationView(discord.ui.View):
                 guild_count = len(shard_guilds)
                 member_count = sum(g.member_count for g in shard_guilds)
                 
-                # Get latency in milliseconds
-                latency_ms = int(shard.latency * 1000)
+                # Get latency in milliseconds (safely)
+                try:
+                    latency_ms = int(shard.latency * 1000) if hasattr(shard, 'latency') and shard.latency else 0
+                except:
+                    latency_ms = 0
                 
                 # Format the row
                 description += f"{shard_id:4d} - {latency_ms:4d} ms - {guild_count:7,d} - {member_count:9,d}\n"
         else:
             # Single shard or no sharding
-            latency_ms = int(self.guilds[0].me.bot.latency * 1000) if self.guilds else 0
+            try:
+                latency_ms = int(self.bot.latency * 1000) if self.bot.latency else 0
+            except:
+                latency_ms = 0
             description += f"   0 - {latency_ms:4d} ms - {self.total_servers:7,d} - {self.total_users:9,d}\n"
         
         description += "```"
