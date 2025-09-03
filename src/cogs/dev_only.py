@@ -1707,11 +1707,11 @@ class DevOnly(commands.Cog):
         confirm_embed.set_footer(text=f"React with {SPROUTS_CHECK} to confirm or {SPROUTS_ERROR} to cancel")
         
         confirm_msg = await ctx.reply(embed=confirm_embed, mention_author=False)
-        await confirm_msg.add_reaction("✅")
-        await confirm_msg.add_reaction("❌")
+        await confirm_msg.add_reaction(SPROUTS_CHECK)
+        await confirm_msg.add_reaction(SPROUTS_ERROR)
         
         def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
+            return user == ctx.author and str(reaction.emoji) in [SPROUTS_CHECK, SPROUTS_ERROR] and reaction.message.id == confirm_msg.id
         
         try:
             reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
@@ -1724,7 +1724,7 @@ class DevOnly(commands.Cog):
             await confirm_msg.edit(embed=embed)
             return
         
-        if str(reaction.emoji) == "❌":
+        if str(reaction.emoji) == SPROUTS_ERROR:
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Changelog Cancelled",
                 description="Operation cancelled by user. No messages were sent.",
@@ -2268,7 +2268,7 @@ class DevOnly(commands.Cog):
                 await confirm_msg.edit(embed=embed)
                 return
             
-            if str(reaction.emoji) == "❌":
+            if str(reaction.emoji) == SPROUTS_ERROR:
                 embed = discord.Embed(
                     title="Operation Cancelled",
                     description="Data deletion cancelled by user.",
