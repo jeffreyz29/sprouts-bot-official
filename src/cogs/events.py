@@ -255,7 +255,7 @@ class BotEvents(commands.Cog):
         # Check if command is disabled (maintenance mode is handled in bot.py global_check)
         if devonly_cog and ctx.command.name in devonly_cog.disabled_commands:
             embed = discord.Embed(
-                title="<a:sprouts_warning_dns:1412200379206336522> Command Disabled",
+                title="{SPROUTS_WARNING} Command Disabled",
                 description=f"The `{ctx.command.name}` command is currently disabled.",
                 color=EMBED_COLOR_ERROR
             )
@@ -369,7 +369,7 @@ class BotEvents(commands.Cog):
             }
             
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {command_name}",
+                title=f"{SPROUTS_ERROR} {command_name}",
                 description="Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR
             )
@@ -410,7 +410,7 @@ class BotEvents(commands.Cog):
         elif isinstance(error, commands.BadArgument):
             command_name = ctx.command.name if ctx.command else "unknown"
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {command_name}",
+                title=f"{SPROUTS_ERROR} {command_name}",
                 description="Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR
             )
@@ -429,7 +429,7 @@ class BotEvents(commands.Cog):
         elif isinstance(error, commands.MissingPermissions):
             command_name = ctx.command.name if ctx.command else "unknown"
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {command_name}",
+                title=f"{SPROUTS_ERROR} {command_name}",
                 description="Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR
             )
@@ -448,7 +448,7 @@ class BotEvents(commands.Cog):
         elif isinstance(error, commands.BotMissingPermissions):
             command_name = ctx.command.name if ctx.command else "unknown"
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {command_name}",
+                title=f"{SPROUTS_ERROR} {command_name}",
                 description="Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR
             )
@@ -466,7 +466,7 @@ class BotEvents(commands.Cog):
             
         elif isinstance(error, commands.CommandOnCooldown):
             embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Command Cooldown",
+                title="{SPROUTS_ERROR} Command Cooldown",
                 description=f"Please wait {error.retry_after:.1f} seconds before using this command again.",
                 color=EMBED_COLOR_ERROR
             )
@@ -477,7 +477,7 @@ class BotEvents(commands.Cog):
         elif isinstance(error, commands.NotOwner):
             command_name = ctx.command.name if ctx.command else "unknown"
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {command_name}",
+                title=f"{SPROUTS_ERROR} {command_name}",
                 description="Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR
             )
@@ -497,7 +497,7 @@ class BotEvents(commands.Cog):
             logger.error(f"Unhandled command error: {error}")
             command_name = ctx.command.name if ctx.command else "unknown"
             embed = discord.Embed(
-                title=f"<a:sprouts_error_dns:1411790004652605500> {command_name}",
+                title=f"{SPROUTS_ERROR} {command_name}",
                 description="Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.",
                 color=EMBED_COLOR_ERROR
             )
