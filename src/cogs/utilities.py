@@ -767,7 +767,7 @@ class Utilities(commands.Cog):
             guild_settings.set_prefix(ctx.guild.id, new_prefix)
             
             embed = discord.Embed(
-                title="f"{SPROUTS_CHECK}" Prefix Updated",
+                title=f"{SPROUTS_CHECK} Prefix Updated",
                 description=f"Server prefix changed from `{old_prefix}` to `{new_prefix}`",
                 color=EMBED_COLOR_NORMAL
             )
