@@ -677,7 +677,7 @@ class Utilities(commands.Cog):
                 invite = await self.bot.fetch_invite(invite_code)
             except discord.NotFound:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_ERROR}" Invalid Invite",
+                    title=f"{SPROUTS_ERROR} Invalid Invite",
                     description="The invite link is invalid or has expired.",
                     color=EMBED_COLOR_ERROR
                 )
