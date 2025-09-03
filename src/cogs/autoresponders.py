@@ -493,7 +493,7 @@ class AutoResponders(commands.Cog):
         """Handle autoresponder add command errors"""
         if isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Arguments",
+                title=f"{SPROUTS_ERROR} Command Error: Add",
                 description="Please provide the trigger and reply.\n\n**Usage:** `s.autoresponder add trigger:<trigger> reply:<response>`\n**Example:** `s.autoresponder add trigger:hello reply:Hello there!`",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
@@ -513,7 +513,7 @@ class AutoResponders(commands.Cog):
         """Handle autoresponder editreply command errors"""
         if isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Arguments",
+                title=f"{SPROUTS_ERROR} Command Error: EditReply",
                 description="Please provide the trigger and new reply.\n\n**Usage:** `s.autoresponder editreply trigger:<trigger> reply:<new response>`\n**Example:** `s.autoresponder editreply trigger:hello reply:Updated message!`",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
@@ -533,7 +533,7 @@ class AutoResponders(commands.Cog):
         """Handle autoresponder remove command errors"""
         if isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Trigger",
+                title=f"{SPROUTS_ERROR} Command Error: Remove",
                 description="Please specify which auto responder to remove.\n\n**Usage:** `s.autoresponder remove <trigger>`\n**Example:** `s.autoresponder remove hello`",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
@@ -553,7 +553,7 @@ class AutoResponders(commands.Cog):
         """Handle autoresponder toggle command errors"""
         if isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Trigger",
+                title=f"{SPROUTS_ERROR} Command Error: Toggle",
                 description="Please specify which auto responder to toggle.\n\n**Usage:** `s.autoresponder toggle <trigger>`\n**Example:** `s.autoresponder toggle hello`",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)

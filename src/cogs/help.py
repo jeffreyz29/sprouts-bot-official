@@ -1362,11 +1362,15 @@ class HelpCommand(commands.Cog):
                 await ctx.reply(embed=embed, mention_author=False)
                 return
             
-            # Use the button help system with specific layout
-            from src.cogs.modern_help import ModernCommandHelpView
-            help_view = ModernCommandHelpView(command, prefix, ctx.author)
-            embed = help_view.create_main_embed()
-            await ctx.reply(embed=embed, view=help_view, mention_author=False)
+            # Use simple help system instead of modern help
+            embed = discord.Embed(
+                title=f"Help: {command.name}",
+                description=command.help or "No description available",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
+                           icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
             
         except Exception as e:
             logger.error(f"Error showing command help: {e}")

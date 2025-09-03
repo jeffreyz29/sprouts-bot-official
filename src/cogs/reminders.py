@@ -509,7 +509,7 @@ class Reminders(commands.Cog):
         """Handle remind command errors"""
         if isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Command Error",
+                title=f"{SPROUTS_ERROR} Command Error: Remind",
                 description="Please provide both time and message for the reminder.\n\n**Usage:** `s.remind <time> <message>`\n**Example:** `s.remind 1h Take a break`",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", 

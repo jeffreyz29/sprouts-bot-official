@@ -3205,7 +3205,7 @@ class TicketSystem(commands.Cog):
         """Handle topic command errors"""
         if isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Topic",
+                title=f"{SPROUTS_ERROR} Command Error: Topic",
                 description="Please specify a topic for the ticket.\n\n**Usage:** `s.topic <your topic here>`\n**Note:** This command only works in ticket channels.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
