@@ -1110,19 +1110,19 @@ class DetailedCommandHelpView(discord.ui.View):
         
         return embed
     
+    @discord.ui.button(label="Format Guide", style=discord.ButtonStyle.primary, row=0)
+    async def format_guide_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Show format guide page"""
+        embed = self.create_main_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.current_page = "main"
+    
     @discord.ui.button(label="Detailed Usage", style=discord.ButtonStyle.primary, row=0)
     async def detailed_usage_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Show detailed usage page"""
         embed = self.create_detailed_usage_embed()
         await interaction.response.edit_message(embed=embed, view=self)
         self.current_page = "usage"
-    
-    @discord.ui.button(label="All Examples", style=discord.ButtonStyle.success, row=0)
-    async def examples_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Show examples page"""
-        embed = self.create_examples_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
-        self.current_page = "examples"
     
     @discord.ui.button(label="Common Errors", style=discord.ButtonStyle.danger, row=0)
     async def errors_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1131,15 +1131,8 @@ class DetailedCommandHelpView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
         self.current_page = "errors"
     
-    @discord.ui.button(label="Back to Main", style=discord.ButtonStyle.secondary, row=1)
-    async def back_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Go back to main help page"""
-        embed = self.create_main_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
-        self.current_page = "main"
-    
-    @discord.ui.button(label="Close Help", style=discord.ButtonStyle.secondary, row=1)
-    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.secondary, row=1)
+    async def exit_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Close the help message"""
         embed = discord.Embed(
             title="Help Closed",
