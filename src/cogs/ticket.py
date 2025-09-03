@@ -3787,8 +3787,7 @@ class TicketSystem(commands.Cog):
             if limit is None:
                 # View current limit
                 embed = discord.Embed(
-                    title=
-                    f"{SPROUTS_CHECK} Ticket Limit",
+                    title=f"{SPROUTS_CHECK} Ticket Limit",
                     description=
                     f"**Current Maximum Tickets Per User:** `{current_limit}`\n\nTo change the limit, use: `{ctx.prefix}ticket-limit <number>`",
                     color=EMBED_COLOR_NORMAL)
@@ -3802,8 +3801,7 @@ class TicketSystem(commands.Cog):
             # Validate limit
             if limit < 1 or limit > 20:
                 embed = discord.Embed(
-                    title=
-                    f"{SPROUTS_ERROR} Invalid Limit",
+                    title=f"{SPROUTS_ERROR} Invalid Limit",
                     description=
                     "Ticket limit must be between **1** and **20**.",
                     color=EMBED_COLOR_ERROR)
@@ -3819,8 +3817,7 @@ class TicketSystem(commands.Cog):
             self.save_ticket_settings()
 
             embed = discord.Embed(
-                title=
-                f"{SPROUTS_CHECK} Ticket Limit Updated",
+                title=f"{SPROUTS_CHECK} Ticket Limit Updated",
                 description=
                 f"Maximum tickets per user has been set to **{limit}**.\n\nUsers can now have up to {limit} open tickets at once.",
                 color=EMBED_COLOR_NORMAL)
