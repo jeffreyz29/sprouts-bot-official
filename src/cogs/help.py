@@ -1111,27 +1111,16 @@ class DetailedCommandHelpView(discord.ui.View):
         return embed
     
     def create_format_guide_embed(self):
-        """Create format guide embed showing command syntax and structure"""
-        command_info = self.get_detailed_command_info().get(self.command.name, {})
-        
+        """Create format guide embed explaining command syntax symbols"""
         embed = discord.Embed(
-            title=f"Format Guide: {self.command.name}",
-            description=f"Learn the basic syntax and format for the `{self.command.name}` command.",
+            title="Format Guide",
+            description="Understanding command syntax and parameter types",
             color=EMBED_COLOR_NORMAL
         )
         
-        # Basic syntax
-        usage = command_info.get('usage', f"`{self.prefix}{self.command.name}`")
         embed.add_field(
-            name="Basic Syntax",
-            value=f"{usage}",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="Format Guide",
-            value="**Parameter Types:**\n"
-                  "• `<#channelID>` - Required channel parameter (works with channel id or channel mention)\n"
+            name="Parameter Format Symbols",
+            value="• `<#channelID>` - Required channel parameter (works with channel id or channel mention)\n"
                   "• `< >` - Required parameter\n"
                   "• `[ ]` - Optional parameter\n"
                   "• `[thing 1| thing 2]` - Choose one of the given option\n"
@@ -1139,23 +1128,25 @@ class DetailedCommandHelpView(discord.ui.View):
             inline=False
         )
         
-        # Permissions and cooldown info
-        permissions = command_info.get('permissions', 'None required')
-        cooldown = command_info.get('cooldown', 'No cooldown')
-        category = command_info.get('category', 'General')
-        
         embed.add_field(
-            name="Command Information",
-            value=f"**Category:** {category}\n"
-                  f"**Permissions:** {permissions}\n"
-                  f"**Cooldown:** {cooldown}",
-            inline=True
+            name="How to Read Command Syntax",
+            value="When you see a command like `s.command <required> [optional]`:\n"
+                  "• You **must** provide the `<required>` part\n"
+                  "• You **can** provide the `[optional]` part\n"
+                  "• Replace `<>` and `[]` with actual values\n"
+                  "• Don't type the brackets themselves",
+            inline=False
         )
         
-        # Quick usage tip
         embed.add_field(
-            name="Quick Tip",
-            value=f"Use the **Detailed Usage** button to see all the different ways to use `{self.command.name}` with specific examples.",
+            name="Examples",
+            value="• `s.ban <@user> [reason]` means:\n"
+                  "  ✅ `s.ban @John` (reason is optional)\n"
+                  "  ✅ `s.ban @John spamming` (with reason)\n"
+                  "  ❌ `s.ban` (missing required user)\n\n"
+                  "• `s.remind <time> <message>` means:\n"
+                  "  ✅ `s.remind 5m check the oven`\n"
+                  "  ❌ `s.remind 5m` (missing message)",
             inline=False
         )
         
