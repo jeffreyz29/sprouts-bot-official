@@ -152,7 +152,7 @@ class DMLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in dmlog command: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> DM Logging Error",
+                title="{SPROUTS_ERROR} DM Logging Error",
                 description="An error occurred while accessing DM logging settings.",
                 color=EMBED_COLOR_ERROR
             )
@@ -270,7 +270,7 @@ class DMLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error setting DM log channel: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Configuration Error",
+                title="{SPROUTS_ERROR} Configuration Error",
                 description="An error occurred while setting the DM logging channel.",
                 color=EMBED_COLOR_ERROR
             )
@@ -322,7 +322,7 @@ class DMLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error disabling DM logging: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Configuration Error",
+                title="{SPROUTS_ERROR} Configuration Error",
                 description="An error occurred while disabling DM logging.",
                 color=EMBED_COLOR_ERROR
             )
@@ -411,7 +411,7 @@ class DMLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in dmlog status: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Status Error",
+                title="{SPROUTS_ERROR} Status Error",
                 description="An error occurred while checking DM logging status.",
                 color=EMBED_COLOR_ERROR
             )
@@ -494,7 +494,7 @@ class DMLoggingCog(commands.Cog):
         except Exception as e:
             logger.error(f"Error in dmlog test: {e}")
             error_embed = discord.Embed(
-                title="<a:sprouts_error_dns:1411790004652605500> Test Error",
+                title="{SPROUTS_ERROR} Test Error",
                 description="An error occurred while sending the test message.",
                 color=EMBED_COLOR_ERROR
             )
