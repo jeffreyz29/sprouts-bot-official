@@ -169,12 +169,12 @@ class CommandLoggingCog(commands.Cog):
             
             # Available commands
             commands_list = [
-                f"`{prefix}cmdlogs set <#channel|ID>` - Set command logging channel",
-                f"`{prefix}cmdlogs disable` - Disable command logging",
-                f"`{prefix}cmdlogs status` - View current configuration",
-                f"`{prefix}cmdlogs settings` - Configure what to log",
-                f"`{prefix}cmdlogs stats` - View command usage statistics",
-                f"`{prefix}cmdlogs test` - Send test command log message"
+                f"`{ctx.prefix}cmdlogs set <#channel|ID>` - Set command logging channel",
+                f"`{ctx.prefix}cmdlogs disable` - Disable command logging",
+                f"`{ctx.prefix}cmdlogs status` - View current configuration",
+                f"`{ctx.prefix}cmdlogs settings` - Configure what to log",
+                f"`{ctx.prefix}cmdlogs stats` - View command usage statistics",
+                f"`{ctx.prefix}cmdlogs test` - Send test command log message"
             ]
             
             embed.add_field(
@@ -263,7 +263,7 @@ class CommandLoggingCog(commands.Cog):
             # Make sure it's a text channel in this guild
             if not isinstance(channel, discord.TextChannel) or channel.guild.id != ctx.guild.id:
                 embed = discord.Embed(
-                    title="Invalid Channel",
+                    title="{SPROUTS_ERROR} Invalid Channel",
                     description="Please specify a text channel from this server.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -284,7 +284,7 @@ class CommandLoggingCog(commands.Cog):
             cmd_logging.set_cmd_log_channel(ctx.guild.id, channel.id)
             
             embed = discord.Embed(
-                title="Command Logging Configured",
+                title="{SPROUTS_CHECK} Command Logging Configured",
                 description=f"Command logging has been set to {channel.mention}",
                 color=EMBED_COLOR_NORMAL
             )
@@ -315,7 +315,7 @@ class CommandLoggingCog(commands.Cog):
             
             # Send test message to the channel
             test_embed = discord.Embed(
-                title="Command Logging System Activated",
+                title="{SPROUTS_CHECK} Command Logging System Activated",
                 description="This channel will now receive all command logs.",
                 color=EMBED_COLOR_NORMAL
             )
@@ -354,7 +354,7 @@ class CommandLoggingCog(commands.Cog):
             current_channel = cmd_logging.get_cmd_log_channel(ctx.guild.id)
             if not current_channel:
                 embed = discord.Embed(
-                    title="Already Disabled",
+                    title="{SPROUTS_ERROR} Already Disabled",
                     description="Command logging is not currently enabled in this server.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -404,7 +404,7 @@ class CommandLoggingCog(commands.Cog):
         """View current command logging configuration"""
         try:
             embed = discord.Embed(
-                title="Command Logging Status",
+                title="{SPROUTS_CHECK} Command Logging Status",
                 color=EMBED_COLOR_NORMAL
             )
             
@@ -479,7 +479,7 @@ class CommandLoggingCog(commands.Cog):
             # Global stats
             all_guilds = cmd_logging.get_all_cmd_logging_guilds()
             embed.add_field(
-                name="**Global Statistics**",
+                name="{SPROUTS_CHECK} Global Statistics",
                 value=f"Command logging active in **{len(all_guilds)}** servers",
                 inline=False
             )
@@ -512,12 +512,12 @@ class CommandLoggingCog(commands.Cog):
             
             if guild_key not in cmd_logging.command_stats or not cmd_logging.command_stats[guild_key]:
                 embed = discord.Embed(
-                    title="Command Statistics",
+                    title="{SPROUTS_ERROR} Command Statistics",
                     description="No command usage data available yet.",
-                    color=EMBED_COLOR_NORMAL
+                    color=EMBED_COLOR_ERROR
                 )
                 embed.add_field(
-                    name="**Note**",
+                    name="Note",
                     value="Statistics are tracked from when command logging was first enabled.",
                     inline=False
                 )
@@ -544,7 +544,7 @@ class CommandLoggingCog(commands.Cog):
                 )
             
             embed.add_field(
-                name="**Top Commands**",
+                name="Top Commands",
                 value="\n".join(top_commands) if top_commands else "No data available",
                 inline=False
             )
@@ -600,7 +600,7 @@ class CommandLoggingCog(commands.Cog):
             if not current_channel:
                 embed = discord.Embed(
                     title="{SPROUTS_CHECK} Command Logging Disabled",
-                    description="Command logging is not enabled. Use `{prefix}cmdlogs set <#channel_ID>` first.",
+                    description="Command logging is not enabled. Use `{ctx.prefix}cmdlogs set <#channel_ID>` first.",
                     color=EMBED_COLOR_ERROR
                 )
                 await ctx.reply(embed=embed, mention_author=False)
@@ -660,7 +660,7 @@ class CommandLoggingCog(commands.Cog):
             await channel.send(embed=log_embed)
             
             embed = discord.Embed(
-                title="Test Message Sent",
+                title="{SPROUTS_CHECK} Test Message Sent",
                 description=f"A test command log has been sent to {channel.mention}",
                 color=EMBED_COLOR_NORMAL
             )
