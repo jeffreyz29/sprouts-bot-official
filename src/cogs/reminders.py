@@ -277,7 +277,7 @@ class Reminders(commands.Cog):
             time_delta = self.parse_time(time)
             if not time_delta:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_ERROR}" Invalid Time Format",
+                    title=f"{SPROUTS_ERROR} Invalid Time Format",
                     description="Use formats like: `1d`, `2h`, `30m`, `45s` or combinations like `1d2h30m`",
                     color=EMBED_COLOR_ERROR
                 )
