@@ -1,0 +1,35 @@
+{
+  "1412303107223851101": {
+    "log_channel_id": 1412321068454248568,
+    "staff_role_ids": [
+      1412311734156398662,
+      1412328793040752754,
+      1412328813051777126
+    ],
+    "ticket_category_id": 1412314764473794671,
+    "naming_style": "discord_tag",
+    "embed_title": "Support Ticket",
+    "embed_description": "Thank you for creating a ticket! Please describe your issue and a staff member will assist you shortly.",
+    "embed_color": 12779488,
+    "embed_author_name": null,
+    "embed_author_icon": null,
+    "max_tickets_per_user": 10,
+    "use_saved_embed": true,
+    "saved_embed_name": "ticket embed",
+    "embed_set_by_user": null
+  },
+  "1411324489333215267": {
+    "log_channel_id": null,
+    "staff_role_ids": [],
+    "ticket_category_id": null,
+    "naming_style": "numbers",
+    "embed_title": "Support Ticket",
+    "embed_description": "Thank you for creating a ticket! Please describe your issue and a staff member will assist you shortly.",
+    "embed_color": 12779488,
+    "embed_author_name": null,
+    "embed_author_icon": null,
+    "max_tickets_per_user": 10,
+    "use_saved_embed": false,
+    "saved_embed_name": null
+  }
+}

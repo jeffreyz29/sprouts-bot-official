@@ -1,0 +1,71 @@
+{
+  "name": "Sprouts Discord Bot",
+  "description": "A comprehensive Discord bot with web dashboard",
+  "keywords": ["discord", "bot", "python"],
+  "website": "https://github.com/jeffreyz29/sprouts-bot-official",
+  "repository": "https://github.com/jeffreyz29/sprouts-bot-official",
+  "scripts": {
+    "postdeploy": "echo 'Bot deployed successfully'",
+    "start": "python bot_with_web.py"
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "env": {
+    "DISCORD_BOT_TOKEN": {
+      "description": "Discord bot token",
+      "required": true
+    },
+    "BOT_OWNER_ID": {
+      "description": "Discord user ID of the bot owner",
+      "required": true
+    },
+    "DEFAULT_PREFIX": {
+      "description": "Bot default prefix",
+      "required": false,
+      "value": "s."
+    },
+    "LOG_COMMANDS_CHANNEL": {
+      "description": "Discord channel ID for command logging (default: none)",
+      "required": false,
+      "value": ""
+    },
+    "LOG_DMS_CHANNEL": {
+      "description": "Discord channel ID for DM logging (default: none)",
+      "required": false,
+      "value": ""
+    },
+    "LOG_GUILD_EVENTS": {
+      "description": "Discord channel ID for guild event logging (default: none)",
+      "required": false,
+      "value": ""
+    },
+    "MONGO_URI": {
+      "description": "MongoDB connection string for data storage",
+      "required": true
+    },
+    "EMBED_COLOR_NORMAL": {
+      "description": "Normal embed color (hex)",
+      "required": false,
+      "value": "0x2ecc71"
+    },
+    "EMBED_COLOR_ERROR": {
+      "description": "Error embed color (hex)",
+      "required": false,
+      "value": "0xe74c3c"
+    },
+    "EMBED_COLOR_HIERARCHY": {
+      "description": "Hierarchy embed color (hex)",
+      "required": false,
+      "value": "0xFFE682"
+    }
+  }
+}

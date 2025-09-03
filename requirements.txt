@@ -1,0 +1,27 @@
+# Discord Bot Core Dependencies
+discord.py==2.3.2
+aiohttp==3.8.5
+
+# Web Dashboard
+flask==2.3.3
+Jinja2==3.1.2
+Werkzeug==2.3.7
+
+# Database
+pymongo==4.5.0
+
+# Configuration
+python-dotenv==1.0.0
+PyYAML==6.0.1
+
+# System Monitoring
+psutil==5.9.5
+
+# Security
+certifi==2023.7.22
+
+# Audio Support (optional)
+PyNaCl==1.5.0
+
+# Type Extensions
+typing-extensions==4.7.1

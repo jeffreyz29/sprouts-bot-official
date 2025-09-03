@@ -1,0 +1,19 @@
+{
+  "1412350241902166096": {
+    "id": "ticket-jeffrey",
+    "creator_id": 764874247646085151,
+    "creator_name": "jeffreyz29",
+    "guild_id": 1412303107223851101,
+    "channel_id": 1412350241902166096,
+    "status": "open",
+    "claimed_by": null,
+    "created_at": "2025-09-02T08:15:38.095816",
+    "priority": "medium",
+    "topic": "a'fasf",
+    "members": [
+      764874247646085151
+    ],
+    "tags": [],
+    "log_channel_id": 1412321068454248568
+  }
+}

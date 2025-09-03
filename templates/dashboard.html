@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprouts Bot Dashboard</title>
+    <link id="favicon" rel="icon" type="image/x-icon" href="">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            min-height: 100vh;
+            color: #1a202c;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            padding: 0.75rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #6366f1;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .stat-value-large {
+            font-size: 1.5rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-online {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-offline {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .progress-container {
+            margin-top: 0.5rem;
+        }
+
+        .progress-bar {
+            background: #e5e7eb;
+            border-radius: 9999px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-cpu { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+        .progress-memory { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
+        .progress-disk { background: linear-gradient(90deg, #10b981, #6ee7b7); }
+        .progress-swap { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #4b5563;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .logs-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .logs-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .refresh-btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: background 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #4338ca;
+        }
+
+        .logs-box {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: #f9fafb;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+            padding: 2px 0;
+            word-wrap: break-word;
+        }
+
+        .log-error { color: #fca5a5; }
+        .log-warning { color: #fcd34d; }
+        .log-info { color: #93c5fd; }
+        .log-success { color: #86efac; }
+
+        .loading {
+            text-align: center;
+            color: #9ca3af;
+            font-style: italic;
+            padding: 2rem;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #dc2626;
+        }
+
+        .feature-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #4f46e5;
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        .section-divider {
+            margin: 2rem 0;
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sprouts Bot Dashboard</h1>
+        <p>Comprehensive real-time monitoring and detailed statistics</p>
+    </div>
+
+    <div class="container">
+        <div id="error-container"></div>
+
+        <div class="dashboard-grid">
+            <!-- Bot Status Card -->
+            <div class="card">
+                <div class="card-header">Bot Status & Uptime</div>
+                <div class="metric-row">
+                    <span class="metric-label">Status</span>
+                    <span id="bot-status" class="status-badge status-online">Online</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Uptime</span>
+                    <span class="metric-value" id="bot-uptime">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Last Update</span>
+                    <span class="metric-value" id="last-update">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Bot Prefix</span>
+                    <span class="metric-value" id="bot-prefix">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Bot Activity</span>
+                    <span class="metric-value" id="bot-activity">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Logging Systems Card -->
+            <div class="card">
+                <div class="card-header">Logging Systems</div>
+                <div class="metric-row">
+                    <span class="metric-label">DM Log Channel</span>
+                    <span id="dm-log-status" class="status-badge">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">CMD Log Channel</span>
+                    <span id="cmd-log-status" class="status-badge">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Guild Log Channel</span>
+                    <span id="guild-log-status" class="status-badge">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Guilds</span>
+                    <span class="metric-value" id="total-guilds">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Global Cooldown</span>
+                    <span class="metric-value" id="global-cooldown">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Bot Features Card -->
+            <div class="card">
+                <div class="card-header">Bot Features & Activity</div>
+                <div class="metric-row">
+                    <span class="metric-label">Server Monitors</span>
+                    <span class="feature-count" id="server-monitors">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Auto Responders</span>
+                    <span class="feature-count" id="auto-responders">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Active Reminders</span>
+                    <span class="feature-count" id="active-reminders">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Sticky Messages</span>
+                    <span class="feature-count" id="sticky-messages">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Tickets</span>
+                    <span class="feature-count" id="total-tickets">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Configured Guilds</span>
+                    <span class="feature-count" id="configured-guilds">0</span>
+                </div>
+            </div>
+
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- System Resources Section -->
+        <div class="dashboard-grid">
+            <!-- CPU Information -->
+            <div class="card">
+                <div class="card-header">CPU Information</div>
+                <div class="stat-item">
+                    <div class="stat-label">CPU Usage</div>
+                    <div class="stat-value stat-value-large" id="cpu-usage">Loading...</div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="cpu-progress" class="progress-fill progress-cpu" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Physical Cores</span>
+                    <span class="metric-value" id="cpu-cores-physical">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Logical Cores</span>
+                    <span class="metric-value" id="cpu-cores-logical">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Current Frequency</span>
+                    <span class="metric-value" id="cpu-frequency">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Memory Information -->
+            <div class="card">
+                <div class="card-header">Memory Information</div>
+                <div class="stat-item">
+                    <div class="stat-label">Memory Usage</div>
+                    <div class="stat-value stat-value-large" id="memory-usage">Loading...</div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="memory-progress" class="progress-fill progress-memory" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Used Memory</span>
+                    <span class="metric-value" id="memory-used">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Available Memory</span>
+                    <span class="metric-value" id="memory-available">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Memory</span>
+                    <span class="metric-value" id="memory-total">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Storage Information -->
+            <div class="card">
+                <div class="card-header">Storage Information</div>
+                <div class="stat-item">
+                    <div class="stat-label">Disk Usage</div>
+                    <div class="stat-value stat-value-large" id="disk-usage">Loading...</div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="disk-progress" class="progress-fill progress-disk" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Used Space</span>
+                    <span class="metric-value" id="disk-used">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Free Space</span>
+                    <span class="metric-value" id="disk-free">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Space</span>
+                    <span class="metric-value" id="disk-total">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Network Information -->
+            <div class="card">
+                <div class="card-header">Network Statistics</div>
+                <div class="metric-row">
+                    <span class="metric-label">Bytes Sent</span>
+                    <span class="metric-value" id="network-sent">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Bytes Received</span>
+                    <span class="metric-value" id="network-recv">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Packets Sent</span>
+                    <span class="metric-value" id="packets-sent">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Packets Received</span>
+                    <span class="metric-value" id="packets-recv">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Process Information -->
+            <div class="card">
+                <div class="card-header">Bot Process Information</div>
+                <div class="metric-row">
+                    <span class="metric-label">Process CPU</span>
+                    <span class="metric-value" id="process-cpu">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Process Memory</span>
+                    <span class="metric-value" id="process-memory">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">RSS Memory</span>
+                    <span class="metric-value" id="process-rss">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Process ID</span>
+                    <span class="metric-value" id="process-pid">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Thread Count</span>
+                    <span class="metric-value" id="process-threads">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Swap Information (if available) -->
+            <div class="card">
+                <div class="card-header">Swap Information</div>
+                <div class="stat-item">
+                    <div class="stat-label">Swap Usage</div>
+                    <div class="stat-value stat-value-large" id="swap-usage">Loading...</div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="swap-progress" class="progress-fill progress-swap" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Swap Used</span>
+                    <span class="metric-value" id="swap-used">Loading...</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Swap Total</span>
+                    <span class="metric-value" id="swap-total">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Logs Section -->
+        <div class="logs-container full-width">
+            <div class="logs-header">
+                <div class="logs-title">Real-time Bot Logs</div>
+                <button class="refresh-btn" onclick="refreshLogs()">Refresh Logs</button>
+            </div>
+            <div id="logs-box" class="logs-box">
+                <div class="loading">Loading logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let statsInterval;
+        let logsInterval;
+
+        function showError(message) {
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+            setTimeout(() => {
+                errorContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Bot status
+                    document.getElementById('bot-uptime').textContent = data.uptime;
+                    document.getElementById('last-update').textContent = data.last_update;
+                    document.getElementById('bot-prefix').textContent = data.environment.default_prefix;
+                    document.getElementById('bot-activity').textContent = data.environment.bot_activity;
+
+                    // Logging settings
+
+
+                    // Log channel status
+                    const dmLogStatus = document.getElementById('dm-log-status');
+                    dmLogStatus.textContent = data.logging.dm_log_configured ? 'CONFIGURED' : 'NOT SET';
+                    dmLogStatus.className = `status-badge ${data.logging.dm_log_configured ? 'status-online' : 'status-offline'}`;
+
+                    const cmdLogStatus = document.getElementById('cmd-log-status');
+                    cmdLogStatus.textContent = data.logging.cmd_log_configured ? 'CONFIGURED' : 'NOT SET';
+                    cmdLogStatus.className = `status-badge ${data.logging.cmd_log_configured ? 'status-online' : 'status-offline'}`;
+
+                    const guildLogStatus = document.getElementById('guild-log-status');
+                    guildLogStatus.textContent = data.logging.guild_log_configured ? 'CONFIGURED' : 'NOT SET';
+                    guildLogStatus.className = `status-badge ${data.logging.guild_log_configured ? 'status-online' : 'status-offline'}`;
+
+                    document.getElementById('total-guilds').textContent = data.logging.total_guilds || '0';
+
+                    // Global cooldown
+                    const cooldownText = data.cooldown.enabled ? `${data.cooldown.seconds} seconds` : 'Disabled';
+                    document.getElementById('global-cooldown').textContent = cooldownText;
+
+                    // Features
+                    document.getElementById('server-monitors').textContent = data.features.server_monitors;
+                    document.getElementById('auto-responders').textContent = data.features.auto_responders;
+                    document.getElementById('active-reminders').textContent = data.features.active_reminders;
+                    document.getElementById('sticky-messages').textContent = data.features.sticky_messages;
+                    document.getElementById('total-tickets').textContent = data.features.total_tickets;
+                    document.getElementById('configured-guilds').textContent = data.features.configured_guilds;
+
+                    // System stats
+                    document.getElementById('cpu-usage').textContent = data.system_formatted.cpu_percent;
+                    document.getElementById('cpu-cores-physical').textContent = data.system.cpu.cores_physical;
+                    document.getElementById('cpu-cores-logical').textContent = data.system.cpu.cores_logical;
+                    document.getElementById('cpu-frequency').textContent = data.system_formatted.cpu_frequency;
+
+                    document.getElementById('memory-usage').textContent = data.system_formatted.memory_usage;
+                    document.getElementById('memory-used').textContent = data.system_formatted.memory_used;
+                    document.getElementById('memory-available').textContent = data.system_formatted.memory_available;
+                    document.getElementById('memory-total').textContent = data.system_formatted.memory_total;
+
+                    document.getElementById('disk-usage').textContent = data.system_formatted.disk_usage;
+                    document.getElementById('disk-used').textContent = data.system_formatted.disk_used;
+                    document.getElementById('disk-free').textContent = data.system_formatted.disk_free;
+                    document.getElementById('disk-total').textContent = data.system_formatted.disk_total;
+
+                    document.getElementById('swap-usage').textContent = data.system_formatted.swap_usage;
+                    document.getElementById('swap-used').textContent = data.system_formatted.swap_used;
+                    document.getElementById('swap-total').textContent = data.system_formatted.swap_total;
+                    
+                    document.getElementById('network-sent').textContent = data.system_formatted.network_sent;
+                    document.getElementById('network-recv').textContent = data.system_formatted.network_recv;
+                    document.getElementById('packets-sent').textContent = data.system.network.packets_sent.toLocaleString();
+                    document.getElementById('packets-recv').textContent = data.system.network.packets_recv.toLocaleString();
+
+                    document.getElementById('process-cpu').textContent = data.system_formatted.process_cpu;
+                    document.getElementById('process-memory').textContent = data.system_formatted.process_memory;
+                    document.getElementById('process-rss').textContent = data.system_formatted.process_rss;
+                    document.getElementById('process-pid').textContent = data.system.process.pid;
+                    document.getElementById('process-threads').textContent = data.system_formatted.process_threads;
+
+                    // Progress bars
+                    document.getElementById('cpu-progress').style.width = data.system.cpu.percent + '%';
+                    document.getElementById('memory-progress').style.width = data.system.memory.percent + '%';
+                    document.getElementById('disk-progress').style.width = data.system.disk.percent + '%';
+                    document.getElementById('swap-progress').style.width = data.system.swap.percent + '%';
+
+
+                    // Set favicon to bot's avatar if available
+                    if (data.bot_info && data.bot_info.avatar_url) {
+                        const favicon = document.getElementById('favicon');
+                        favicon.href = data.bot_info.avatar_url;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching stats:', error);
+                    showError('Failed to fetch bot statistics. Please check console for details.');
+                });
+        }
+
+        function updateLogs() {
+            fetch('/api/logs')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const logsBox = document.getElementById('logs-box');
+                    
+                    if (data.logging_disabled) {
+                        logsBox.innerHTML = '<div class="loading" style="color: #9ca3af;">🔒 Logging systems are disabled.<br><br>Enable DM logging or command logging in the support server to view logs here.<br><br>This is a developer-only feature.</div>';
+                        return;
+                    }
+                    
+                    if (data.logs && data.logs.length > 0) {
+                        logsBox.innerHTML = data.logs.map(log => {
+                            let className = 'log-entry';
+                            if (log.includes('ERROR') || log.includes('error')) {
+                                className += ' log-error';
+                            } else if (log.includes('WARNING') || log.includes('warning')) {
+                                className += ' log-warning';
+                            } else if (log.includes('INFO') || log.includes('info')) {
+                                className += ' log-info';
+                            } else if (log.includes('SUCCESS') || log.includes('success')) {
+                                className += ' log-success';
+                            }
+                            return `<div class="${className}">${escapeHtml(log)}</div>`;
+                        }).join('');
+                        // Auto-scroll to bottom
+                        logsBox.scrollTop = logsBox.scrollHeight;
+                    } else {
+                        logsBox.innerHTML = '<div class="loading">No recent logs available</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching logs:', error);
+                    document.getElementById('logs-box').innerHTML = '<div class="loading">Error loading logs</div>';
+                });
+        }
+
+        function refreshLogs() {
+            updateLogs();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize dashboard
+        function initDashboard() {
+            updateStats();
+            updateLogs();
+            
+            // Set up intervals
+            statsInterval = setInterval(updateStats, 8000); // Update every 8 seconds
+            logsInterval = setInterval(updateLogs, 12000); // Update every 12 seconds
+        }
+
+        // Start dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initDashboard);
+
+        // Cleanup intervals when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            if (statsInterval) clearInterval(statsInterval);
+            if (logsInterval) clearInterval(logsInterval);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+web: python bot_with_web.py

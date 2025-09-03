@@ -1,0 +1,192 @@
+"""
+Discord Bot Class - Separated from main.py
+Contains the main DiscordBot class and configuration
+"""
+
+import asyncio
+import logging
+import discord
+from discord.ext import commands
+from config import BOT_CONFIG, EMBED_COLOR_ERROR, BOT_OWNER_ID
+from web_viewer import bot_stats
+
+logger = logging.getLogger(__name__)
+
+class DiscordBot(commands.Bot):
+    """Main Discord Bot Class"""
+    
+    async def get_prefix(self, message):
+        """Get custom prefix for each guild - supports both custom prefix and bot mentions"""
+        # Always allow bot mentions as prefix
+        base_prefixes = [BOT_CONFIG['prefix']]  # Default: s.
+        
+        # Add custom guild prefix if in a guild
+        if message.guild:
+            try:
+                # Import guild_settings here to avoid circular imports
+                from src.cogs.guild_settings import guild_settings
+                guild_prefix = guild_settings.get_prefix(message.guild.id)
+                if guild_prefix and guild_prefix != BOT_CONFIG['prefix']:
+                    base_prefixes.append(guild_prefix)
+            except:
+                pass  # Use default if guild settings fail
+        
+        # Return prefixes + bot mentions
+        return commands.when_mentioned_or(*base_prefixes)(self, message)
+    
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.guilds = True
+        intents.members = True
+        
+        super().__init__(
+            command_prefix=self.get_prefix,
+            intents=intents,
+            help_command=None,
+            case_insensitive=True,
+            owner_id=BOT_OWNER_ID
+        )
+        
+        # Track bot start time for uptime calculation
+        self.start_time = discord.utils.utcnow()
+        
+    async def setup_hook(self):
+        """Called when the bot is starting up"""
+        logger.info("Bot is starting up...")
+        
+        # Setup all cogs - removed custom replies and welcome system
+        from src.cogs.uncategorized import setup_uncategorized
+        from src.cogs.events import setup_events
+        from src.cogs.ticket import setup_ticket_system
+        from src.cogs.utilities import setup_utilities
+        from src.cogs.help import setup_help
+        from src.cogs.logger import setup_logger
+        from src.cogs.embed_builder import setup as setup_embed_builder
+        from src.cogs.dev_only import setup_devonly
+        from src.cogs.autoresponders import setup
+        from src.cogs.reminders import setup_reminders
+        from src.cogs.sticky_messages import setup_stickymessages
+        from src.cogs.server_stats import setup_server_stats
+        from src.cogs.dm_logging import setup_dm_logging
+        from src.cogs.cmd_logging import setup_cmd_logging
+        
+        await setup_uncategorized(self)
+        await setup_events(self)
+        await setup_ticket_system(self)
+        await setup_utilities(self)
+        await setup_help(self)
+        await setup_logger(self)
+        await setup_embed_builder(self)
+        await setup_devonly(self)
+        await setup(self)
+        await setup_reminders(self)
+        await setup_stickymessages(self)
+        await setup_server_stats(self)
+        await setup_dm_logging(self)
+        await setup_cmd_logging(self)
+        
+        # Add persistent views for ticket buttons after ticket system is loaded
+        try:
+            from src.cogs.ticket import TicketButtons, StaffPanel, TicketPanelView
+            self.add_view(TicketButtons())
+            self.add_view(StaffPanel())
+            
+            # Add persistent views for all existing ticket panels
+            ticket_cog = self.get_cog('TicketSystem')
+            if ticket_cog and hasattr(ticket_cog, 'panels_data'):
+                for panel_id in ticket_cog.panels_data.keys():
+                    self.add_view(TicketPanelView(panel_id))
+        except Exception as e:
+            logger.warning(f"Ticket views not available: {e}")
+        
+    async def global_check(self, ctx):
+        """Global check that runs before every command"""
+        logger.info(f"GLOBAL CHECK: Command '{ctx.command.name if ctx.command else 'unknown'}' from user {ctx.author} (ID: {ctx.author.id})")
+        
+        # Check maintenance mode first - only allow bot owner during maintenance
+        devonly_cog = self.get_cog('DevOnly')
+        if devonly_cog and devonly_cog.maintenance_mode:
+            if ctx.author.id != BOT_OWNER_ID:
+                # Log maintenance mode block for debugging
+                logger.info(f"MAINTENANCE: Blocked command '{ctx.command.name if ctx.command else 'unknown'}' from user {ctx.author} (ID: {ctx.author.id})")
+                # Silently ignore commands from non-owners during maintenance
+                return False
+            else:
+                logger.info(f"MAINTENANCE: Allowed command '{ctx.command.name if ctx.command else 'unknown'}' from owner {ctx.author}")
+        
+        # Skip cooldown check for developer commands
+        if ctx.command and ctx.command.name in ["devhelp", "cooldown", "maintenance"]:
+            return True
+        
+        # Check global cooldown
+        try:
+            from src.cogs.dev_only import global_cooldown
+            remaining_time = global_cooldown.check_cooldown(ctx.author.id)
+        except:
+            remaining_time = 0
+        
+        if remaining_time > 0:
+            # User is on cooldown - using custom emoji
+            embed = discord.Embed(
+                title="<a:sprouts_error_dns:1411790004652605500> Cooldown Active",
+                description=f"You're on cooldown! Try again in **{remaining_time:.1f} seconds**.",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Global bot cooldown", icon_url=self.user.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            return False
+        
+        # Update user's last command time
+        try:
+            from src.cogs.dev_only import global_cooldown
+            global_cooldown.update_user_cooldown(ctx.author.id)
+        except:
+            pass
+        return True
+    
+    async def on_message(self, message):
+        """Process messages for commands with maintenance mode check"""
+        if message.author.bot:
+            return
+        
+        # Get command context
+        ctx = await self.get_context(message)
+        
+        # Only process if it's actually a command
+        if ctx.command:
+            # Check maintenance mode BEFORE processing
+            devonly_cog = self.get_cog('DevOnly')
+            if devonly_cog and devonly_cog.maintenance_mode:
+                if ctx.author.id != BOT_OWNER_ID:
+                    logger.info(f"MAINTENANCE: Blocked '{ctx.command.name}' from {ctx.author}")
+                    try:
+                        await message.add_reaction('<a:sprouts_error_dns:1411790004652605500>')
+                    except discord.HTTPException:
+                        try:
+                            await message.add_reaction('❌')
+                        except discord.HTTPException:
+                            pass
+                    return
+                else:
+                    logger.info(f"MAINTENANCE: Allowed '{ctx.command.name}' from owner")
+            
+            # Process the command
+            await self.process_commands(message)
+
+    async def on_command_error(self, ctx, error):
+        """Override Discord.py's default error handling completely"""
+        # Let the events cog handle all errors
+        pass
+    
+    async def on_ready(self):
+        """Called when bot is ready and connected"""
+        logger.info(f'{self.user} has connected to Discord!')
+        logger.info(f'Bot is in {len(self.guilds)} guilds')
+        
+        # Store bot user and guild count for web dashboard
+        bot_stats.bot_user = self.user
+        bot_stats.update_guild_count(len(self.guilds))
+        
+        # Start with clean presence
+        logger.info("Bot started with clean presence - use setstatus/setactivity commands to customize")
