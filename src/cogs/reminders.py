@@ -469,7 +469,7 @@ class Reminders(commands.Cog):
             
             if not found_reminder:
                 embed = discord.Embed(
-                    title="f"{SPROUTS_WARNING}" Reminder Not Found",
+                    title=f"{SPROUTS_WARNING} Reminder Not Found",
                     description=f"No reminder found with ID `{reminder_id}`",
                     color=EMBED_COLOR_ERROR
                 )
