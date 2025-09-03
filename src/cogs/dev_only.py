@@ -1662,7 +1662,7 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="Communications",
             value=(
-                f"{SPROUTS_CHECK} `s.changelog` - Send changelog updates to all server owners\n"
+                "`s.changelog` - Send changelog updates to all server owners\n"
                 "**Owner Only - Use for bot changelog updates and version releases**"
             ),
             inline=False
