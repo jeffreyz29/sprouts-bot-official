@@ -79,6 +79,19 @@ Bot deployment preference: Digital Ocean App Platform with single-instance confi
 
 The bot is designed to run in containerized environments like Replit and Digital Ocean App Platform, with automatic setup scripts and health monitoring endpoints for reliable deployment and maintenance.
 
+## Clean File Structure
+
+**Core Files:**
+- `main.py` - Production entry point with logging and graceful shutdown
+- `bot.py` - Discord bot class definition and configuration  
+- `bot_with_web.py` - Combined bot + web server (current workflow)
+- `src/cogs/help.py` - Help command system (duplicate modern_help.py removed)
+
+**Structure Purpose:**
+- `main.py` handles production startup, logging, signal handling
+- `bot.py` contains the DiscordBot class and core functionality
+- `bot_with_web.py` orchestrates both Discord bot and web dashboard
+
 ## Deployment Configuration
 
 **Digital Ocean App Platform Ready:**
