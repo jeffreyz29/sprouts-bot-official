@@ -765,7 +765,25 @@ class DetailedCommandHelpView(discord.ui.View):
                     f"`{ctx.prefix}prefix` - Shows current prefix (e.g., 's.' or '!')",
                     "Also shows if bot mention is enabled as prefix"
                 ],
-                "permissions": "None required",
+                "permissions": "Manage server or Admin permissions",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works"
+                ]
+            },
+
+            "setprefix": {
+                "category": "Server Management",
+                "description": "Sets a new prefix for the server",
+                "usage": f"{ctx.prefix}setprefix",
+                "detailed_usage": [
+                    f"`{ctx.prefix}setprefix` - Sets a new new prefix for the server"
+                ],
+                "examples": [
+                    f"`{ctx.prefix}setprefix s.`",
+                    "Also shows if bot mention is enabled as prefix"
+                ],
+                "permissions": "Manage server or Admin permissions",
                 "cooldown": "5 seconds per user",
                 "error_scenarios": [
                     "**No errors possible** - This command always works"
@@ -1215,20 +1233,20 @@ class HelpCommand(commands.Cog):
                 "`claim` - Claim ticket ownership", 
                 "`close` - Close ticket",
                 "`forceclose` - Force close ticket",
-                "`move` - Move to category",
-                "`priority` - Set priority",
-                "`release` - Release ownership",
-                "`remove` - Remove member",
-                "`listtickets` - List open tickets",
-                "`topic` - Set topic",
-                "`transfer` - Transfer ownership",
-                "`rename` - Rename channel",
-                "`createpanel` - Create panel",
-                "`listpanels` - List panels",
-                "`delpanel` - Delete panel",
+                "`move` - Move to a new ticket category",
+                "`priority` - Sets the ticket priority",
+                "`release` - Unclaim ticket ownership",
+                "`remove` - Remove member from ticket",
+                "`listtickets` - List active guild tickets",
+                "`topic` - Sets the topic of the ticket",
+                "`transfer` - Transfer ownership of the ticket",
+                "`rename` - Rename a ticket channel",
+                "`createpanel` - Create a new ticket panel",
+                "`listpanels` - List the active ticket panels",
+                "`delpanel` - Delete an active ticket panel",
                 "`ticketsetup` - Setup system",
-                "`ticketlimit` - Set user limit",
-                "`ticketuseembed` - Use embed"
+                "`ticketlimit` - Sets the ticket limit, by default is 10",
+                "`ticketuseembed` - Uses an custom embed for the ticket message"
             ]
             
             embed.add_field(
@@ -1258,12 +1276,12 @@ class HelpCommand(commands.Cog):
             
             # Auto Responders commands - SIMPLE SYSTEM
             auto_responder_commands = [
-                f"`{ctx.prefix}autoresponder add` - Add simple auto responder",
-                f"`{ctx.prefix}autoresponder editreply` - Edit responder reply", 
-                f"`{ctx.prefix}autoresponder remove` - Remove auto responder",
-                f"`{ctx.prefix}autoresponder list` - List all auto responders",
-                f"`{ctx.prefix}autoresponder toggle` - Enable/disable responder",
-                "**Format:** `trigger:<text> reply:<response>`",
+                "`autoresponder add` - Add simple auto responder",
+                "`autoresponder editreply` - Edit responder reply", 
+                "`autoresponder remove` - Remove auto responder",
+                "`autoresponder list` - List all auto responders",
+                "`autoresponder toggle` - Enable/disable responder",
+                "Format: `trigger:<text> reply:<response>`",
                 "Simple trigger and reply system without complex functions"
             ]
             
