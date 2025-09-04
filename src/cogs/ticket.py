@@ -113,7 +113,7 @@ class TicketButtons(discord.ui.View):
             await ticket_cog.claim_ticket(ctx)
             try:
                 await interaction.response.defer()
-            except discord.errors.InteractionAlreadyAcknowledged:
+            except discord.InteractionAlreadyAcknowledged:
                 pass  # Already handled by claim_ticket
 
         except Exception as e:
@@ -616,7 +616,12 @@ class ChannelSelectView(discord.ui.View):
     async def channel_callback(self, interaction: discord.Interaction):
         """Handle channel selection"""
         try:
-            channel_id = int(self.values[0])
+            # Get values from the interaction data
+            if interaction.data and 'values' in interaction.data:
+                channel_id = int(interaction.data['values'][0])
+            else:
+                await interaction.response.send_message("No channel selected.", ephemeral=True)
+                return
             channel = self.ctx.guild.get_channel(channel_id)
 
             guild_settings = {'log_channel_id': channel_id}
@@ -662,7 +667,12 @@ class RoleSelectView(discord.ui.View):
     async def role_callback(self, interaction: discord.Interaction):
         """Handle role selection"""
         try:
-            role_id = int(self.values[0])
+            # Get values from the interaction data
+            if interaction.data and 'values' in interaction.data:
+                role_id = int(interaction.data['values'][0])
+            else:
+                await interaction.response.send_message("No role selected.", ephemeral=True)
+                return
             role = self.ctx.guild.get_role(role_id)
 
             guild_settings = self.ticket_cog.get_guild_settings(
@@ -717,7 +727,12 @@ class CategorySelectView(discord.ui.View):
     async def category_callback(self, interaction: discord.Interaction):
         """Handle category selection"""
         try:
-            category_id = int(self.values[0])
+            # Get values from the interaction data
+            if interaction.data and 'values' in interaction.data:
+                category_id = int(interaction.data['values'][0])
+            else:
+                await interaction.response.send_message("No category selected.", ephemeral=True)
+                return
             category = self.ctx.guild.get_channel(category_id)
 
             guild_settings = {'ticket_category_id': category_id}
@@ -769,7 +784,12 @@ class NamingSelectView(discord.ui.View):
     async def naming_callback(self, interaction: discord.Interaction):
         """Handle naming style selection"""
         try:
-            naming_style = self.values[0]
+            # Get values from the interaction data
+            if interaction.data and 'values' in interaction.data:
+                naming_style = interaction.data['values'][0]
+            else:
+                await interaction.response.send_message("No naming style selected.", ephemeral=True)
+                return
 
             guild_settings = {'naming_style': naming_style}
             self.ticket_cog.update_guild_settings(self.ctx.guild.id,

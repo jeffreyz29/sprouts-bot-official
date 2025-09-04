@@ -100,10 +100,12 @@ class GuildsPaginationView(discord.ui.View):
         self.max_pages = (len(guilds) - 1) // self.per_page + 1
         self.message = None
         
-        # Update button states for single page
+        # Update button states for single page - find buttons by checking children
         if self.max_pages <= 1:
-            self.next_page.disabled = True
-            self.previous_page.disabled = True
+            for item in self.children:
+                if hasattr(item, 'disabled') and hasattr(item, 'label'):
+                    if item.label in ['▶', '◀']:
+                        item.disabled = True
         
     async def create_embed(self, page):
         """Create embed for specific page"""
@@ -174,8 +176,12 @@ class GuildsPaginationView(discord.ui.View):
         embed = await self.create_embed(self.current_page)
         
         # Update button states
-        self.previous_page.disabled = (self.current_page == 0)
-        self.next_page.disabled = (self.current_page == self.max_pages - 1)
+        for item in self.children:
+            if hasattr(item, 'disabled') and hasattr(item, 'label'):
+                if item.label == '◀':
+                    item.disabled = (self.current_page == 0)
+                elif item.label == '▶':
+                    item.disabled = (self.current_page == self.max_pages - 1)
         
         await interaction.response.edit_message(embed=embed, view=self)
     
@@ -183,7 +189,8 @@ class GuildsPaginationView(discord.ui.View):
     async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Stop pagination and disable all buttons"""
         for item in self.children:
-            item.disabled = True
+            if hasattr(item, 'disabled'):
+                item.disabled = True
         
         embed = await self.create_embed(self.current_page)
         embed.set_footer(text=f"Pagination ended • Requested by {self.author.display_name}", 
@@ -199,15 +206,20 @@ class GuildsPaginationView(discord.ui.View):
         embed = await self.create_embed(self.current_page)
         
         # Update button states
-        self.previous_page.disabled = (self.current_page == 0)
-        self.next_page.disabled = (self.current_page == self.max_pages - 1)
+        for item in self.children:
+            if hasattr(item, 'disabled') and hasattr(item, 'label'):
+                if item.label == '◀':
+                    item.disabled = (self.current_page == 0)
+                elif item.label == '▶':
+                    item.disabled = (self.current_page == self.max_pages - 1)
         
         await interaction.response.edit_message(embed=embed, view=self)
     
     async def on_timeout(self):
         """Disable all buttons when view times out"""
         for item in self.children:
-            item.disabled = True
+            if hasattr(item, 'disabled'):
+                item.disabled = True
         
         if self.message:
             try:
