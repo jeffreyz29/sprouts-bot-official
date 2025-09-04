@@ -492,11 +492,16 @@ class TicketSetupSelect(discord.ui.Select):
         guild_settings = {'log_channel_id': None}
         self.ticket_cog.update_guild_settings(self.ctx.guild.id, guild_settings)
         
-        # Dismiss with confirmation
+        # Update main menu and send confirmation
+        updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
+        main_view = TicketSetupView(self.ctx, self.ticket_cog)
+        
         confirm_embed = discord.Embed(
             title=f"{SPROUTS_CHECK} Log Channel Removed",
             description="Log channel setting has been removed.",
             color=EMBED_COLOR_NORMAL)
+        
+        await interaction.edit_original_response(embed=updated_embed, view=main_view)
         await interaction.followup.send(embed=confirm_embed, ephemeral=True)
 
     async def remove_staff_roles(self, interaction):
@@ -514,11 +519,16 @@ class TicketSetupSelect(discord.ui.Select):
         guild_settings = {'staff_role_ids': []}
         self.ticket_cog.update_guild_settings(self.ctx.guild.id, guild_settings)
         
-        # Dismiss with confirmation
+        # Update main menu and send confirmation
+        updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
+        main_view = TicketSetupView(self.ctx, self.ticket_cog)
+        
         confirm_embed = discord.Embed(
             title=f"{SPROUTS_CHECK} Staff Roles Removed",
             description="All staff role assignments have been removed.",
             color=EMBED_COLOR_NORMAL)
+        
+        await interaction.edit_original_response(embed=updated_embed, view=main_view)
         await interaction.followup.send(embed=confirm_embed, ephemeral=True)
 
     async def remove_category(self, interaction):
@@ -536,11 +546,16 @@ class TicketSetupSelect(discord.ui.Select):
         guild_settings = {'ticket_category_id': None}
         self.ticket_cog.update_guild_settings(self.ctx.guild.id, guild_settings)
         
-        # Dismiss with confirmation
+        # Update main menu and send confirmation
+        updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
+        main_view = TicketSetupView(self.ctx, self.ticket_cog)
+        
         confirm_embed = discord.Embed(
             title=f"{SPROUTS_CHECK} Category Removed",
             description="Ticket category setting has been removed.\nTickets will now be created in the general channel.",
             color=EMBED_COLOR_NORMAL)
+        
+        await interaction.edit_original_response(embed=updated_embed, view=main_view)
         await interaction.followup.send(embed=confirm_embed, ephemeral=True)
 
 

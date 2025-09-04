@@ -20,7 +20,9 @@
   },
   "1411324489333215267": {
     "log_channel_id": 1412287783988367482,
-    "staff_role_ids": [],
+    "staff_role_ids": [
+      1412527977706815598
+    ],
     "ticket_category_id": 1412714273557450752,
     "naming_style": "discord_tag",
     "embed_title": "Support Ticket",
