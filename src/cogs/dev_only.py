@@ -1558,7 +1558,7 @@ class DevOnly(commands.Cog):
         # Developer check is handled automatically by cog_check method
         
         embed = discord.Embed(
-            title="Developer Commands Help",
+            title=f"{SPROUTS_CHECK} Developer Commands Help",
             description="Complete list of developer-only bot commands. All commands require bot developer permissions.",
             color=EMBED_COLOR_NORMAL
         )
