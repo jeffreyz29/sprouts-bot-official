@@ -3284,7 +3284,7 @@ class TicketSystem(commands.Cog):
 
             # Get category and settings from panel or defaults
             category_id = panel_data.get('category_id') or ticket_settings.get(
-                'category_id')
+                'ticket_category_id')
             if not category_id:
                 await interaction.response.send_message(
                     "No ticket category configured", ephemeral=True)
