@@ -223,7 +223,7 @@ class StaffPanel(discord.ui.View):
             embed.add_field(name="Advanced Commands",
                             value="`{ctx.prefix}move <category>` - Move to category\n"
                             "`{ctx.prefix}priority <high/medium/low>` - Set priority\n"
-                            "`{ctx.prefix}transfer @staff` - Transfer to staff",
+                            "`{ctx.prefix}transfer @staff` - Transfer to staf",
                             inline=True)
 
             embed.add_field(name="Quick Actions",
@@ -482,7 +482,7 @@ class TicketSetupSelect(discord.ui.Select):
         current_settings = self.ticket_cog.get_guild_settings(self.ctx.guild.id)
         if not current_settings.get('log_channel_id'):
             embed = discord.Embed(
-                title=ff"{SPROUTS_WARNING} No Log Channel",
+                title=f"{SPROUTS_WARNING} No Log Channel",
                 description="No log channel is currently set.",
                 color=EMBED_COLOR_ERROR)
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -509,7 +509,7 @@ class TicketSetupSelect(discord.ui.Select):
         current_settings = self.ticket_cog.get_guild_settings(self.ctx.guild.id)
         if not current_settings.get('staff_role_ids'):
             embed = discord.Embed(
-                title=ff"{SPROUTS_WARNING} No Staff Roles",
+                title=f"{SPROUTS_WARNING} No Staff Roles",
                 description="No staff roles are currently set.",
                 color=EMBED_COLOR_ERROR)
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -536,7 +536,7 @@ class TicketSetupSelect(discord.ui.Select):
         current_settings = self.ticket_cog.get_guild_settings(self.ctx.guild.id)
         if not current_settings.get('ticket_category_id'):
             embed = discord.Embed(
-                title=ff"{SPROUTS_WARNING} No Category",
+                title=f"{SPROUTS_WARNING} No Category",
                 description="No ticket category is currently set.",
                 color=EMBED_COLOR_ERROR)
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -1011,7 +1011,7 @@ class TicketSystem(commands.Cog):
         return self.transcript_channels.get(guild_id, "Not set")
 
     def is_staff(self, member: discord.Member) -> bool:
-        """Check if user is staff"""
+        """Check if user is staf"""
         if not isinstance(member, discord.Member):
             return False
         guild_settings = self.get_guild_settings(member.guild.id)
@@ -1888,7 +1888,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Access Denied",
+                    f"{SPROUTS_WARNING} Access Denied",
                     description=
                     "Only staff members or the ticket owner can add members to tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -1955,7 +1955,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Permission Denied",
+                    f"{SPROUTS_WARNING} Permission Denied",
                     description=
                     "You don't have permission to use this command. Only staff members and ticket owners can add members to tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -1970,7 +1970,7 @@ class TicketSystem(commands.Cog):
             if not ticket_data:
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Invalid Channel",
+                    f"{SPROUTS_WARNING} Invalid Channel",
                     description=
                     "This is not a ticket channel. This command can only be used in ticket channels.",
                     color=EMBED_COLOR_ERROR)
@@ -2025,7 +2025,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Access Denied",
+                    f"{SPROUTS_WARNING} Access Denied",
                     description="Only staff members can claim tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -2663,7 +2663,7 @@ class TicketSystem(commands.Cog):
                         value=f"{ctx.guild.name}\n(`{ctx.guild.id}`)",
                         inline=True)
                     log_embed.add_field(name="Reason",
-                                        value="Force closed by staff",
+                                        value="Force closed by staf",
                                         inline=False)
                     if ticket_channel:
                         log_embed.add_field(
@@ -2934,7 +2934,7 @@ class TicketSystem(commands.Cog):
             if not (is_staff_member or is_ticket_owner):
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Permission Denied",
+                    f"{SPROUTS_WARNING} Permission Denied",
                     description=
                     "You don't have permission to use this command. Only staff members and ticket owners can remove members from tickets.",
                     color=EMBED_COLOR_ERROR)
@@ -2949,7 +2949,7 @@ class TicketSystem(commands.Cog):
             if not ticket_data:
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Invalid Channel",
+                    f"{SPROUTS_WARNING} Invalid Channel",
                     description=
                     "This is not a ticket channel. This command can only be used in ticket channels.",
                     color=EMBED_COLOR_ERROR)
@@ -3205,7 +3205,7 @@ class TicketSystem(commands.Cog):
                     ctx.author):
                 embed = discord.Embed(
                     title=
-                    ff"{SPROUTS_WARNING} Access Denied",
+                    f"{SPROUTS_WARNING} Access Denied",
                     description="Only staff members can rename tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
@@ -3664,7 +3664,7 @@ class TicketSystem(commands.Cog):
                 inline=True)
 
             embed.add_field(name="Message Status",
-                            value=message_status or ff"{SPROUTS_WARNING} Status unknown",
+                            value=message_status or f"{SPROUTS_WARNING} Status unknown",
                             inline=True)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
                              icon_url=ctx.author.display_avatar.url)

@@ -793,7 +793,7 @@ class DevOnly(commands.Cog):
     @commands.command(name="maintenance", description="Toggle maintenance mode", hidden=True)
     @commands.is_owner()
     async def maintenance_mode(self, ctx):
-        """Toggle maintenance mode on/off"""
+        """Toggle maintenance mode on/of"""
         try:
             # Simple toggle - flip the current state
             self.maintenance_mode = not self.maintenance_mode

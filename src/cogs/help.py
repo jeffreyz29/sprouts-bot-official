@@ -514,7 +514,7 @@ class DetailedCommandHelpView(discord.ui.View):
                     f"`{self.prefix}release` - Release ownership of current ticket"
                 ],
                 "examples": [
-                    f"`{self.prefix}release` - Remove yourself as assigned staff",
+                    f"`{self.prefix}release` - Remove yourself as assigned staf",
                     "Makes ticket available for other staff to claim"
                 ],
                 "permissions": "**Manage Channels** required",
@@ -596,7 +596,7 @@ class DetailedCommandHelpView(discord.ui.View):
                 "description": "Transfer ticket ownership to another staff member",
                 "usage": f"{self.prefix}transfer <@staff>",
                 "detailed_usage": [
-                    f"`{self.prefix}transfer @StaffMember` - Transfer to mentioned staff",
+                    f"`{self.prefix}transfer @StaffMember` - Transfer to mentioned staf",
                     f"`{self.prefix}transfer StaffName` - Transfer by username"
                 ],
                 "examples": [
