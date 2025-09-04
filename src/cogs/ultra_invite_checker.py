@@ -444,12 +444,7 @@ class UltraInviteChecker(commands.Cog):
                         all_channels.append(channel)
         
         if not all_channels:
-            embed = discord.Embed(
-                title=f"{SPROUTS_WARNING} No Valid Channels",
-                description="No accessible text channels found in the configured categories.",
-                color=EMBED_COLOR_ERROR
-            )
-            await ctx.reply(embed=embed, mention_author=False)
+            await ctx.reply("❌ No accessible text channels found in the configured categories.", mention_author=False)
             return
         
         # INSTANT concurrent scanning of all channels
@@ -523,6 +518,14 @@ class UltraInviteChecker(commands.Cog):
         total_valid = sum(r["valid_count"] for r in results)
         total_invalid = sum(r["invalid_count"] for r in results)
         total_invites = total_valid + total_invalid
+        
+        # Send a simple test embed first to see if bot is responding
+        test_embed = discord.Embed(
+            title="Ultra Check Started",
+            description=f"Found {total_channels} channels to scan...",
+            color=EMBED_COLOR_NORMAL
+        )
+        await ctx.send(embed=test_embed)
         
         # SEND INDIVIDUAL CATEGORY EMBEDS (like Hana)
         # Group results by category first
