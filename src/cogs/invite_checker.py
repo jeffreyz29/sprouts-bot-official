@@ -455,13 +455,7 @@ class InviteChecker(commands.Cog):
         except:
             pass  # Continue if cleanup fails
         
-        # Send scanning status
-        start_embed = discord.Embed(
-            title="Starting Invite Check",
-            description="Scanning channels for invites...",
-            color=0x90EE90
-        )
-        status_msg = await ctx.send(embed=start_embed)
+        # Don't send additional scanning status - keep initial message unchanged
         
         start_time = time.time()
         
@@ -479,19 +473,10 @@ class InviteChecker(commands.Cog):
                         all_channels.append(channel)
         
         if not all_channels:
-            await status_msg.edit(embed=discord.Embed(
-                title="❌ No Valid Channels",
-                description="No accessible text channels found in the configured categories.",
-                color=EMBED_COLOR_ERROR
-            ))
+            await ctx.send("❌ No accessible text channels found in the configured categories.")
             return
         
-        # Update status message
-        await status_msg.edit(embed=discord.Embed(
-            title="🌱 Scanning in Progress",
-            description=f"Found {len(all_channels)} channels to scan...",
-            color=0x90EE90
-        ))
+        # Don't edit the initial message - let it stay as "Invite Check Starting"
         
         # INSTANT concurrent scanning of all channels
         async def scan_channel_instantly(channel):
