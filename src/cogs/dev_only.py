@@ -900,6 +900,142 @@ class DevOnly(commands.Cog):
 
     # Global Logging Commands (Developer Only)
     
+    @commands.command(name="settings", description="List all configured bot settings", hidden=True)
+    @commands.is_owner()
+    async def list_bot_settings(self, ctx):
+        """Display all current bot configuration settings"""
+        try:
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Bot Configuration Settings",
+                description="Current configuration status for all bot systems",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            # Bot Status Settings
+            status_text = f"Online ({self.bot.status.name})"
+            if self.bot.activity:
+                activity_type = self.bot.activity.type.name.title()
+                activity_name = self.bot.activity.name
+                status_text += f" - {activity_type}: {activity_name}"
+            
+            embed.add_field(
+                name="Bot Status",
+                value=status_text,
+                inline=False
+            )
+            
+            # Environment Variables
+            env_settings = []
+            env_vars = {
+                "DEFAULT_PREFIX": os.getenv('DEFAULT_PREFIX', 's.'),
+                "LOG_COMMANDS_CHANNEL": os.getenv('LOG_COMMANDS_CHANNEL', 'Not set'),
+                "LOG_DMS_CHANNEL": os.getenv('LOG_DMS_CHANNEL', 'Not set'),
+                "LOG_GUILD_EVENTS": os.getenv('LOG_GUILD_EVENTS', 'Not set'),
+                "EMBED_COLOR_NORMAL": os.getenv('EMBED_COLOR_NORMAL', '0x2ecc71'),
+                "EMBED_COLOR_ERROR": os.getenv('EMBED_COLOR_ERROR', '0xe74c3c')
+            }
+            
+            for var, value in env_vars.items():
+                if var.startswith('LOG_') and value != 'Not set':
+                    try:
+                        channel = self.bot.get_channel(int(value))
+                        value = f"{channel.mention}" if channel else f"Channel ID: {value} (not found)"
+                    except (ValueError, TypeError):
+                        value = f"Invalid ID: {value}"
+                env_settings.append(f"**{var.replace('_', ' ').title()}:** {value}")
+            
+            embed.add_field(
+                name="Environment Settings",
+                value="\n".join(env_settings),
+                inline=False
+            )
+            
+            # Global Cooldown Status
+            try:
+                from src.utils.global_cooldown import global_cooldown
+                if hasattr(global_cooldown, 'cooldown_seconds') and global_cooldown.cooldown_seconds:
+                    cooldown_text = f"Active - {self.format_time(global_cooldown.cooldown_seconds)}"
+                else:
+                    cooldown_text = "Disabled"
+            except ImportError:
+                cooldown_text = "Not configured"
+            
+            embed.add_field(
+                name="Global Cooldown",
+                value=cooldown_text,
+                inline=True
+            )
+            
+            # Maintenance Mode Status
+            maintenance_status = "Disabled"
+            try:
+                maintenance_file = "config/maintenance.json"
+                if os.path.exists(maintenance_file):
+                    with open(maintenance_file, 'r') as f:
+                        maintenance_data = json.load(f)
+                        if maintenance_data.get('enabled', False):
+                            maintenance_status = f"Active - {maintenance_data.get('reason', 'No reason')}"
+            except Exception:
+                pass
+            
+            embed.add_field(
+                name="Maintenance Mode",
+                value=maintenance_status,
+                inline=True
+            )
+            
+            # Server Stats
+            total_guilds = len(self.bot.guilds)
+            total_users = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
+            
+            embed.add_field(
+                name="Bot Statistics",
+                value=f"**Guilds:** {total_guilds}\n**Users:** {total_users:,}",
+                inline=True
+            )
+            
+            # Data File Counts
+            data_counts = []
+            data_files = {
+                "Saved Embeds": "src/data/saved_embeds.json",
+                "Auto Responders": "src/data/autoresponders.json", 
+                "Sticky Messages": "src/data/stickies.json",
+                "Reminders": "src/data/reminders.json",
+                "Tickets": "src/data/tickets.json"
+            }
+            
+            for name, file_path in data_files.items():
+                try:
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r') as f:
+                            data = json.load(f)
+                            count = len(data) if isinstance(data, dict) else 0
+                            data_counts.append(f"**{name}:** {count}")
+                    else:
+                        data_counts.append(f"**{name}:** 0")
+                except Exception:
+                    data_counts.append(f"**{name}:** Error")
+            
+            embed.add_field(
+                name="Data File Status",
+                value="\n".join(data_counts),
+                inline=False
+            )
+            
+            embed.set_footer(text=f"Settings requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.info(f"Bot settings displayed for {ctx.author}")
+            
+        except Exception as e:
+            logger.error(f"Error displaying bot settings: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Settings Error",
+                description=f"Error retrieving bot settings: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
 
     @commands.command(name="globalcooldown", aliases=["cooldown"], description="Set global command cooldown", hidden=True)
     @commands.is_owner()
@@ -1373,7 +1509,8 @@ class DevOnly(commands.Cog):
                 "`s.reloadall` - Reload all cogs\n"
                 "`s.eval` - Evaluate Python code\n"
                 "`s.guilds` - List all guilds the bot is in\n"
-                "`s.leaveguild` - Make bot leave a specific server"
+                "`s.leaveguild` - Make bot leave a specific server\n"
+                "`s.settings` - View all configured bot settings"
             ),
             inline=False
         )
