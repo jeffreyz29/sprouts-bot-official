@@ -502,7 +502,7 @@ class ChannelSelectView(discord.ui.View):
 
             # Dismiss this menu with a confirmation
             confirm_embed = discord.Embed(
-                title="Channel Set",
+                title=f"{SPROUTS_CHECK} Channel Set",
                 description=f"Ticket logging channel set to {channel.mention}",
                 color=EMBED_COLOR_NORMAL)
             await interaction.response.edit_message(embed=confirm_embed, view=None)
@@ -550,7 +550,7 @@ class RoleSelectView(discord.ui.View):
                 self.ticket_cog.update_guild_settings(self.ctx.guild.id,
                                                       guild_settings)
                 confirm_embed = discord.Embed(
-                    title="Staff Role Added",
+                    title=f"{SPROUTS_CHECK} Staff Role Added",
                     description=f"{role.mention} added as staff role",
                     color=EMBED_COLOR_NORMAL)
             else:
@@ -603,7 +603,7 @@ class CategorySelectView(discord.ui.View):
 
             # Dismiss this menu with a confirmation
             confirm_embed = discord.Embed(
-                title="Category Set",
+                title=f"{SPROUTS_CHECK} Category Set",
                 description=f"Ticket category set to **{category.name}**",
                 color=EMBED_COLOR_NORMAL)
             await interaction.response.edit_message(embed=confirm_embed, view=None)
@@ -661,7 +661,7 @@ class NamingSelectView(discord.ui.View):
 
             # Dismiss this menu with a confirmation
             confirm_embed = discord.Embed(
-                title="Naming Style Set",
+                title=f"{SPROUTS_CHECK} Naming Style Set",
                 description=f"Ticket naming style set to **{style_name}**\nExample: {example}",
                 color=EMBED_COLOR_NORMAL)
             await interaction.response.edit_message(embed=confirm_embed, view=None)
