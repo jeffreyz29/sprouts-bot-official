@@ -14,8 +14,8 @@ from src.emojis import SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_ERROR
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
 import re
 
-class UltraInviteChecker(commands.Cog):
-    """Lightning-fast invite checker with instant channel listing"""
+class InviteChecker(commands.Cog):
+    """Advanced Discord invite checker with fast validation and categorization"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -627,6 +627,6 @@ class UltraInviteChecker(commands.Cog):
             await ctx.send(embed=total_embed)
 
 async def setup(bot):
-    """Setup function for the ultra invite checker cog"""
-    await bot.add_cog(UltraInviteChecker(bot))
+    """Setup function for the invite checker cog"""
+    await bot.add_cog(InviteChecker(bot))
     print("Ultra invite checker cog loaded successfully")

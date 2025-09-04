@@ -76,7 +76,7 @@ class DiscordBot(commands.AutoShardedBot):
         from src.cogs.server_stats import setup_server_stats
         from src.cogs.dm_logging import setup_dm_logging
         from src.cogs.cmd_logging import setup_cmd_logging
-        from src.cogs.ultra_invite_checker import setup as setup_ultra_invite_checker
+        from src.cogs.invite_checker import setup as setup_invite_checker
         
         await setup_uncategorized(self)
         await setup_events(self)
@@ -92,7 +92,7 @@ class DiscordBot(commands.AutoShardedBot):
         await setup_server_stats(self)
         await setup_dm_logging(self)
         await setup_cmd_logging(self)
-        await setup_ultra_invite_checker(self)
+        await setup_invite_checker(self)
         
         # Add persistent views for ticket buttons after ticket system is loaded
         try:
