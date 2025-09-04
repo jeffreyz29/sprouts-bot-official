@@ -20,7 +20,7 @@ The Sprouts embed builder provides a user-friendly interface for creating profes
 ### Launch the Embed Builder
 
 ```
-s.embed create
+s.embedcreate [name]
 ```
 
 This opens the interactive embed builder interface with:
@@ -171,14 +171,14 @@ Perfect for:
 
 Save your creations for reuse:
 
-1. **Click "Save Embed"** button
+1. **Click "Save Embed"** button in the interface
 2. **Enter template name** (unique identifier)
 3. **Confirm save** - appears in template list
 
+Or create embeds directly:
 ```
-s.embed save welcome     # Save current embed as "welcome"
-s.embed save rules       # Save current embed as "rules"  
-s.embed save announcement # Save current embed as "announcement"
+s.embedcreate welcome     # Create new embed named "welcome"
+s.embedcreateempty rules  # Create blank embed template
 ```
 
 ### Using Saved Embeds
@@ -186,17 +186,18 @@ s.embed save announcement # Save current embed as "announcement"
 Load previously saved templates:
 
 ```
-s.embed use welcome      # Load and post "welcome" embed
-s.embed edit rules       # Load "rules" embed for editing
+s.embedview <name>       # Preview saved embed
+s.embededit <name>       # Edit existing embed
 s.embedlist             # View all saved embeds
 ```
 
 ### Template Management
 
 ```
-s.embeddel welcome      # Delete "welcome" template
-s.embedrename old new   # Rename template
-s.embedcopy old new     # Duplicate template
+s.embeddelete <name>    # Delete saved embed
+s.embedexport <name>    # Export embed as YAML file
+s.embedimport [name]    # Import embed from YAML file
+s.embedoldedit <name>   # Use legacy text editor
 ```
 
 ### Popular Template Ideas
@@ -335,30 +336,30 @@ Always test your embeds on mobile:
 Create ticket response templates:
 
 ```
-s.embed create
-# Design helpful response
-s.embed save ticket-faq
+s.embedcreate ticket-faq
+# Design helpful response in the editor
+# Save through the interface
 s.ticketuseembed ticket-faq
 ```
 
 ### Auto Responder Integration
 
-Use embeds in auto responses:
+Auto responders use text responses, but you can reference saved embeds in responses:
 
 ```
-s.autoresponder add "rules" --embed "server-rules"
-s.autoresponder add "help" --embed "help-guide"
+s.autoresponder add trigger:rules reply:Please check our server rules!
+s.autoresponder add trigger:help reply:Use s.embedview help-guide for assistance
 ```
 
 ### Sticky Message Integration
 
-Create persistent embed messages:
+Sticky messages use text content:
 
 ```
-s.embed create
-# Design server info embed
-s.embed save server-info
-s.sticky add --embed "server-info"
+s.embedcreate server-info
+# Design server info embed and save
+# Then reference in sticky messages
+s.stick Check out our server info with: s.embedview server-info
 ```
 
 ## 📊 Analytics & Optimization

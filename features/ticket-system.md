@@ -20,7 +20,7 @@ The Sprouts ticket system provides a professional support experience for Discord
 ### Step 1: Launch Setup
 
 ```
-s.ticket setup
+s.ticketsetup
 ```
 
 This opens an interactive setup panel with the following options:
@@ -54,7 +54,7 @@ Remove orphaned ticket data:
 After setup, create a ticket panel for users:
 
 ```
-s.ticket panel
+s.createpanel [title]
 ```
 
 This generates a beautiful embed with a "Create Ticket" button that users can click to open new tickets.
@@ -91,11 +91,11 @@ This allows complete customization of:
 
 Users can create tickets by:
 1. **Clicking the panel button** (recommended)
-2. **Using the command**: `s.ticket create [reason]`
+2. **Using the command**: `s.new [reason]`
 
 Example:
 ```
-s.ticket create I need help with my account
+s.new I need help with my account
 ```
 
 ### Claiming Tickets
@@ -184,7 +184,6 @@ Move tickets between staff members:
 
 ```
 s.transfer @newstaff   # Transfer to specific staff
-s.transfer             # Open transfer menu
 ```
 
 Transfer features:
@@ -197,9 +196,10 @@ Transfer features:
 Manage multiple tickets efficiently:
 
 ```
-s.ticket list          # List all open tickets
-s.ticket stats         # Show ticket statistics
-s.ticket cleanup       # Clean orphaned data
+s.listtickets          # List all open tickets
+s.listpanels           # List all ticket panels
+s.delpanel <panel_id>  # Delete ticket panel
+s.ticketlimit [number] # Set max tickets per user
 ```
 
 ### Auto-Close System
@@ -222,18 +222,23 @@ Configure automatic ticket closure:
 ### Basic Commands
 | Command | Description | Usage |
 |---------|-------------|-------|
+| `s.new [reason]` | Create new ticket | `s.new I need help` |
 | `s.claim` | Claim ticket | `s.claim` |
-| `s.close` | Close ticket | `s.close [reason]` |
-| `s.transfer` | Transfer ticket | `s.transfer @user` |
-| `s.transcript` | Generate transcript | `s.transcript` |
+| `s.close [reason]` | Close ticket | `s.close Issue resolved` |
+| `s.forceclose` | Force close ticket | `s.forceclose` |
+| `s.add <member>` | Add member to ticket | `s.add @user` |
+| `s.remove <member>` | Remove from ticket | `s.remove @user` |
+| `s.transfer <@staff>` | Transfer ticket | `s.transfer @staff` |
 
 ### Management Commands
 | Command | Description | Usage |
 |---------|-------------|-------|
-| `s.ticket setup` | Configure system | `s.ticket setup` |
-| `s.ticket panel` | Create panel | `s.ticket panel` |
-| `s.ticket list` | List tickets | `s.ticket list` |
-| `s.ticket stats` | Show statistics | `s.ticket stats` |
+| `s.ticketsetup` | Configure system | `s.ticketsetup` |
+| `s.createpanel [title]` | Create panel | `s.createpanel Support` |
+| `s.listtickets` | List all tickets | `s.listtickets` |
+| `s.listpanels` | List all panels | `s.listpanels` |
+| `s.delpanel <id>` | Delete panel | `s.delpanel abc123` |
+| `s.ticketlimit [num]` | Set user limit | `s.ticketlimit 5` |
 
 ### Priority Commands
 | Command | Description | Usage |
