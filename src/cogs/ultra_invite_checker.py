@@ -373,32 +373,21 @@ class UltraInviteChecker(commands.Cog):
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
         
+        # Send initial status message
+        status_msg = await ctx.reply("🔍 Starting ultra-fast invite scan...", mention_author=False)
+        
         # Check if check channel is configured 
         check_channel_id = guild_config.get("invite_check_channel")
         if not check_channel_id:
-            embed = discord.Embed(
-                title="Setup Required",
-                description=f"Please set up the invite checker first:\n\n"
-                           f"**1.** `{ctx.prefix}checkchannel #channel` - Set check channel\n"
-                           f"**2.** `{ctx.prefix}ids` - View category IDs\n"
-                           f"**3.** `{ctx.prefix}category add [ID]` - Add categories\n"
-                           f"**4.** `{ctx.prefix}ultracheck` - Run scan",
-                color=EMBED_COLOR_NORMAL
-            )
-            await ctx.reply(embed=embed, mention_author=False)
+            await status_msg.edit(content="❌ Setup Required: No check channel configured. Use `s.checkchannel #channel` first.")
             return
         
         scan_categories = guild_config.get("scan_categories", [])
         if not scan_categories:
-            embed = discord.Embed(
-                title="No Categories",
-                description=f"No categories configured for scanning.\n\n"
-                           f"Use `{ctx.prefix}ids` to see available categories\n"
-                           f"Use `{ctx.prefix}category add [ID]` to add categories",
-                color=EMBED_COLOR_ERROR
-            )
-            await ctx.reply(embed=embed, mention_author=False)
+            await status_msg.edit(content="❌ No Categories: Use `s.ids` to see categories, then `s.category add [ID]` to add them.")
             return
+        
+        await status_msg.edit(content=f"⚡ Scanning {len(scan_categories)} categories...")
         
         start_time = time.time()
         
