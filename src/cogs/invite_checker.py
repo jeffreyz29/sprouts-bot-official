@@ -539,8 +539,12 @@ class InviteChecker(commands.Cog):
                     if any(pattern in message.content.lower() for pattern in ['discord.gg/', 'discord.com/invite/', 'discordapp.com/invite/']):
                         invites = self.extract_invites(message.content)
                         
-                        # Allow more invites per channel with better rate limiting  
-                        for invite_code in invites[:5]:
+                        # Process invites with smart rate limiting
+                        for invite_code in invites[:3]:  # Reduced from 5 to 3 for better rate limiting
+                            # Add delay between API calls to prevent rate limiting
+                            if len(channel_invites) > 0:
+                                await asyncio.sleep(0.25)  # Enhanced delay between validations
+                            
                             is_valid, invite_info = await self.validate_invite_instant(invite_code)
                             
                             invite_entry = {
@@ -556,10 +560,10 @@ class InviteChecker(commands.Cog):
                             channel_invites.append(invite_entry)
                             
                             # Stop if we found enough invites
-                            if len(channel_invites) >= 5:
+                            if len(channel_invites) >= 3:
                                 break
                     
-                    if len(channel_invites) >= 5:
+                    if len(channel_invites) >= 3:
                         break
                 
                 valid_invites = [inv for inv in channel_invites if inv["valid"]]
@@ -576,19 +580,39 @@ class InviteChecker(commands.Cog):
             except:
                 return {"channel": channel, "invites": [], "valid_count": 0, "status": "error"}
         
-        # Process channels in larger batches with optimized rate limits
-        batch_size = 8  # Larger batches for faster processing
+        # Enhanced batch processing with conservative rate limiting
+        batch_size = 3  # Reduced from 8 to 3 channels at a time
         results = []
+        total_api_calls = 0
+        
+        print(f"[RATE LIMIT DEBUG] Starting scan of {len(all_channels)} channels in batches of {batch_size}")
         
         for i in range(0, len(all_channels), batch_size):
             batch = all_channels[i:i+batch_size]
+            
+            # Add delay before each batch to prevent rate limiting
+            if i > 0:
+                await asyncio.sleep(0.5)  # Increased delay between batches
+            
+            batch_start = time.time()
             tasks = [scan_channel_instantly(channel) for channel in batch]
             batch_results = await asyncio.gather(*tasks)
+            batch_time = time.time() - batch_start
+            
+            # Count API calls and add debugging
+            batch_api_calls = 0
+            for result in batch_results:
+                if isinstance(result, dict) and "invites" in result:
+                    batch_api_calls += len(result["invites"])
+                    if len(result["invites"]) > 0:
+                        print(f"[SCAN] {result['channel'].name}: {len(result['invites'])} invites found")
+            
+            total_api_calls += batch_api_calls
             results.extend(batch_results)
             
-            # Reduced delay between batches
-            if i + batch_size < len(all_channels):
-                await asyncio.sleep(0.2)
+            print(f"[RATE LIMIT DEBUG] Batch {i//batch_size + 1}: {len(batch)} channels, {batch_api_calls} API calls, {batch_time:.2f}s")
+        
+        print(f"[RATE LIMIT DEBUG] Total scan: {total_api_calls} API calls made")
         
         scan_time = time.time() - start_time
         
