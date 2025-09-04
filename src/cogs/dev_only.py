@@ -1302,8 +1302,8 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="**Available Commands**",
             value=(
-                "`{ctx.prefix}dmlogs set <#channel>` - Set global DM logging channel\n"
-                "`{ctx.prefix}dmlogs status` - View current configuration\n"
+                "`s.dmlogs set <#channel>` - Set global DM logging channel\n"
+                "`s.dmlogs status` - View current configuration\n"
                 "**Note**: All DMs to the bot will be logged to this one channel"
             ),
             inline=False
