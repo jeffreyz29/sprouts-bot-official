@@ -1648,13 +1648,13 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="Data Management",
             value=(
-                "`s.listdata user` - List data files for a user\n"
-                "`s.listdata guild` - List data files for a guild\n"
-                "`s.listdata all` - Overview of all data files\n"
-                "`s.deletedata user` - Delete all data for a user\n"
-                "`s.deletedata guild` - Delete all data for a guild\n"
-                "`s.resetdata` - **DANGER** Complete data reset\n"
-                "**Owner Only - Targeted & Safe data operations**"
+                "`s.listdata user` - List saved embeds, tickets, reminders for user\n"
+                "`s.listdata guild` - List auto responders, sticky messages, settings for guild\n"
+                "`s.listdata all` - Overview of all data: embeds, tickets, transcripts, user data\n"
+                "`s.deletedata user` - Delete user's saved embeds, tickets, reminders\n"
+                "`s.deletedata guild` - Delete guild's auto responders, sticky messages, settings\n"
+                "`s.resetdata` - **DANGER** Reset all: embeds, tickets, auto responders, user data\n"
+                "**Owner Only - Manages: saved embeds, sticky messages, ticket settings, transcripts, user data, auto responders**"
             ),
             inline=False
         )
