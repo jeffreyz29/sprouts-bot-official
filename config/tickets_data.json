@@ -103,17 +103,5 @@
     ],
     "tags": [],
     "log_channel_id": null
-  },
-  "1413291511910498344": {
-    "user_id": 764874247646085151,
-    "user_name": "jeffreyz29",
-    "channel_id": 1413291511910498344,
-    "guild_id": 1411324489333215267,
-    "created_at": "2025-09-04T22:35:54.251052",
-    "status": "open",
-    "claimed_by": null,
-    "priority": "medium",
-    "panel_id": null,
-    "reason": "Support Request"
   }
 }
