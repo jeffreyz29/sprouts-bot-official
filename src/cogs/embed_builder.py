@@ -1342,18 +1342,21 @@ class EmbedBuilder(commands.Cog):
                 existing_embed = self.saved_embeds[f"{user_id}_{guild_id}"][name]
             
             if not existing_embed:
-                embed = discord.Embed(
-                    title=f"{SPROUTS_ERROR} Embed Not Found",
-                    description=f"No embed named '**{name}**' exists. Use `{ctx.prefix}embedcreate {name}` to create it first.",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
+                # Create new embed for editing
+                existing_embed = {
+                    'title': 'New Embed',
+                    'description': 'This is a new embed created with the legacy editor.',
+                    'color': EMBED_COLOR_NORMAL
+                }
+            
+            # Check if this is a new embed
+            is_new_embed = not existing_embed.get('title') or existing_embed.get('title') == 'New Embed'
+            status_text = "Creating new embed" if is_new_embed else "Editing existing embed"
             
             # Start legacy editing session
             edit_embed = discord.Embed(
                 title="Legacy Text Editor",
-                description=f"Editing embed: **{name}**\n\n"
+                description=f"{status_text}: **{name}**\n\n"
                            f"**Current Title:** {existing_embed.get('title', 'None')}\n"
                            f"**Current Description:** {existing_embed.get('description', 'None')[:100]}{'...' if existing_embed.get('description', '') and len(existing_embed.get('description', '')) > 100 else ''}\n"
                            f"**Current Color:** {existing_embed.get('color', 'Default')}\n\n"
