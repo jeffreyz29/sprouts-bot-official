@@ -559,12 +559,12 @@ class InviteChecker(commands.Cog):
 
     @commands.command(name="check")
     @commands.has_permissions(administrator=True)
-    async def manual_scan(self, ctx, limit: int = 10):
+    async def manual_scan(self, ctx, limit: int = 25):
         """
-        Start a manual invite scan (can only be run in the designated invite check channel)
+        Start an advanced invite scan with multiple embeds and detailed reporting
         
         Args:
-            limit: Number of recent messages to scan per channel (default: 10, max: 100)
+            limit: Number of recent messages to scan per channel (default: 25, max: 50)
         """
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
@@ -586,17 +586,17 @@ class InviteChecker(commands.Cog):
         if guild_id in self.scan_status:
             embed = discord.Embed(
                 title=f"{SPROUTS_WARNING} Scan in Progress",
-                description="An invite check is currently in process. Please wait a few minutes as the scanner searches your categories.",
+                description="An invite check is currently running. Please wait for it to complete.",
                 color=EMBED_COLOR_ERROR
             )
             await ctx.reply(embed=embed, mention_author=False)
             return
         
         # Validate limit
-        if limit < 1 or limit > 100:
+        if limit < 1 or limit > 50:
             embed = discord.Embed(
                 title=f"{SPROUTS_WARNING} Invalid Limit",
-                description="Scan limit must be between 1 and 100 messages per channel.",
+                description="Scan limit must be between 1 and 50 messages per channel.",
                 color=EMBED_COLOR_ERROR
             )
             await ctx.reply(embed=embed, mention_author=False)
@@ -613,10 +613,16 @@ class InviteChecker(commands.Cog):
             await ctx.reply(embed=embed, mention_author=False)
             return
         
-        # Start scan
+        # Advanced scan initialization
+        start_time = time.time()
+        
+        # Send initial status
         embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Starting Invite Scan",
-            description=f"An invite check is currently in process. Please wait a few minutes as the scanner searches your categories.",
+            title=f"{SPROUTS_CHECK} Advanced Invite Scanner",
+            description="⚡ **Initializing high-speed scan...**\n\n"
+                       "🔍 **Analyzing configured categories**\n"
+                       "📊 **Preparing multi-threaded validation**\n"
+                       "⏱️ **Estimated completion: 30-60 seconds**",
             color=EMBED_COLOR_NORMAL
         )
         scan_message = await ctx.reply(embed=embed, mention_author=False)
@@ -624,15 +630,21 @@ class InviteChecker(commands.Cog):
         # Get all channels from categories (excluding ignored channels)
         all_channels = []
         ignore_channels = guild_config.get("ignore_channels", [])
+        category_channel_map = {}
         
         for category_id in scan_categories:
             category = ctx.guild.get_channel(category_id)
             if category and isinstance(category, discord.CategoryChannel):
+                category_channels = []
                 for channel in category.channels:
                     if (isinstance(channel, discord.TextChannel) and 
                         channel.id not in ignore_channels and
                         channel.permissions_for(ctx.guild.me).read_message_history):
                         all_channels.append(channel.id)
+                        category_channels.append(channel)
+                
+                if category_channels:
+                    category_channel_map[category.name] = category_channels
         
         if not all_channels:
             embed = discord.Embed(
@@ -643,29 +655,28 @@ class InviteChecker(commands.Cog):
             await scan_message.edit(embed=embed)
             return
         
-        # Perform the scan
-        results = await self.perform_scan(ctx.guild, all_channels, limit, scan_message)
+        # Update status with channel count
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Scanning in Progress",
+            description=f"⚡ **High-speed scan active**\n\n"
+                       f"📊 **Channels to scan:** {len(all_channels)}\n"
+                       f"🗂️ **Categories:** {len(category_channel_map)}\n"
+                       f"💨 **Processing {limit} messages per channel**",
+            color=EMBED_COLOR_NORMAL
+        )
+        await scan_message.edit(embed=embed)
         
-        # Generate final report
-        await self.generate_scan_report(ctx, results, scan_message)
+        # Perform the advanced scan
+        results = await self.perform_advanced_scan(ctx.guild, all_channels, limit, scan_message, category_channel_map)
+        
+        # Generate multiple detailed embeds
+        await self.generate_advanced_report(ctx, results, scan_message, start_time)
         
         # Clean up scan status
         if guild_id in self.scan_status:
             del self.scan_status[guild_id]
-        
-        await self.mark_task_complete("4")
     
-    async def mark_task_complete(self, task_id: str):
-        """Helper to mark tasks as complete"""
-        # This would integrate with the task system if available
-        pass
-    
-    async def mark_task_in_progress(self, task_id: str):
-        """Helper to mark tasks as in progress"""
-        # This would integrate with the task system if available
-        pass
-    
-    async def perform_scan(self, guild: discord.Guild, channel_ids: List[int], limit: int, status_message: discord.Message) -> Dict:
+    async def perform_advanced_scan(self, guild: discord.Guild, channel_ids: List[int], limit: int, status_message: discord.Message, category_map: Dict) -> Dict:
         """
         Perform the actual invite scan
         
@@ -776,6 +787,210 @@ class InviteChecker(commands.Cog):
                 continue
         
         return results
+
+    async def generate_advanced_report(self, ctx: commands.Context, results: Dict, status_message: discord.Message, start_time: float):
+        """Generate multiple advanced embeds with comprehensive reporting"""
+        
+        # Calculate statistics
+        total_invites = results["invites_found"]
+        valid_invites = results["invites_valid"]
+        invalid_invites = results["invites_invalid"]
+        scan_time = results.get("scan_time", time.time() - start_time)
+        
+        if total_invites > 0:
+            valid_percentage = (valid_invites / total_invites) * 100
+            invalid_percentage = (invalid_invites / total_invites) * 100
+        else:
+            valid_percentage = 0
+            invalid_percentage = 0
+        
+        # 🎯 EMBED 1: Executive Summary
+        summary_embed = discord.Embed(
+            title=f"🎯 Invite Check Complete!",
+            description=f"⚡ **Advanced scan finished in {scan_time:.1f} seconds**",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        summary_embed.add_field(
+            name="📊 Scan Summary",
+            value=f"**Channels checked:** {results['channels_scanned']}\n"
+                  f"**Invites checked:** {total_invites}\n"
+                  f"**Scan speed:** {results['channels_scanned']/scan_time:.1f} channels/sec",
+            inline=True
+        )
+        
+        summary_embed.add_field(
+            name="✅ Validation Results",
+            value=f"**Valid:** {valid_invites} ({valid_percentage:.1f}%)\n"
+                  f"**Invalid:** {invalid_invites} ({invalid_percentage:.1f}%)\n"
+                  f"**Success rate:** {valid_percentage:.1f}%",
+            inline=True
+        )
+        
+        summary_embed.add_field(
+            name="🗂️ Categories Analyzed",
+            value=f"**Total categories:** {len(results.get('category_stats', {}))}\n"
+                  f"**Active channels:** {len([ch for ch in results['channel_details'] if ch['invites_found'] > 0])}\n"
+                  f"**Clean channels:** {results['channels_scanned'] - len([ch for ch in results['channel_details'] if ch['invites_found'] > 0])}",
+            inline=True
+        )
+        
+        # Add visual progress bar
+        if total_invites > 0:
+            valid_bar_length = int((valid_percentage / 100) * 20)
+            invalid_bar_length = int((invalid_percentage / 100) * 20)
+            progress_bar = "🟢" * valid_bar_length + "🔴" * invalid_bar_length + "⚪" * (20 - valid_bar_length - invalid_bar_length)
+            summary_embed.add_field(
+                name="📈 Visual Breakdown",
+                value=f"{progress_bar}\n**{valid_invites}** valid • **{invalid_invites}** invalid",
+                inline=False
+            )
+        
+        summary_embed.timestamp = discord.utils.utcnow()
+        await status_message.edit(embed=summary_embed)
+        
+        # 🗂️ EMBED 2: Category Breakdown
+        if results.get("category_stats"):
+            await asyncio.sleep(1)  # Brief delay between embeds
+            
+            category_embed = discord.Embed(
+                title="🗂️ Category Analysis",
+                description="Detailed breakdown by server categories",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            for category_name, stats in list(results["category_stats"].items())[:8]:  # Show top 8 categories
+                if stats["invites_found"] > 0:
+                    category_success_rate = (stats["invites_valid"] / stats["invites_found"]) * 100 if stats["invites_found"] > 0 else 0
+                    
+                    channel_mentions = []
+                    for channel_info in stats["channels_with_invites"][:3]:  # Top 3 channels
+                        status_emoji = "🟢" if channel_info["valid"] > channel_info["invalid"] else "🔴" if channel_info["invalid"] > 0 else "🟡"
+                        channel_mentions.append(f"{status_emoji} {channel_info['mention']} ({channel_info['valid']}/{channel_info['valid'] + channel_info['invalid']})")
+                    
+                    category_embed.add_field(
+                        name=f"📁 {category_name}",
+                        value=f"**Invites:** {stats['invites_found']} | **Valid:** {stats['invites_valid']} ({category_success_rate:.0f}%)\n" +
+                              ("\n".join(channel_mentions) if channel_mentions else "No active channels"),
+                        inline=True
+                    )
+            
+            await ctx.send(embed=category_embed)
+        
+        # 🔍 EMBED 3: Channel Details with Mentions
+        if results["channel_details"]:
+            await asyncio.sleep(1)
+            
+            channels_with_invites = [ch for ch in results["channel_details"] if ch["invites_found"] > 0]
+            if channels_with_invites:
+                channels_embed = discord.Embed(
+                    title="🔍 Active Channels Report",
+                    description="Channels with invite activity (with mentions)",
+                    color=EMBED_COLOR_NORMAL
+                )
+                
+                # Group by good/problematic channels
+                good_channels = []
+                problem_channels = []
+                
+                for channel in channels_with_invites[:15]:  # Top 15 channels
+                    channel_obj = ctx.guild.get_channel(channel["channel_id"])
+                    if not channel_obj:
+                        continue
+                    
+                    success_rate = (channel["invites_valid"] / channel["invites_found"]) * 100 if channel["invites_found"] > 0 else 0
+                    
+                    channel_line = f"{channel_obj.mention} • **{channel['invites_valid']}/{channel['invites_found']}** ({success_rate:.0f}%)"
+                    
+                    if success_rate >= 80:
+                        good_channels.append(f"🟢 {channel_line}")
+                    else:
+                        problem_channels.append(f"🔴 {channel_line}")
+                
+                if good_channels:
+                    channels_embed.add_field(
+                        name="✅ High-Quality Channels (≥80% valid)",
+                        value="\n".join(good_channels[:8]),
+                        inline=False
+                    )
+                
+                if problem_channels:
+                    channels_embed.add_field(
+                        name="⚠️ Channels Needing Attention (<80% valid)",
+                        value="\n".join(problem_channels[:8]),
+                        inline=False
+                    )
+                
+                await ctx.send(embed=channels_embed)
+        
+        # 🎖️ EMBED 4: Top Servers Found
+        if results.get("valid_invites"):
+            await asyncio.sleep(1)
+            
+            # Count servers
+            server_counts = {}
+            for invite in results["valid_invites"]:
+                if invite.get("server_info") and invite["server_info"].get("guild_name"):
+                    server_name = invite["server_info"]["guild_name"]
+                    member_count = invite["server_info"].get("member_count", 0)
+                    
+                    if server_name not in server_counts:
+                        server_counts[server_name] = {
+                            "count": 0,
+                            "member_count": member_count,
+                            "channels": set()
+                        }
+                    
+                    server_counts[server_name]["count"] += 1
+                    server_counts[server_name]["channels"].add(invite["channel"])
+            
+            if server_counts:
+                servers_embed = discord.Embed(
+                    title="🎖️ Top Promoted Servers",
+                    description="Most frequently promoted Discord servers",
+                    color=EMBED_COLOR_NORMAL
+                )
+                
+                # Sort by invite count and take top 10
+                sorted_servers = sorted(server_counts.items(), key=lambda x: x[1]["count"], reverse=True)[:10]
+                
+                for server_name, info in sorted_servers:
+                    member_text = f" • {info['member_count']:,} members" if info['member_count'] > 0 else ""
+                    channels_text = f" • {len(info['channels'])} channels"
+                    
+                    servers_embed.add_field(
+                        name=f"🏆 {server_name}",
+                        value=f"**{info['count']} invites**{member_text}{channels_text}",
+                        inline=True
+                    )
+                
+                await ctx.send(embed=servers_embed)
+        
+        # 🚨 EMBED 5: Issues & Invalid Invites
+        if results.get("invalid_invites"):
+            await asyncio.sleep(1)
+            
+            issues_embed = discord.Embed(
+                title="🚨 Issues Found",
+                description=f"**{len(results['invalid_invites'])}** invalid invites detected",
+                color=EMBED_COLOR_ERROR
+            )
+            
+            invalid_by_channel = {}
+            for invite in results["invalid_invites"][:20]:  # Limit to first 20
+                channel = invite["channel"]
+                if channel not in invalid_by_channel:
+                    invalid_by_channel[channel] = []
+                invalid_by_channel[channel].append(f"• `{invite['code']}` by {invite['author']}")
+            
+            for channel, invalid_list in list(invalid_by_channel.items())[:5]:  # Top 5 problematic channels
+                issues_embed.add_field(
+                    name=f"❌ {channel}",
+                    value="\n".join(invalid_list[:3]) + (f"\n*...and {len(invalid_list)-3} more*" if len(invalid_list) > 3 else ""),
+                    inline=False
+                )
+            
+            await ctx.send(embed=issues_embed)
     
     async def generate_scan_report(self, ctx: commands.Context, results: Dict, status_message: discord.Message):
         """Generate and send the final scan report"""
