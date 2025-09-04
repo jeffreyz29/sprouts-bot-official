@@ -576,46 +576,29 @@ class UltraInviteChecker(commands.Cog):
                             user_count = result["valid_invites"][0].get("member_count", 0)
                         category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `{user_count:,} Users`")
                     else:
-                        # Some bad - ping authors of invalid invites (but check twice to avoid cache issues)
+                        # Some bad - no pinging, just show status
                         emoji = f"{SPROUTS_ERROR}"
                         status = "bad"
                         category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `0 Users`")
-                        
-                        # Track users already pinged in this check (ping once only)
-                        pinged_users = set()
-                        
-                        for invalid_invite in result["invalid_invites"]:
-                            if invalid_invite.get("author"):
-                                user_id = invalid_invite['author'].id
-                                
-                                # Only ping if we haven't already pinged this user
-                                if user_id not in pinged_users:
-                                    try:
-                                        await channel.send(f"<@{user_id}> Your invite `{invalid_invite['code']}` is invalid/expired.")
-                                        pinged_users.add(user_id)  # Mark user as pinged
-                                    except:
-                                        pass  # Skip if we can't send message
                 else:
                     # No invites found
                     category_lines.append(f"{SPROUTS_ERROR} {channel.mention} : 0 found `0 Users`")
             
-            # Only show categories with results
+            # Only show categories with results - cleaner layout
             if category_lines:
                 embed = discord.Embed(
-                    title=f"🌱 The {category_name} category",
+                    title=f"{category_name}",
                     description="\n".join(category_lines),
-                    color=0x98FB98  # Light Sprouts green
+                    color=0x90EE90
                 )
-                embed.set_footer(text=f"🌱 Checked {limit} recent messages • {time.strftime('%b %d, %Y')}")
                 await ctx.send(embed=embed)
         
-        # FINAL SUMMARY EMBED (Hana-style with Sprouts touches)
-        await asyncio.sleep(0.5)
+        # Clean completion message
+        await asyncio.sleep(0.3)
         
-        # Success completion message
         final_embed = discord.Embed(
-            description="🌱 Invite check complete!",
-            color=0x98FB98
+            description="Invite check complete!",
+            color=0x90EE90
         )
         await ctx.send(embed=final_embed)
         
