@@ -62,25 +62,70 @@ class InviteChecker(commands.Cog):
         return self.config[guild_id]
     
     async def validate_invite_instant(self, invite_code: str) -> Tuple[bool, Optional[Dict]]:
-        """Fast invite validation like Hana bot"""
-        try:
-            # Use the exact same approach as Hana
-            invite = await self.bot.fetch_invite(invite_code)
-            if invite and invite.guild:
-                return True, {
-                    "guild_name": invite.guild.name,
-                    "member_count": getattr(invite, 'approximate_member_count', 0),
-                    "guild_id": invite.guild.id
-                }
-            return False, None
-        except discord.NotFound:
-            # Invalid/expired invite
-            return False, None
-        except discord.HTTPException:
-            # Rate limited - treat as invalid for now
-            return False, None
-        except:
-            return False, None
+        """Enhanced invite validation with cache-busting and retry logic"""
+        max_retries = 2
+        
+        for attempt in range(max_retries):
+            try:
+                # Enhanced validation with cache control
+                # Use fetch_invite with additional parameters to bypass cache
+                invite = await self.bot.fetch_invite(
+                    invite_code, 
+                    with_counts=True,
+                    with_expiration=True
+                )
+                
+                if invite and invite.guild:
+                    # Additional validation checks for cache issues
+                    guild = invite.guild
+                    if not guild or not guild.name:
+                        # Invalid guild data, might be cache issue
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(0.3)
+                            continue
+                        return False, None
+                    
+                    # Check if invite is actually expired
+                    if hasattr(invite, 'expires_at') and invite.expires_at:
+                        from datetime import datetime
+                        if invite.expires_at < datetime.now(invite.expires_at.tzinfo):
+                            return False, None
+                    
+                    # Validate member count (cache issue indicator)
+                    member_count = getattr(invite, 'approximate_member_count', 0)
+                    if member_count is None:
+                        member_count = 0
+                    
+                    return True, {
+                        "guild_name": guild.name,
+                        "member_count": member_count,
+                        "online_count": getattr(invite, 'approximate_presence_count', 0),
+                        "guild_id": guild.id,
+                        "channel_name": invite.channel.name if invite.channel else "unknown",
+                        "max_age": getattr(invite, 'max_age', 0),
+                        "max_uses": getattr(invite, 'max_uses', 0)
+                    }
+                return False, None
+                
+            except discord.NotFound:
+                # Definitive not found - don't retry
+                return False, None
+            except discord.HTTPException as e:
+                # Rate limited or server error - retry with backoff
+                if e.status == 429 or e.status >= 500:
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
+                return False, None
+            except Exception as e:
+                # Network/other errors - retry once
+                print(f"Error validating invite {invite_code} (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(0.2)
+                    continue
+                return False, None
+        
+        return False, None
     
     def extract_invites(self, message_content: str) -> List[str]:
         """Extract Discord invites from message content"""
