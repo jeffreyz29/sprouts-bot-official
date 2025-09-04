@@ -374,19 +374,19 @@ class InviteChecker(commands.Cog):
                 if category and isinstance(category, discord.CategoryChannel):
                     channel_count = len([c for c in category.channels if isinstance(c, discord.TextChannel)])
                     total_channels += channel_count
-                    category_list.append(f"• **{category.name}** ({channel_count} channels)")
+                    category_list.append(f"{SPROUTS_CHECK} **{category.name}** ({channel_count} channels)")
                 else:
-                    category_list.append(f"• ~~Category ID {cat_id}~~ (deleted)")
+                    category_list.append(f"{SPROUTS_ERROR} ~~Category ID {cat_id}~~ (deleted)")
             
             embed.add_field(
-                name=f"📂 Scan Categories ({len(scan_categories)} configured)",
+                name=f"{SPROUTS_CHECK} Scan Categories ({len(scan_categories)} configured)",
                 value="\n".join(category_list) + f"\n\n**Total Channels**: {total_channels}",
                 inline=False
             )
         else:
             embed.add_field(
-                name="📂 Scan Categories",
-                value="❌ No categories configured\nUse `s.category add <category_id>` to add categories",
+                name=f"{SPROUTS_CHECK} Scan Categories",
+                value=f"{SPROUTS_ERROR} No categories configured\nUse `s.category add <category_id>` to add categories",
                 inline=False
             )
         
@@ -396,33 +396,33 @@ class InviteChecker(commands.Cog):
             for channel_id in ignore_channels:
                 channel = ctx.guild.get_channel(channel_id)
                 if channel:
-                    ignored_list.append(f"• {channel.mention}")
+                    ignored_list.append(f"{SPROUTS_WARNING} {channel.mention}")
                 else:
-                    ignored_list.append(f"• ~~Channel ID {channel_id}~~ (deleted)")
+                    ignored_list.append(f"{SPROUTS_ERROR} ~~Channel ID {channel_id}~~ (deleted)")
             
             embed.add_field(
-                name=f"🚫 Ignored Channels ({len(ignore_channels)} configured)",
+                name=f"{SPROUTS_WARNING} Ignored Channels ({len(ignore_channels)} configured)",
                 value="\n".join(ignored_list[:10]) + ("\n...and more" if len(ignored_list) > 10 else ""),
                 inline=False
             )
         else:
             embed.add_field(
-                name="🚫 Ignored Channels",
-                value="✅ No channels ignored\nAll channels in configured categories will be scanned",
+                name=f"{SPROUTS_WARNING} Ignored Channels",
+                value=f"{SPROUTS_CHECK} No channels ignored\nAll channels in configured categories will be scanned",
                 inline=False
             )
         
         # Scanner Performance Settings
         embed.add_field(
-            name="⚡ Scanner Performance",
-            value="• **Messages per channel**: 15\n• **Max invites per channel**: 5\n• **Concurrent channels**: 8\n• **Rate limit delay**: 0.2s",
+            name=f"{SPROUTS_CHECK} Scanner Performance",
+            value=f"{SPROUTS_CHECK} **Messages per channel**: 15\n{SPROUTS_CHECK} **Max invites per channel**: 5\n{SPROUTS_CHECK} **Concurrent channels**: 8\n{SPROUTS_CHECK} **Rate limit delay**: 0.2s",
             inline=True
         )
         
         # Available Commands
         embed.add_field(
-            name="🛠️ Available Commands",
-            value="• `s.check` - Run invite scan\n• `s.category add/remove/list` - Manage categories\n• `s.ignore add/remove/list` - Manage ignored channels\n• `s.settings` - View this configuration",
+            name=f"{SPROUTS_CHECK} Available Commands",
+            value=f"{SPROUTS_CHECK} `s.check` - Run invite scan\n{SPROUTS_CHECK} `s.category add/remove/list` - Manage categories\n{SPROUTS_CHECK} `s.ignore add/remove/list` - Manage ignored channels\n{SPROUTS_CHECK} `s.settings` - View this configuration",
             inline=True
         )
         
@@ -441,12 +441,12 @@ class InviteChecker(commands.Cog):
         # Check setup without status messages - just start immediately
         check_channel_id = guild_config.get("invite_check_channel")
         if not check_channel_id:
-            await ctx.reply("❌ Setup Required: Use `s.checkchannel #channel` first.", mention_author=False)
+            await ctx.reply(f"{SPROUTS_ERROR} Setup Required: Use `s.checkchannel #channel` first.", mention_author=False)
             return
         
         scan_categories = guild_config.get("scan_categories", [])
         if not scan_categories:
-            await ctx.reply("❌ No Categories: Use `s.category add [ID]` to add them.", mention_author=False)
+            await ctx.reply(f"{SPROUTS_ERROR} No Categories: Use `s.category add [ID]` to add them.", mention_author=False)
             return
         
         # Send initial status message as embed and clean up previous results
@@ -477,7 +477,7 @@ class InviteChecker(commands.Cog):
                         all_channels.append(channel)
         
         if not all_channels:
-            await ctx.send("❌ No accessible text channels found in the configured categories.")
+            await ctx.send(f"{SPROUTS_ERROR} No accessible text channels found in the configured categories.")
             return
         
         # Don't edit the initial message - let it stay as "Invite Check Starting"
