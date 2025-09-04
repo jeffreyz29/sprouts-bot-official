@@ -398,6 +398,165 @@ class InviteChecker(commands.Cog):
         else:
             await ctx.reply(f"{SPROUTS_WARNING} Invalid action. Use `add`, `remove`, or `list`.", mention_author=False)
     
+    @commands.command(name="channelstatus")
+    @commands.has_permissions(administrator=True)
+    async def channel_status(self, ctx, channel: discord.TextChannel):
+        """
+        Check invite status for a specific channel and list all channels with their invite status
+        
+        Usage: s.channelstatus #channel
+        """
+        guild_id = str(ctx.guild.id)
+        guild_config = self.ensure_guild_config(guild_id)
+        
+        # Quick scan of the mentioned channel (last 10 messages)
+        channel_invites = []
+        valid_count = 0
+        invalid_count = 0
+        
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Scanning {channel.mention}",
+            description="Checking recent messages for invites...",
+            color=EMBED_COLOR_NORMAL
+        )
+        status_message = await ctx.reply(embed=embed, mention_author=False)
+        
+        # Scan the specific channel
+        try:
+            async for message in channel.history(limit=10):
+                invites = self.extract_invites(message.content)
+                for invite_code in invites:
+                    is_valid, invite_info = await self.validate_invite(invite_code)
+                    
+                    invite_data = {
+                        "code": invite_code,
+                        "author": str(message.author),
+                        "timestamp": message.created_at.strftime("%m/%d/%Y"),
+                        "valid": is_valid,
+                        "server_name": invite_info.get("guild_name", "Unknown") if invite_info else "Invalid"
+                    }
+                    channel_invites.append(invite_data)
+                    
+                    if is_valid:
+                        valid_count += 1
+                    else:
+                        invalid_count += 1
+                    
+                    await asyncio.sleep(0.1)  # Rate limit protection
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Access Denied",
+                description=f"I don't have permission to read messages in {channel.mention}",
+                color=EMBED_COLOR_ERROR
+            )
+            await status_message.edit(embed=embed)
+            return
+        
+        # Create detailed report
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Channel Invite Status Report",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Channel-specific results
+        if channel_invites:
+            invite_list = []
+            for invite in channel_invites[:5]:  # Show first 5
+                status_emoji = "🟢" if invite["valid"] else "🔴"
+                invite_list.append(f"{status_emoji} **{invite['server_name']}** - {invite['author']} ({invite['timestamp']})")
+            
+            embed.add_field(
+                name=f"📋 {channel.mention} Recent Invites",
+                value="\n".join(invite_list) if invite_list else "No invites found",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📊 Channel Statistics",
+                value=f"**Total invites:** {len(channel_invites)}\n"
+                      f"**Valid:** {valid_count} 🟢\n"
+                      f"**Invalid:** {invalid_count} 🔴",
+                inline=True
+            )
+        else:
+            embed.add_field(
+                name=f"📋 {channel.mention}",
+                value="No invites found in recent messages",
+                inline=False
+            )
+        
+        # List all text channels with basic status
+        all_channels = [ch for ch in ctx.guild.text_channels if ch.permissions_for(ctx.guild.me).read_messages]
+        
+        # Group channels by category
+        categorized_channels = {}
+        uncategorized = []
+        
+        for ch in all_channels:
+            if ch.category:
+                if ch.category.name not in categorized_channels:
+                    categorized_channels[ch.category.name] = []
+                categorized_channels[ch.category.name].append(ch)
+            else:
+                uncategorized.append(ch)
+        
+        # Build channel list (limited to prevent embed limits)
+        channel_list = []
+        total_shown = 0
+        
+        # Show categorized channels
+        for category_name, channels in list(categorized_channels.items())[:3]:  # First 3 categories
+            category_channels = []
+            for ch in channels[:5]:  # First 5 channels per category
+                if total_shown >= 20:  # Discord embed limit
+                    break
+                
+                # Simple status based on channel name/topic patterns
+                status = "🟡"  # Unknown status
+                if any(word in ch.name.lower() for word in ["invite", "promo", "partnership"]):
+                    status = "🔍"  # Likely has invites
+                elif any(word in ch.name.lower() for word in ["general", "chat", "discussion"]):
+                    status = "💬"  # General chat
+                elif any(word in ch.name.lower() for word in ["announce", "news", "update"]):
+                    status = "📢"  # Announcements
+                
+                category_channels.append(f"{status} {ch.mention}")
+                total_shown += 1
+            
+            if category_channels:
+                channel_list.append(f"**{category_name}**\n" + "\n".join(category_channels))
+        
+        # Show uncategorized channels
+        if uncategorized and total_shown < 20:
+            uncategorized_list = []
+            for ch in uncategorized[:min(5, 20-total_shown)]:
+                status = "🟡"
+                if any(word in ch.name.lower() for word in ["invite", "promo", "partnership"]):
+                    status = "🔍"
+                uncategorized_list.append(f"{status} {ch.mention}")
+            
+            if uncategorized_list:
+                channel_list.append(f"**No Category**\n" + "\n".join(uncategorized_list))
+        
+        if channel_list:
+            embed.add_field(
+                name="🗂️ All Server Channels",
+                value="\n\n".join(channel_list),
+                inline=False
+            )
+        
+        embed.add_field(
+            name="🔍 Status Legend",
+            value="🟢 Valid invite • 🔴 Invalid invite • 🔍 Likely has invites • 💬 General chat • 📢 Announcements • 🟡 Unknown",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Requested by {ctx.author.display_name} • Showing recent activity only", 
+                        icon_url=ctx.author.display_avatar.url)
+        embed.timestamp = discord.utils.utcnow()
+        
+        await status_message.edit(embed=embed)
+
     @commands.command(name="check")
     @commands.has_permissions(administrator=True)
     async def manual_scan(self, ctx, limit: int = 10):

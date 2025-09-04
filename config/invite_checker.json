@@ -1,7 +1,9 @@
 {
   "1412650062517108789": {
     "enabled": false,
-    "scan_categories": [],
+    "scan_categories": [
+      1412650063548645387
+    ],
     "ignore_channels": [],
     "auto_delete": false,
     "invite_check_channel": 1412650063548645389,
