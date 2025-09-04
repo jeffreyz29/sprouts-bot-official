@@ -80,6 +80,245 @@ class UltraInviteChecker(commands.Cog):
         matches = self.invite_pattern.findall(message_content)
         return list(set(matches))
     
+    # Configuration commands (same as original)
+    @commands.command(name="category")
+    @commands.has_permissions(administrator=True)
+    async def category_command(self, ctx, action: str = None, category_id: int = None):
+        """Manage categories for invite checking"""
+        guild_id = str(ctx.guild.id)
+        guild_config = self.ensure_guild_config(guild_id)
+        
+        if not action:
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Category Management",
+                description="Manage categories for invite scanning",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Available Actions",
+                value=f"`{ctx.prefix}category add [categoryID]` - Add category to scan\n"
+                      f"`{ctx.prefix}category remove [categoryID]` - Remove category\n"
+                      f"`{ctx.prefix}category list` - List configured categories",
+                inline=False
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            return
+        
+        if action.lower() == "add":
+            if not category_id:
+                await ctx.reply(f"{SPROUTS_WARNING} Please specify a category ID to add.", mention_author=False)
+                return
+            
+            category = ctx.guild.get_channel(category_id)
+            if not category or not isinstance(category, discord.CategoryChannel):
+                await ctx.reply(f"{SPROUTS_WARNING} Invalid category ID or category not found.", mention_author=False)
+                return
+            
+            scan_categories = guild_config.get("scan_categories", [])
+            if category_id in scan_categories:
+                await ctx.reply(f"{SPROUTS_WARNING} Category **{category.name}** is already in the scan list.", mention_author=False)
+                return
+            
+            scan_categories.append(category_id)
+            self.config[guild_id]["scan_categories"] = scan_categories
+            self.save_config()
+            await ctx.reply(f"{SPROUTS_CHECK} Added category **{category.name}** to scan list.", mention_author=False)
+        
+        elif action.lower() == "remove":
+            if not category_id:
+                await ctx.reply(f"{SPROUTS_WARNING} Please specify a category ID to remove.", mention_author=False)
+                return
+            
+            scan_categories = guild_config.get("scan_categories", [])
+            if category_id not in scan_categories:
+                await ctx.reply(f"{SPROUTS_WARNING} Category ID {category_id} is not in the scan list.", mention_author=False)
+                return
+            
+            scan_categories.remove(category_id)
+            self.config[guild_id]["scan_categories"] = scan_categories
+            self.save_config()
+            
+            category = ctx.guild.get_channel(category_id)
+            category_name = category.name if category else f"ID: {category_id}"
+            await ctx.reply(f"{SPROUTS_CHECK} Removed category **{category_name}** from scan list.", mention_author=False)
+        
+        elif action.lower() == "list":
+            scan_categories = guild_config.get("scan_categories", [])
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Configured Scan Categories",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            if scan_categories:
+                category_list = []
+                for category_id in scan_categories:
+                    category = ctx.guild.get_channel(category_id)
+                    if category:
+                        channel_count = len(category.channels)
+                        category_list.append(f"**{category.name}** - {channel_count} channels (ID: {category_id})")
+                    else:
+                        category_list.append(f"Unknown Category (ID: {category_id})")
+                
+                embed.add_field(
+                    name=f"Categories ({len(scan_categories)})",
+                    value="\n".join(category_list),
+                    inline=False
+                )
+            else:
+                embed.description = "No categories configured for scanning."
+            
+            await ctx.reply(embed=embed, mention_author=False)
+        else:
+            await ctx.reply(f"{SPROUTS_WARNING} Invalid action. Use `add`, `remove`, or `list`.", mention_author=False)
+
+    @commands.command(name="ids")
+    @commands.has_permissions(administrator=True)
+    async def list_category_ids(self, ctx):
+        """Display all available category IDs in the server"""
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Available Categories",
+            description="All categories in this server with their IDs",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        categories = [category for category in ctx.guild.categories]
+        
+        if categories:
+            category_info = []
+            for category in categories[:25]:  # Discord embed limit
+                channel_count = len(category.channels)
+                category_info.append(f"**{category.name}** - {channel_count} channels\nID: `{category.id}`")
+            
+            embed.add_field(
+                name=f"Categories ({len(categories)})",
+                value="\n\n".join(category_info),
+                inline=False
+            )
+            
+            if len(categories) > 25:
+                embed.set_footer(text=f"Showing first 25 categories. Total: {len(categories)}")
+        else:
+            embed.description = "No categories found in this server."
+        
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="checkchannel")
+    @commands.has_permissions(administrator=True)
+    async def set_check_channel(self, ctx, channel: discord.TextChannel = None):
+        """Set the invite check channel where scan results will be posted"""
+        guild_id = str(ctx.guild.id)
+        
+        if not channel:
+            current_channel_id = self.config.get(guild_id, {}).get("invite_check_channel")
+            if current_channel_id:
+                current_channel = ctx.guild.get_channel(current_channel_id)
+                if current_channel:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_CHECK} Current Check Channel",
+                        description=f"Invite check results are posted to {current_channel.mention}",
+                        color=EMBED_COLOR_NORMAL
+                    )
+                else:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_WARNING} Invalid Check Channel",
+                        description="The configured check channel no longer exists. Please set a new one.",
+                        color=EMBED_COLOR_ERROR
+                    )
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} No Check Channel Set",
+                    description=f"Use `{ctx.prefix}checkchannel #channel` to set the invite check channel.",
+                    color=EMBED_COLOR_ERROR
+                )
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            return
+        
+        self.config[guild_id]["invite_check_channel"] = channel.id
+        self.save_config()
+        await ctx.reply(f"{SPROUTS_CHECK} Set invite check channel to {channel.mention}.", mention_author=False)
+
+    @commands.command(name="ignore")
+    @commands.has_permissions(administrator=True)
+    async def ignore_command(self, ctx, action: str = None, channel: discord.TextChannel = None):
+        """Manage channel blacklist for invite checking"""
+        guild_id = str(ctx.guild.id)
+        guild_config = self.ensure_guild_config(guild_id)
+        
+        if not action:
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Channel Blacklist",
+                description="Manage channels to ignore during invite scanning",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Available Actions",
+                value=f"`{ctx.prefix}ignore add #channel` - Add channel to blacklist\n"
+                      f"`{ctx.prefix}ignore remove #channel` - Remove from blacklist\n"
+                      f"`{ctx.prefix}ignore list` - List blacklisted channels",
+                inline=False
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            return
+        
+        if action.lower() == "add":
+            if not channel:
+                await ctx.reply(f"{SPROUTS_WARNING} Please specify a channel to blacklist.", mention_author=False)
+                return
+            
+            ignore_channels = guild_config.get("ignore_channels", [])
+            if channel.id in ignore_channels:
+                await ctx.reply(f"{SPROUTS_WARNING} Channel {channel.mention} is already blacklisted.", mention_author=False)
+                return
+            
+            ignore_channels.append(channel.id)
+            self.config[guild_id]["ignore_channels"] = ignore_channels
+            self.save_config()
+            await ctx.reply(f"{SPROUTS_CHECK} Added {channel.mention} to blacklist.", mention_author=False)
+        
+        elif action.lower() == "remove":
+            if not channel:
+                await ctx.reply(f"{SPROUTS_WARNING} Please specify a channel to remove from blacklist.", mention_author=False)
+                return
+            
+            ignore_channels = guild_config.get("ignore_channels", [])
+            if channel.id not in ignore_channels:
+                await ctx.reply(f"{SPROUTS_WARNING} Channel {channel.mention} is not blacklisted.", mention_author=False)
+                return
+            
+            ignore_channels.remove(channel.id)
+            self.config[guild_id]["ignore_channels"] = ignore_channels
+            self.save_config()
+            await ctx.reply(f"{SPROUTS_CHECK} Removed {channel.mention} from blacklist.", mention_author=False)
+        
+        elif action.lower() == "list":
+            ignore_channels = guild_config.get("ignore_channels", [])
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Blacklisted Channels",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            if ignore_channels:
+                channel_list = []
+                for channel_id in ignore_channels:
+                    channel_obj = ctx.guild.get_channel(channel_id)
+                    if channel_obj:
+                        channel_list.append(f"{channel_obj.mention}")
+                    else:
+                        channel_list.append(f"Unknown Channel (ID: {channel_id})")
+                
+                embed.add_field(
+                    name=f"Ignored Channels ({len(ignore_channels)})",
+                    value="\n".join(channel_list),
+                    inline=False
+                )
+            else:
+                embed.description = "No channels are blacklisted."
+            
+            await ctx.reply(embed=embed, mention_author=False)
+        else:
+            await ctx.reply(f"{SPROUTS_WARNING} Invalid action. Use `add`, `remove`, or `list`.", mention_author=False)
+
     @commands.command(name="ultracheck")
     @commands.has_permissions(administrator=True)
     async def ultra_fast_check(self, ctx, limit: int = 20):
