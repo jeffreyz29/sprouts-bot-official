@@ -500,12 +500,12 @@ class ChannelSelectView(discord.ui.View):
             self.ticket_cog.update_guild_settings(self.ctx.guild.id,
                                                   guild_settings)
 
-            # Update the main embed with new configuration
-            updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
-            main_view = TicketSetupView(self.ctx, self.ticket_cog)
-
-            await interaction.response.edit_message(embed=updated_embed,
-                                                    view=main_view)
+            # Dismiss this menu with a confirmation
+            confirm_embed = discord.Embed(
+                title="Channel Set",
+                description=f"Ticket logging channel set to {channel.mention}",
+                color=EMBED_COLOR_NORMAL)
+            await interaction.response.edit_message(embed=confirm_embed, view=None)
 
         except Exception as e:
             logger.error(f"Error setting log channel: {e}")
@@ -545,20 +545,22 @@ class RoleSelectView(discord.ui.View):
             guild_settings = self.ticket_cog.get_guild_settings(
                 self.ctx.guild.id)
 
-            # Update the main embed with new configuration
-            updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
-            main_view = TicketSetupView(self.ctx, self.ticket_cog)
-
             if role_id not in guild_settings['staff_role_ids']:
                 guild_settings['staff_role_ids'].append(role_id)
                 self.ticket_cog.update_guild_settings(self.ctx.guild.id,
                                                       guild_settings)
-
-                # Re-create embed after settings update
-                updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
-
-            await interaction.response.edit_message(embed=updated_embed,
-                                                    view=main_view)
+                confirm_embed = discord.Embed(
+                    title="Staff Role Added",
+                    description=f"{role.mention} added as staff role",
+                    color=EMBED_COLOR_NORMAL)
+            else:
+                confirm_embed = discord.Embed(
+                    title="Already Added",
+                    description=f"{role.mention} is already a staff role",
+                    color=EMBED_COLOR_ERROR)
+            
+            # Dismiss this menu with a confirmation
+            await interaction.response.edit_message(embed=confirm_embed, view=None)
 
         except Exception as e:
             logger.error(f"Error adding staff role: {e}")
@@ -599,20 +601,12 @@ class CategorySelectView(discord.ui.View):
             self.ticket_cog.update_guild_settings(self.ctx.guild.id,
                                                   guild_settings)
 
-            # Update the main embed with new configuration
-            updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
-            main_view = TicketSetupView(self.ctx, self.ticket_cog)
-
-            # Send confirmation as followup message
-            success_embed = discord.Embed(
-                title="{SPROUTS_CHECK} Category Set",
+            # Dismiss this menu with a confirmation
+            confirm_embed = discord.Embed(
+                title="Category Set",
                 description=f"Ticket category set to **{category.name}**",
                 color=EMBED_COLOR_NORMAL)
-
-            await interaction.response.edit_message(embed=updated_embed,
-                                                    view=main_view)
-            await interaction.followup.send(embed=success_embed,
-                                            ephemeral=True)
+            await interaction.response.edit_message(embed=confirm_embed, view=None)
 
         except Exception as e:
             logger.error(f"Error setting category: {e}")
