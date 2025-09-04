@@ -298,41 +298,42 @@ class TicketSetupSelect(discord.ui.Select):
         options = [
             discord.SelectOption(
                 label="Set Log Channel",
-                description="Choose which channel logs ticket opens/closes/claims",
+                description="Configure ticket event logging",
                 value="log_channel"),
             discord.SelectOption(
                 label="Add Staff Role",
-                description="Grant ticket management access to specific roles",
+                description="Grant ticket access to roles",
                 value="staff_role"),
             discord.SelectOption(
                 label="Set Category",
-                description="Organize tickets in a dedicated category section",
+                description="Organize tickets in category",
                 value="category"),
             discord.SelectOption(
                 label="Naming Style",
-                description="ticket-001 (numbers) vs ticket-username (discord)",
+                description="Numbers or discord usernames",
                 value="naming"),
             discord.SelectOption(label="Embed Settings",
-                                 description="Customize welcome messages in new tickets",
+                                 description="Customize ticket messages",
                                  value="embed"),
             discord.SelectOption(label="Remove Log Channel",
-                                 description="Stop logging ticket events to any channel",
+                                 description="Clear logging configuration",
                                  value="remove_log"),
             discord.SelectOption(label="Remove All Staff Roles",
-                                 description="Revoke ticket access from all assigned roles",
+                                 description="Clear all staff assignments",
                                  value="remove_roles"),
             discord.SelectOption(label="Remove Category",
-                                 description="Let tickets create in general channel instead",
+                                 description="Reset to general channel",
                                  value="remove_category"),
             discord.SelectOption(label="Cleanup Orphaned Tickets",
-                                 description="Remove data for deleted ticket channels",
+                                 description="Remove orphaned data",
                                  value="cleanup")
         ]
 
         super().__init__(placeholder="Choose a configuration option...",
                          options=options,
                          min_values=1,
-                         max_values=1)
+                         max_values=1,
+                         row=0)
 
     async def callback(self, interaction: discord.Interaction):
         """Handle setup menu selection"""
