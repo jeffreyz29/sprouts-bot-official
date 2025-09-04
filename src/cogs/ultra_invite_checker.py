@@ -396,26 +396,34 @@ class UltraInviteChecker(commands.Cog):
                         for invite_code in invites[:2]:
                             is_valid, invite_info = await self.validate_invite_instant(invite_code)
                             
-                            if is_valid and invite_info:
-                                channel_invites.append({
-                                    "server_name": invite_info["guild_name"],
-                                    "member_count": invite_info.get("member_count", 0),
-                                    "author": message.author,
-                                    "message_link": f"https://discord.com/channels/{ctx.guild.id}/{channel.id}/{message.id}"
-                                })
+                            invite_entry = {
+                                "code": invite_code,
+                                "valid": is_valid,
+                                "server_name": invite_info.get("guild_name", "Unknown") if invite_info else "Invalid",
+                                "member_count": invite_info.get("member_count", 0) if invite_info else 0,
+                                "author": message.author,
+                                "message_link": f"https://discord.com/channels/{ctx.guild.id}/{channel.id}/{message.id}"
+                            }
                             
-                            # Stop if we found valid invites to avoid rate limits
+                            channel_invites.append(invite_entry)
+                            
+                            # Stop if we found enough invites
                             if len(channel_invites) >= 2:
                                 break
                     
                     if len(channel_invites) >= 2:
                         break
                 
+                valid_invites = [inv for inv in channel_invites if inv["valid"]]
+                invalid_invites = [inv for inv in channel_invites if not inv["valid"]]
+                
                 return {
                     "channel": channel,
                     "invites": channel_invites,
-                    "valid_count": len(channel_invites),
-                    "status": "good" if len(channel_invites) > 0 else "no_invites"
+                    "valid_invites": valid_invites,
+                    "invalid_invites": invalid_invites,
+                    "valid_count": len(valid_invites),
+                    "invalid_count": len(invalid_invites)
                 }
             except:
                 return {"channel": channel, "invites": [], "valid_count": 0, "status": "error"}
@@ -436,131 +444,93 @@ class UltraInviteChecker(commands.Cog):
         
         scan_time = time.time() - start_time
         
-        # Filter channels with invites
-        channels_with_invites = [r for r in results if r["valid_count"] > 0]
+        # Process results
+        channels_with_invites = [r for r in results if len(r["invites"]) > 0]
         total_channels = len(all_channels)
-        total_invites = sum(r["valid_count"] for r in results)
+        total_valid = sum(r["valid_count"] for r in results)
+        total_invalid = sum(r["invalid_count"] for r in results)
+        total_invites = total_valid + total_invalid
         
-        # BUILD EXACT FORMAT FROM YOUR IMAGE
-        
-        # EMBED 1: Channel Listing (like your screenshot)
+        # EMBED 1: Clean Channel Listing
         embed1 = discord.Embed(
-            title="🔍 Invite Check Results",
-            description=f"**Channels checked:** {total_channels}\n**Invites found:** {total_invites}",
+            title="Invite Check Results", 
+            description=f"Checked {total_channels} recent messages: {scan_time:.1f}s",
             color=EMBED_COLOR_NORMAL
         )
         
-        # Create the exact channel listing format
+        # Create clean channel listing
         channel_lines = []
         for result in channels_with_invites:
             channel = result["channel"]
-            invites_count = result["valid_count"]
+            valid_count = result["valid_count"]
+            invalid_count = result["invalid_count"]
             
-            # Get server names for this channel
-            server_names = list(set([inv["server_name"] for inv in result["invites"]]))
-            server_text = ", ".join(server_names[:2])  # Show top 2 servers
-            if len(server_names) > 2:
-                server_text += f" +{len(server_names)-2} more"
-            
-            # Format exactly like your image: • channel : count good number Users
-            channel_lines.append(f"🟢 • {channel.mention} : {invites_count} good {server_text}")
+            if valid_count > 0:
+                # Get unique server names for valid invites
+                valid_servers = list(set([inv["server_name"] for inv in result["valid_invites"]]))
+                server_text = ", ".join(valid_servers[:2])
+                if len(valid_servers) > 2:
+                    server_text += f" +{len(valid_servers)-2} more"
+                
+                channel_lines.append(f"• {channel.mention} : {valid_count}/{valid_count + invalid_count} good {server_text}")
         
         if channel_lines:
-            # Split into multiple fields if too long
-            chunk_size = 10
+            embed1.add_field(
+                name="Check counts",
+                value=f"Channels checked: {total_channels}\nInvites checked: {total_invites}",
+                inline=True
+            )
+            
+            embed1.add_field(
+                name="Stats",
+                value=f"• {total_valid}/{total_invites} good invites ({(total_valid/total_invites*100):.1f}%)\n• {total_invalid}/{total_invites} bad invites ({(total_invalid/total_invites*100):.1f}%)",
+                inline=True
+            )
+            
+            # Split channel listing into chunks
+            chunk_size = 15
             for i in range(0, len(channel_lines), chunk_size):
                 chunk = channel_lines[i:i+chunk_size]
-                field_name = "📋 Active Channels" if i == 0 else f"📋 Active Channels (continued {i//chunk_size + 1})"
                 embed1.add_field(
-                    name=field_name,
+                    name="",
                     value="\n".join(chunk),
                     inline=False
                 )
         else:
             embed1.add_field(
-                name="📋 Channel Status",
-                value="No invites found in scanned channels",
+                name="Results",
+                value="No invites found in recent messages",
                 inline=False
             )
         
-        embed1.add_field(
-            name="⏱️ Performance",
-            value=f"Checked {total_channels} recent messages: **{scan_time:.1f}s**",
-            inline=False
-        )
-        
         await ctx.send(embed=embed1)
         
-        # EMBED 2: Server Breakdown with Quick Teleportation
-        if channels_with_invites:
+        # EMBED 2: Invalid Invites with Author Pings
+        channels_with_invalid = [r for r in results if r["invalid_count"] > 0]
+        if channels_with_invalid:
             await asyncio.sleep(0.5)
             
             embed2 = discord.Embed(
-                title="🎖️ Server Breakdown",
-                description="Click author names for instant teleportation to messages",
-                color=EMBED_COLOR_NORMAL
+                title="Issues Found",
+                description=f"{total_invalid} invalid invites detected",
+                color=EMBED_COLOR_ERROR
             )
             
-            # Group by server
-            server_data = {}
-            for result in channels_with_invites:
-                for invite in result["invites"]:
-                    server_name = invite["server_name"]
-                    if server_name not in server_data:
-                        server_data[server_name] = []
-                    
-                    server_data[server_name].append({
-                        "channel": result["channel"],
-                        "author": invite["author"],
-                        "member_count": invite.get("member_count", 0)
-                    })
-            
-            # Show top servers with author pings for teleportation
-            for server_name, entries in list(server_data.items())[:8]:
-                member_count = entries[0].get("member_count", 0)
-                member_text = f" • {member_count:,} members" if member_count > 0 else ""
+            for result in channels_with_invalid[:5]:  # Top 5 problematic channels
+                channel = result["channel"]
+                invalid_list = []
                 
-                # Create clickable author mentions for easy teleportation
-                author_mentions = []
-                for entry in entries[:3]:  # Top 3 channels per server
-                    author_mentions.append(f"{entry['author'].mention} in {entry['channel'].mention}")
+                for invite in result["invalid_invites"][:3]:  # Top 3 invalid per channel
+                    invalid_list.append(f"• {invite['author'].mention} `{invite['code']}`")
                 
-                embed2.add_field(
-                    name=f"🏆 {server_name}{member_text}",
-                    value="\n".join(author_mentions) + (f"\n*+{len(entries)-3} more channels*" if len(entries) > 3 else ""),
-                    inline=False
-                )
+                if invalid_list:
+                    embed2.add_field(
+                        name=f"{channel.mention}",
+                        value="\n".join(invalid_list) + (f"\n*...and {len(result['invalid_invites'])-3} more*" if len(result['invalid_invites']) > 3 else ""),
+                        inline=False
+                    )
             
             await ctx.send(embed=embed2)
-        
-        # EMBED 3: Completion Summary
-        await asyncio.sleep(0.5)
-        
-        embed3 = discord.Embed(
-            title="✅ Invite Check Complete!",
-            description=f"⚡ **Ultra-fast scan completed in {scan_time:.1f} seconds**",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        embed3.add_field(
-            name="📊 Final Stats",
-            value=f"**Channels:** {total_channels}\n"
-                  f"**Active channels:** {len(channels_with_invites)}\n" 
-                  f"**Total invites:** {total_invites}\n"
-                  f"**Speed:** {total_channels/scan_time:.1f} channels/sec",
-            inline=True
-        )
-        
-        embed3.add_field(
-            name="🎯 Results",
-            value=f"**Success rate:** 100% valid\n"
-                  f"**Performance:** Ultra-fast\n"
-                  f"**Quality:** Enterprise-grade",
-            inline=True
-        )
-        
-        embed3.timestamp = discord.utils.utcnow()
-        await ctx.send(embed=embed3)
 
 async def setup(bot):
     """Setup function for the ultra invite checker cog"""
