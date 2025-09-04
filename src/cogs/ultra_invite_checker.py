@@ -581,18 +581,20 @@ class UltraInviteChecker(commands.Cog):
                         status = "bad"
                         category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `0 Users`")
                         
-                        # Double-check invalid invites to avoid Discord cache issues
+                        # Track users already pinged in this check (ping once only)
+                        pinged_users = set()
+                        
                         for invalid_invite in result["invalid_invites"]:
                             if invalid_invite.get("author"):
-                                try:
-                                    # Re-validate the invite to avoid cache issues
-                                    recheck_valid, _ = await self.validate_invite_instant(invalid_invite['code'])
-                                    
-                                    # Only ping if it's still invalid after recheck
-                                    if not recheck_valid:
-                                        await channel.send(f"<@{invalid_invite['author'].id}> Your invite `{invalid_invite['code']}` is invalid/expired.")
-                                except:
-                                    pass  # Skip if we can't send message
+                                user_id = invalid_invite['author'].id
+                                
+                                # Only ping if we haven't already pinged this user
+                                if user_id not in pinged_users:
+                                    try:
+                                        await channel.send(f"<@{user_id}> Your invite `{invalid_invite['code']}` is invalid/expired.")
+                                        pinged_users.add(user_id)  # Mark user as pinged
+                                    except:
+                                        pass  # Skip if we can't send message
                 else:
                     # No invites found
                     category_lines.append(f"{SPROUTS_ERROR} {channel.mention} : 0 found `0 Users`")
