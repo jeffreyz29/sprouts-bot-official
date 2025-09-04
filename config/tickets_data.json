@@ -103,23 +103,5 @@
     ],
     "tags": [],
     "log_channel_id": null
-  },
-  "1413292351681728553": {
-    "id": "ticket-jeffreyz29",
-    "creator_id": 764874247646085151,
-    "creator_name": "jeffreyz29",
-    "channel_id": 1413292351681728553,
-    "guild_id": 1411324489333215267,
-    "created_at": "2025-09-04T22:39:14.567409",
-    "status": "open",
-    "claimed_by": null,
-    "priority": "medium",
-    "topic": "Support Request",
-    "members": [
-      764874247646085151
-    ],
-    "tags": [],
-    "panel_id": null,
-    "log_channel_id": 1412287783988367482
   }
 }
