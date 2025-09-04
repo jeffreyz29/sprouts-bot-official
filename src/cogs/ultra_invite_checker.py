@@ -359,12 +359,15 @@ class UltraInviteChecker(commands.Cog):
         scan_categories = guild_config.get("scan_categories", [])
         if scan_categories:
             category_list = []
-            for category_id in scan_categories:
+            for category_id in scan_categories[:5]:  # Limit to first 5 to avoid embed limits
                 category = ctx.guild.get_channel(category_id)
                 if category:
-                    category_list.append(f"• {category.name} (ID: {category_id})")
+                    category_list.append(f"• {category.name}")
                 else:
-                    category_list.append(f"• Unknown Category (ID: {category_id})")
+                    category_list.append(f"• Unknown Category")
+            
+            if len(scan_categories) > 5:
+                category_list.append(f"...and {len(scan_categories)-5} more")
             
             embed.add_field(
                 name=f"Scan Categories ({len(scan_categories)})",
