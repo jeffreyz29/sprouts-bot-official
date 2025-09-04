@@ -837,9 +837,9 @@ class TicketData:
     def save_tickets(tickets_data):
         """Save tickets to file"""
         try:
-            os.makedirs("data", exist_ok=True)
+            os.makedirs(os.path.dirname(TICKETS_FILE), exist_ok=True)
             with open(TICKETS_FILE, 'w') as f:
-                json.dump(tickets_data, f, indent=2)
+                json.dump(tickets_data, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Error saving tickets: {e}")
 
