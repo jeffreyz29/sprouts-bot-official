@@ -438,14 +438,6 @@ class UltraInviteChecker(commands.Cog):
                             
                             channel_invites.append(invite_entry)
                             
-                            # IMMEDIATE PING: If invalid, ping author in their channel right away
-                            if not is_valid:
-                                try:
-                                    ping_msg = f"{message.author.mention} Your invite `{invite_code}` is invalid/expired."
-                                    await channel.send(ping_msg)
-                                except:
-                                    pass  # Ignore if can't send
-                            
                             # Stop if we found enough invites
                             if len(channel_invites) >= 2:
                                 break
