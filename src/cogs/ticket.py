@@ -32,7 +32,7 @@ class TicketButtons(discord.ui.View):
 
     @discord.ui.button(label="Close Ticket",
                        style=discord.ButtonStyle.danger,
-                       custom_id="close_ticket")
+                       custom_id="ticket_close_button")
     async def close_ticket(self, interaction: discord.Interaction,
                            button: discord.ui.Button):
         """Close ticket button handler"""
@@ -87,7 +87,7 @@ class TicketButtons(discord.ui.View):
 
     @discord.ui.button(label="Claim Ticket",
                        style=discord.ButtonStyle.secondary,
-                       custom_id="claim_ticket")
+                       custom_id="ticket_claim_button")
     async def claim_ticket(self, interaction: discord.Interaction,
                            button: discord.ui.Button):
         """Claim ticket button handler"""
@@ -113,7 +113,7 @@ class TicketButtons(discord.ui.View):
             await ticket_cog.claim_ticket(ctx)
             try:
                 await interaction.response.defer()
-            except discord.InteractionAlreadyAcknowledged:
+            except discord.errors.InteractionAlreadyAcknowledged:
                 pass  # Already handled by claim_ticket
 
         except Exception as e:
@@ -287,7 +287,7 @@ class TicketPanelView(discord.ui.View):
 
     @discord.ui.button(label="Create Ticket",
                        style=discord.ButtonStyle.primary,
-                       custom_id="create_ticket")
+                       custom_id="panel_create_ticket")
     async def create_ticket(self, interaction: discord.Interaction,
                             button: discord.ui.Button):
         """Create ticket from panel button"""
@@ -616,7 +616,7 @@ class ChannelSelectView(discord.ui.View):
     async def channel_callback(self, interaction: discord.Interaction):
         """Handle channel selection"""
         try:
-            channel_id = int(interaction.data['values'][0])
+            channel_id = int(self.values[0])
             channel = self.ctx.guild.get_channel(channel_id)
 
             guild_settings = {'log_channel_id': channel_id}
@@ -662,7 +662,7 @@ class RoleSelectView(discord.ui.View):
     async def role_callback(self, interaction: discord.Interaction):
         """Handle role selection"""
         try:
-            role_id = int(interaction.data['values'][0])
+            role_id = int(self.values[0])
             role = self.ctx.guild.get_role(role_id)
 
             guild_settings = self.ticket_cog.get_guild_settings(
@@ -717,7 +717,7 @@ class CategorySelectView(discord.ui.View):
     async def category_callback(self, interaction: discord.Interaction):
         """Handle category selection"""
         try:
-            category_id = int(interaction.data['values'][0])
+            category_id = int(self.values[0])
             category = self.ctx.guild.get_channel(category_id)
 
             guild_settings = {'ticket_category_id': category_id}
@@ -769,7 +769,7 @@ class NamingSelectView(discord.ui.View):
     async def naming_callback(self, interaction: discord.Interaction):
         """Handle naming style selection"""
         try:
-            naming_style = interaction.data['values'][0]
+            naming_style = self.values[0]
 
             guild_settings = {'naming_style': naming_style}
             self.ticket_cog.update_guild_settings(self.ctx.guild.id,
