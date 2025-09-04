@@ -1625,7 +1625,7 @@ class DevOnly(commands.Cog):
                 "`s.cooldown` - Set global command cooldown (supports 1s, 5m, 2h, 1d)\n"
                 "`s.maintenance` - Toggle maintenance mode (complete silence for others)\n"
                 "`s.shutdown` - Safely shut down the bot\n"
-                "`s.restart` - Restart the bot automatically"
+                "`s.clearslash` - Remove all slash commands from Discord"
             ),
             inline=False
         )
@@ -2442,6 +2442,49 @@ class DevOnly(commands.Cog):
             )
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="clearslash", description="Clear all slash commands", hidden=True)
+    @commands.is_owner()
+    async def clear_slash_commands(self, ctx):
+        """Clear all slash commands from Discord"""
+        embed = discord.Embed(
+            title="Clearing Slash Commands",
+            description="Removing all slash commands from Discord...",
+            color=EMBED_COLOR_NORMAL
+        )
+        msg = await ctx.reply(embed=embed, mention_author=False)
+        
+        try:
+            # Clear global slash commands
+            self.bot.tree.clear_commands()
+            await self.bot.tree.sync()
+            
+            # Clear guild-specific slash commands for all guilds
+            for guild in self.bot.guilds:
+                self.bot.tree.clear_commands(guild=guild)
+                await self.bot.tree.sync(guild=guild)
+            
+            embed = discord.Embed(
+                title="Slash Commands Cleared",
+                description="All slash commands have been removed from Discord. Changes may take up to 1 hour to fully propagate.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Cleared From:",
+                value=f"• Global commands\n• {len(self.bot.guilds)} guild-specific commands",
+                inline=False
+            )
+            await msg.edit(embed=embed)
+            logger.info(f"Slash commands cleared by {ctx.author}")
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error Clearing Slash Commands",
+                description=f"Failed to clear slash commands: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await msg.edit(embed=embed)
+            logger.error(f"Error clearing slash commands: {e}")
 
 async def setup(bot):
     """Setup function for the cog"""
