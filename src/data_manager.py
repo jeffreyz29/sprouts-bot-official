@@ -89,11 +89,11 @@ class DataManager:
             with open(os.path.join(backup_path, "backup_metadata.json"), 'w') as f:
                 json.dump(metadata, f, indent=2)
             
-            logger.info(f"✅ Created backup '{backup_name}' with {len(backed_up_files)} files")
+            logger.info(f"Created backup '{backup_name}' with {len(backed_up_files)} files")
             return backup_path
             
         except Exception as e:
-            logger.error(f"❌ Failed to create backup: {e}")
+            logger.error(f"Failed to create backup: {e}")
             return None
     
     def restore_backup(self, backup_name: str) -> bool:
@@ -102,7 +102,7 @@ class DataManager:
             backup_path = os.path.join(self.backup_dir, backup_name)
             
             if not os.path.exists(backup_path):
-                logger.error(f"❌ Backup '{backup_name}' not found")
+                logger.error(f"Backup '{backup_name}' not found")
                 return False
             
             # Read backup metadata
@@ -136,11 +136,11 @@ class DataManager:
                 shutil.copytree(backup_transcripts, target_transcripts)
                 logger.info("Restored transcripts directory")
             
-            logger.info(f"✅ Restored {len(restored_files)} files from backup '{backup_name}'")
+            logger.info(f"Restored {len(restored_files)} files from backup '{backup_name}'")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to restore backup '{backup_name}': {e}")
+            logger.error(f"Failed to restore backup '{backup_name}': {e}")
             return False
     
     def list_backups(self) -> List[Dict[str, Any]]:
@@ -258,7 +258,7 @@ class DataManager:
             if has_data:
                 backup_path = self.create_backup("startup_backup")
                 if backup_path:
-                    logger.info("🔄 Created startup backup for data safety")
+                    logger.info("Created startup backup for data safety")
                     
                     # Clean up old startup backups (keep only 5 most recent)
                     await self.cleanup_old_backups(backup_prefix="startup_backup", keep_count=5)
@@ -285,7 +285,7 @@ class DataManager:
             
             is_fresh = sum(indicators) >= 2
             if is_fresh:
-                logger.info("🚀 Detected fresh GitHub deployment")
+                logger.info("Detected fresh GitHub deployment")
             
             return is_fresh
             
@@ -310,17 +310,17 @@ class DataManager:
                 created_by = restore_data.get('created_by')
                 
                 if backup_name and os.path.exists(os.path.join(self.backup_dir, backup_name)):
-                    logger.info(f"🔄 Auto-restoring from GitHub backup: {backup_name}")
+                    logger.info(f"Auto-restoring from GitHub backup: {backup_name}")
                     success = self.restore_backup(backup_name)
                     
                     if success:
-                        logger.info("✅ Successfully restored data from GitHub backup")
+                        logger.info("Successfully restored data from GitHub backup")
                         # Remove the restore trigger file
                         os.remove(github_backup_file)
                     else:
-                        logger.error("❌ Failed to restore GitHub backup")
+                        logger.error("Failed to restore GitHub backup")
                 else:
-                    logger.warning(f"⚠️ GitHub backup '{backup_name}' not found")
+                    logger.warning(f"GitHub backup '{backup_name}' not found")
             else:
                 logger.info("ℹ️ No GitHub restore backup file found - fresh start")
                 
@@ -341,7 +341,7 @@ class DataManager:
             with open("github_restore_backup.json", 'w') as f:
                 json.dump(restore_data, f, indent=2)
             
-            logger.info(f"📝 Created GitHub restore file for backup: {backup_name}")
+            logger.info(f"Created GitHub restore file for backup: {backup_name}")
             return True
             
         except Exception as e:

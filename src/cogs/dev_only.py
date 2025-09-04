@@ -2597,7 +2597,7 @@ class DevOnly(commands.Cog):
                 color=EMBED_COLOR_ERROR
             )
             embed.add_field(
-                name="⚠️ Warning",
+                name="Warning",
                 value="This will overwrite current configurations. Make sure the bot is in maintenance mode!",
                 inline=False
             )
@@ -2658,7 +2658,7 @@ class DevOnly(commands.Cog):
                 return
             
             embed = discord.Embed(
-                title=f"📁 Available Backups ({len(backups)})",
+                title=f"Available Backups ({len(backups)})",
                 color=EMBED_COLOR_NORMAL
             )
             
@@ -2703,7 +2703,7 @@ class DevOnly(commands.Cog):
             from src.data_manager import data_manager
             
             embed = discord.Embed(
-                title="🔍 Checking Data Integrity",
+                title="Checking Data Integrity",
                 description="Verifying all configuration files...",
                 color=EMBED_COLOR_NORMAL
             )
@@ -2715,21 +2715,21 @@ class DevOnly(commands.Cog):
             invalid_files = [name for name, valid in integrity.items() if not valid]
             
             embed = discord.Embed(
-                title="📊 Data Integrity Report",
+                title="Data Integrity Report",
                 color=EMBED_COLOR_SUCCESS if not invalid_files else EMBED_COLOR_ERROR
             )
             
             if valid_files:
                 embed.add_field(
                     name=f"{SPROUTS_CHECK} Valid Files ({len(valid_files)})",
-                    value="\n".join(f"✅ {name}" for name in valid_files[:10]),
+                    value="\n".join(f"{SPROUTS_CHECK} {name}" for name in valid_files[:10]),
                     inline=False
                 )
             
             if invalid_files:
                 embed.add_field(
                     name=f"{SPROUTS_ERROR} Issues ({len(invalid_files)})",
-                    value="\n".join(f"❌ {name}" for name in invalid_files),
+                    value="\n".join(f"{SPROUTS_ERROR} {name}" for name in invalid_files),
                     inline=False
                 )
                 embed.add_field(
