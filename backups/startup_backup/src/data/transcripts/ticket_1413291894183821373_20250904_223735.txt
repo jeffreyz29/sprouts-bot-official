@@ -1,0 +1,12 @@
+=== TICKET TRANSCRIPT ===
+Ticket ID: 1413291894183821373
+Creator: Unknown
+Created: 2025-09-04T22:37:25.444721
+Closed: 2025-09-04T22:37:36.164656
+Closed by: jeffrey
+Reason: No reason provided
+Guild: sprouts apm bot (1411324489333215267)
+Channel: ticket-jeffreyz29 (1413291894183821373)
+==================================================
+
+[2025-09-04 22:37:25 UTC] sprouts beta: [No text content] [Contains 1 embed(s)]

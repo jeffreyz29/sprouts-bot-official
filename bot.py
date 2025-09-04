@@ -61,6 +61,18 @@ class DiscordBot(commands.AutoShardedBot):
         """Called when the bot is starting up"""
         logger.info("Bot is starting up...")
         
+        # Initialize data manager and create startup backup
+        from src.data_manager import data_manager
+        await data_manager.auto_backup_on_startup()
+        
+        # Verify data integrity and create defaults if needed
+        integrity = data_manager.verify_data_integrity()
+        missing_files = [name for name, valid in integrity.items() if not valid]
+        if missing_files:
+            logger.warning(f"Missing/corrupted data files: {missing_files}")
+            data_manager.create_empty_defaults()
+            logger.info("Created default configuration files")
+        
         # Setup all cogs - removed custom replies and welcome system
         from src.cogs.uncategorized import setup_uncategorized
         from src.cogs.events import setup_events

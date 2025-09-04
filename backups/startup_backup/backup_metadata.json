@@ -1,0 +1,19 @@
+{
+  "backup_name": "startup_backup",
+  "timestamp": "2025-09-04T23:13:55.622636",
+  "files_backed_up": [
+    "config/guild_settings.json",
+    "config/tickets_data.json",
+    "config/cmd_logging_settings.json",
+    "config/dm_logging_settings.json",
+    "config/dm_settings.json",
+    "config/global_logging.json",
+    "config/server_join_settings.json",
+    "config/server_stats.json",
+    "config/tags_data.json",
+    "src/data/saved_embeds.json",
+    "src/data/sticky_messages.json",
+    "src/data/ticket_settings.json"
+  ],
+  "total_files": 12
+}

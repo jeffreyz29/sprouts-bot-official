@@ -1,0 +1,88 @@
+{
+  "1411324489333215267": {
+    "embed_1": {
+      "name": "embed_1",
+      "title": "test",
+      "description": "asdasdfadf",
+      "color": 12779488,
+      "author_name": "sdasdadasdasd",
+      "author_icon": "",
+      "footer_text": "afasfa",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    },
+    "test": {
+      "name": "test",
+      "title": "",
+      "description": "",
+      "color": 12779488,
+      "author_name": "",
+      "author_icon": "",
+      "footer_text": "",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    }
+  },
+  "1412303107223851101": {
+    "ticket embed": {
+      "name": "ticket embed",
+      "title": "afadad",
+      "description": "welcome user hi test ajodjaosdnfafma;fladf\n$(user.mention) your duklandf;lasnf\n$(ticket.id) ajaoifjaf",
+      "color": 12779488,
+      "author_name": "fadafad",
+      "author_icon": "",
+      "footer_text": "afdfaf",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    }
+  },
+  "1412650062517108789": {
+    "test": {
+      "name": "test",
+      "title": "",
+      "description": "",
+      "color": 12779488,
+      "author_name": "",
+      "author_icon": "",
+      "footer_text": "",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    },
+    "embed_1": {
+      "name": "embed_1",
+      "title": "",
+      "description": "d",
+      "color": 12779488,
+      "author_name": "",
+      "author_icon": "",
+      "footer_text": "",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    }
+  },
+  "799781059503456287": {
+    "ticket_embed": {
+      "name": "ticket_embed",
+      "title": "",
+      "description": "Run `.start` to begin massing\nTag all invalids channels\n\n*1 ticket/3ads max*",
+      "color": 12779488,
+      "author_name": "",
+      "author_icon": "",
+      "footer_text": "",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    }
+  }
+}

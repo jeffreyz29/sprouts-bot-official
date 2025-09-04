@@ -1660,6 +1660,17 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
+            name="Data Management",
+            value=(
+                "`s.backup [name]` - Create backup of all bot configurations\n"
+                "`s.restore <name>` - Restore data from backup (use with caution!)\n"
+                "`s.listbackups` - Show all available backups\n"
+                "`s.integrity` - Check data file integrity and health"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
             name="Server Stats & Monitoring",
             value=(
                 "`s.serverstats start` - Start server stats monitoring\n"
@@ -2514,6 +2525,213 @@ class DevOnly(commands.Cog):
             )
             await msg.edit(embed=embed)
             logger.error(f"Error clearing slash commands: {e}")
+
+    @commands.command(name="backup", description="Create a backup of all bot data", hidden=True)
+    @commands.is_owner()
+    async def create_backup(self, ctx, backup_name: str = None):
+        """Create a manual backup of all bot data"""
+        try:
+            from src.data_manager import data_manager
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Creating Backup",
+                description="Creating backup of all bot configurations...",
+                color=EMBED_COLOR_NORMAL
+            )
+            msg = await ctx.reply(embed=embed, mention_author=False)
+            
+            backup_path = data_manager.create_backup(backup_name)
+            
+            if backup_path:
+                backup_name = os.path.basename(backup_path)
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Backup Created",
+                    description=f"Successfully created backup: `{backup_name}`",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                embed.add_field(
+                    name="Backup Location",
+                    value=f"`{backup_path}`",
+                    inline=False
+                )
+                embed.set_footer(text=f"Created by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Backup Failed",
+                    description="Failed to create backup. Check logs for details.",
+                    color=EMBED_COLOR_ERROR
+                )
+            
+            await msg.edit(embed=embed)
+            logger.info(f"Backup created by {ctx.author}: {backup_name}")
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Backup Error",
+                description=f"Error creating backup: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @commands.command(name="restore", description="Restore bot data from backup", hidden=True)
+    @commands.is_owner()
+    async def restore_backup(self, ctx, backup_name: str):
+        """Restore bot data from a backup"""
+        try:
+            from src.data_manager import data_manager
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Restoring Backup",
+                description=f"Restoring data from backup: `{backup_name}`...",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.add_field(
+                name="⚠️ Warning",
+                value="This will overwrite current configurations. Make sure the bot is in maintenance mode!",
+                inline=False
+            )
+            msg = await ctx.reply(embed=embed, mention_author=False)
+            
+            success = data_manager.restore_backup(backup_name)
+            
+            if success:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Backup Restored",
+                    description=f"Successfully restored backup: `{backup_name}`",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                embed.add_field(
+                    name="Next Steps",
+                    value="Restart the bot to load restored configurations.",
+                    inline=False
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Restore Failed",
+                    description=f"Failed to restore backup: `{backup_name}`",
+                    color=EMBED_COLOR_ERROR
+                )
+            
+            await msg.edit(embed=embed)
+            logger.info(f"Backup restore attempted by {ctx.author}: {backup_name} - {'Success' if success else 'Failed'}")
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Restore Error",
+                description=f"Error restoring backup: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @commands.command(name="listbackups", description="List all available backups", hidden=True)
+    @commands.is_owner()
+    async def list_backups(self, ctx):
+        """List all available backups"""
+        try:
+            from src.data_manager import data_manager
+            
+            backups = data_manager.list_backups()
+            
+            if not backups:
+                embed = discord.Embed(
+                    title="No Backups Found",
+                    description="No backups are available.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            embed = discord.Embed(
+                title=f"📁 Available Backups ({len(backups)})",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            for i, backup in enumerate(backups[:10]):  # Show max 10
+                name = backup.get("name", "Unknown")
+                timestamp = backup.get("timestamp", "Unknown time")
+                size = backup.get("size_mb", 0)
+                files = backup.get("total_files", "Unknown")
+                
+                # Format timestamp
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(timestamp)
+                    time_str = dt.strftime("%Y-%m-%d %H:%M")
+                except:
+                    time_str = timestamp
+                
+                embed.add_field(
+                    name=f"{i+1}. {name}",
+                    value=f"**Created:** {time_str}\n**Size:** {size}MB\n**Files:** {files}",
+                    inline=True
+                )
+            
+            if len(backups) > 10:
+                embed.set_footer(text=f"Showing 10 of {len(backups)} backups")
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} List Error",
+                description=f"Error listing backups: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @commands.command(name="integrity", description="Check data file integrity", hidden=True)
+    @commands.is_owner()
+    async def check_integrity(self, ctx):
+        """Check the integrity of all data files"""
+        try:
+            from src.data_manager import data_manager
+            
+            embed = discord.Embed(
+                title="🔍 Checking Data Integrity",
+                description="Verifying all configuration files...",
+                color=EMBED_COLOR_NORMAL
+            )
+            msg = await ctx.reply(embed=embed, mention_author=False)
+            
+            integrity = data_manager.verify_data_integrity()
+            
+            valid_files = [name for name, valid in integrity.items() if valid]
+            invalid_files = [name for name, valid in integrity.items() if not valid]
+            
+            embed = discord.Embed(
+                title="📊 Data Integrity Report",
+                color=EMBED_COLOR_SUCCESS if not invalid_files else EMBED_COLOR_ERROR
+            )
+            
+            if valid_files:
+                embed.add_field(
+                    name=f"{SPROUTS_CHECK} Valid Files ({len(valid_files)})",
+                    value="\n".join(f"✅ {name}" for name in valid_files[:10]),
+                    inline=False
+                )
+            
+            if invalid_files:
+                embed.add_field(
+                    name=f"{SPROUTS_ERROR} Issues ({len(invalid_files)})",
+                    value="\n".join(f"❌ {name}" for name in invalid_files),
+                    inline=False
+                )
+                embed.add_field(
+                    name="Recommended Action",
+                    value="Use `s.backup` to create backup, then restart bot to recreate missing files.",
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"Total files checked: {len(integrity)}")
+            await msg.edit(embed=embed)
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Integrity Check Error",
+                description=f"Error checking integrity: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
 
 async def setup(bot):
     """Setup function for the cog"""
