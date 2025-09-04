@@ -471,15 +471,15 @@ class UltraInviteChecker(commands.Cog):
             try:
                 channel_invites = []
                 
-                # Only scan most recent messages for speed - limit to 5 for rate limiting
+                # Scan more messages with improved rate limiting
                 message_count = 0
-                async for message in channel.history(limit=5):
+                async for message in channel.history(limit=15):
                     message_count += 1
                     if any(pattern in message.content.lower() for pattern in ['discord.gg/', 'discord.com/invite/', 'discordapp.com/invite/']):
                         invites = self.extract_invites(message.content)
                         
-                        # Limit to first 2 invites per channel to avoid rate limits
-                        for invite_code in invites[:2]:
+                        # Allow more invites per channel with better rate limiting  
+                        for invite_code in invites[:5]:
                             is_valid, invite_info = await self.validate_invite_instant(invite_code)
                             
                             invite_entry = {
@@ -495,10 +495,10 @@ class UltraInviteChecker(commands.Cog):
                             channel_invites.append(invite_entry)
                             
                             # Stop if we found enough invites
-                            if len(channel_invites) >= 2:
+                            if len(channel_invites) >= 5:
                                 break
                     
-                    if len(channel_invites) >= 2:
+                    if len(channel_invites) >= 5:
                         break
                 
                 valid_invites = [inv for inv in channel_invites if inv["valid"]]
@@ -515,8 +515,8 @@ class UltraInviteChecker(commands.Cog):
             except:
                 return {"channel": channel, "invites": [], "valid_count": 0, "status": "error"}
         
-        # Process channels in smaller batches to avoid rate limits
-        batch_size = 3  # Smaller batches to avoid rate limits
+        # Process channels in larger batches with optimized rate limits
+        batch_size = 8  # Larger batches for faster processing
         results = []
         
         for i in range(0, len(all_channels), batch_size):
@@ -525,9 +525,9 @@ class UltraInviteChecker(commands.Cog):
             batch_results = await asyncio.gather(*tasks)
             results.extend(batch_results)
             
-            # Small delay between batches
+            # Reduced delay between batches
             if i + batch_size < len(all_channels):
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.2)
         
         scan_time = time.time() - start_time
         
