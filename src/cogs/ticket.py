@@ -566,7 +566,7 @@ class RoleSelectView(discord.ui.View):
                 updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
 
                 success_embed = discord.Embed(
-                    title="Staff Role Added",
+                    title=f"{SPROUTS_CHECK} Staff Role Added",
                     description=f"{role.mention} added as staff role",
                     color=EMBED_COLOR_NORMAL)
             else:
