@@ -1216,6 +1216,25 @@ class DevOnly(commands.Cog):
             )
             embed.set_footer(text=f"Set by {ctx.author.display_name}")
             await ctx.reply(embed=embed, mention_author=False)
+            
+            # Send confirmation to the configured logging channel
+            try:
+                test_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Command Logging Test",
+                    description=f"Global command logging has been configured by {ctx.author.mention}\n\nAll future command logs will appear in this channel.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                test_embed.add_field(
+                    name="Setup Details",
+                    value=f"**Configured by:** {ctx.author} (`{ctx.author.id}`)\n**From channel:** {ctx.channel.mention}\n**Server:** {ctx.guild.name}",
+                    inline=False
+                )
+                test_embed.set_footer(text="This is a test message to confirm logging is working")
+                await channel.send(embed=test_embed)
+                logger.info(f"Sent test message to command logging channel {channel}")
+            except Exception as e:
+                logger.warning(f"Could not send test message to command logging channel: {e}")
+                
             logger.info(f"Global command logging set to {channel} by {ctx.author}")
             
         except Exception as e:
@@ -1334,6 +1353,25 @@ class DevOnly(commands.Cog):
             )
             embed.set_footer(text=f"Set by {ctx.author.display_name}")
             await ctx.reply(embed=embed, mention_author=False)
+            
+            # Send confirmation to the configured logging channel
+            try:
+                test_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} DM Logging Test",
+                    description=f"Global DM logging has been configured by {ctx.author.mention}\n\nAll future DMs to the bot will appear in this channel.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                test_embed.add_field(
+                    name="Setup Details",
+                    value=f"**Configured by:** {ctx.author} (`{ctx.author.id}`)\n**From channel:** {ctx.channel.mention}\n**Server:** {ctx.guild.name}",
+                    inline=False
+                )
+                test_embed.set_footer(text="This is a test message to confirm DM logging is working")
+                await channel.send(embed=test_embed)
+                logger.info(f"Sent test message to DM logging channel {channel}")
+            except Exception as e:
+                logger.warning(f"Could not send test message to DM logging channel: {e}")
+                
             logger.info(f"Global DM logging set to {channel} by {ctx.author}")
             
         except Exception as e:
@@ -1452,6 +1490,30 @@ class DevOnly(commands.Cog):
             )
             embed.set_footer(text=f"Set by {ctx.author.display_name}")
             await ctx.reply(embed=embed, mention_author=False)
+            
+            # Send confirmation to the configured logging channel
+            try:
+                test_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Guild Logging Test",
+                    description=f"Global guild event logging has been configured by {ctx.author.mention}\n\nAll future guild join/leave events will appear in this channel.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                test_embed.add_field(
+                    name="Setup Details",
+                    value=f"**Configured by:** {ctx.author} (`{ctx.author.id}`)\n**From channel:** {ctx.channel.mention}\n**Server:** {ctx.guild.name}",
+                    inline=False
+                )
+                test_embed.add_field(
+                    name="Events That Will Be Logged",
+                    value="• Bot joins new servers\n• Bot leaves/gets kicked from servers",
+                    inline=False
+                )
+                test_embed.set_footer(text="This is a test message to confirm guild logging is working")
+                await channel.send(embed=test_embed)
+                logger.info(f"Sent test message to guild logging channel {channel}")
+            except Exception as e:
+                logger.warning(f"Could not send test message to guild logging channel: {e}")
+                
             logger.info(f"Global guild logging set to {channel} by {ctx.author}")
             
         except Exception as e:
