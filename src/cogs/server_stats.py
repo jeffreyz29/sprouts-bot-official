@@ -28,7 +28,7 @@ class ServerStatsMonitor(commands.Cog):
         self.bot = bot
         self.variable_parser = VariableParser(bot)
         self.active_monitors = {}  # channel_id: message_id mapping
-        self.stats_file = "src/data/server_stats.json"
+        self.stats_file = "config/server_stats.json"
         self.boot_time = datetime.now()
         try:
             self.network_io_start = psutil.net_io_counters()
@@ -54,7 +54,7 @@ class ServerStatsMonitor(commands.Cog):
     def load_stats_config(self):
         """Load server stats configuration"""
         try:
-            os.makedirs("data", exist_ok=True)
+            os.makedirs("config", exist_ok=True)
             if os.path.exists(self.stats_file):
                 with open(self.stats_file, 'r') as f:
                     config = json.load(f)
@@ -75,7 +75,7 @@ class ServerStatsMonitor(commands.Cog):
     def save_stats_config(self):
         """Save server stats configuration"""
         try:
-            os.makedirs("data", exist_ok=True)
+            os.makedirs("config", exist_ok=True)
             config = {
                 "active_monitors": self.active_monitors,
                 "notification_channel_id": self.notification_channel_id,
