@@ -331,10 +331,10 @@ class InviteChecker(commands.Cog):
         """Test if the bot is responding"""
         await ctx.reply("Bot is working! Ultra invite checker is ready.", mention_author=False)
 
-    @commands.command(name="cleanup")
+    @commands.command(name="settings", aliases=["config", "status"])
     @commands.has_permissions(administrator=True)
-    async def cleanup_ping_messages(self, ctx, limit: int = 50):
-        """Clean up unwanted ping messages from the bot"""
+    async def view_settings(self, ctx):
+        """View current invite checker configuration and settings"""
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
         
@@ -355,58 +355,79 @@ class InviteChecker(commands.Cog):
                     if isinstance(channel, discord.TextChannel):
                         all_channels.append(channel)
         
-        # Look for and delete the specific ping messages
-        for channel in all_channels:
-            try:
-                async for message in channel.history(limit=limit):
-                    if (message.author == self.bot.user and 
-                        "Your invite" in message.content and 
-                        "is invalid/expired" in message.content):
-                        
-                        await message.delete()
-                        deleted_count += 1
-            except:
-                continue  # Skip channels we can't access
-        
-        await status_msg.edit(content=f"✅ Cleanup complete! Deleted {deleted_count} unwanted ping messages.")
-        
-        if deleted_count == 0:
-            await status_msg.edit(content="✅ No unwanted ping messages found to delete.")
-
-    @commands.command(name="settings")
-    @commands.has_permissions(administrator=True)
-    async def view_settings(self, ctx):
-        """View current ultra invite checker settings"""
-        guild_id = str(ctx.guild.id)
-        guild_config = self.ensure_guild_config(guild_id)
-        
-        # Simple text response instead of complex embed
-        check_channel_id = guild_config.get("invite_check_channel")
+        # Get configured categories and channels info
         scan_categories = guild_config.get("scan_categories", [])
         ignore_channels = guild_config.get("ignore_channels", [])
         
-        response = "**Ultra Invite Checker Settings:**\n\n"
+        embed = discord.Embed(
+            title="🌱 Sprouts Invite Checker Configuration",
+            description="Current settings for this server",
+            color=0x90EE90
+        )
         
-        if check_channel_id:
-            check_channel = ctx.guild.get_channel(check_channel_id)
-            response += f"✅ Check Channel: {check_channel.mention if check_channel else 'Invalid'}\n"
+        # Scan Categories Section
+        if scan_categories:
+            category_list = []
+            total_channels = 0
+            for cat_id in scan_categories:
+                category = ctx.guild.get_channel(cat_id)
+                if category and isinstance(category, discord.CategoryChannel):
+                    channel_count = len([c for c in category.channels if isinstance(c, discord.TextChannel)])
+                    total_channels += channel_count
+                    category_list.append(f"• **{category.name}** ({channel_count} channels)")
+                else:
+                    category_list.append(f"• ~~Category ID {cat_id}~~ (deleted)")
+            
+            embed.add_field(
+                name=f"📂 Scan Categories ({len(scan_categories)} configured)",
+                value="\n".join(category_list) + f"\n\n**Total Channels**: {total_channels}",
+                inline=False
+            )
         else:
-            response += "❌ Check Channel: Not configured\n"
+            embed.add_field(
+                name="📂 Scan Categories",
+                value="❌ No categories configured\nUse `s.category add <category_id>` to add categories",
+                inline=False
+            )
         
-        response += f"📂 Scan Categories: {len(scan_categories)} configured\n"
-        response += f"🚫 Ignored Channels: {len(ignore_channels)}\n\n"
-        
-        if check_channel_id and scan_categories:
-            response += "🎯 **Status: Ready for ultracheck!**"
+        # Ignored Channels Section
+        if ignore_channels:
+            ignored_list = []
+            for channel_id in ignore_channels:
+                channel = ctx.guild.get_channel(channel_id)
+                if channel:
+                    ignored_list.append(f"• {channel.mention}")
+                else:
+                    ignored_list.append(f"• ~~Channel ID {channel_id}~~ (deleted)")
+            
+            embed.add_field(
+                name=f"🚫 Ignored Channels ({len(ignore_channels)} configured)",
+                value="\n".join(ignored_list[:10]) + ("\n...and more" if len(ignored_list) > 10 else ""),
+                inline=False
+            )
         else:
-            missing = []
-            if not check_channel_id:
-                missing.append("check channel")
-            if not scan_categories:
-                missing.append("categories")
-            response += f"⚠️ **Missing:** {', '.join(missing)}"
+            embed.add_field(
+                name="🚫 Ignored Channels",
+                value="✅ No channels ignored\nAll channels in configured categories will be scanned",
+                inline=False
+            )
         
-        await ctx.reply(response, mention_author=False)
+        # Scanner Performance Settings
+        embed.add_field(
+            name="⚡ Scanner Performance",
+            value="• **Messages per channel**: 15\n• **Max invites per channel**: 5\n• **Concurrent channels**: 8\n• **Rate limit delay**: 0.2s",
+            inline=True
+        )
+        
+        # Available Commands
+        embed.add_field(
+            name="🛠️ Available Commands",
+            value="• `s.check` - Run invite scan\n• `s.category add/remove/list` - Manage categories\n• `s.ignore add/remove/list` - Manage ignored channels\n• `s.settings` - View this configuration",
+            inline=True
+        )
+        
+        embed.set_footer(text="Sprouts Advanced Invite Checker | Configure categories and ignored channels as needed")
+        await ctx.send(embed=embed)
 
     @commands.command(name="check", aliases=["ultracheck"])
     @commands.has_permissions(administrator=True)
@@ -436,24 +457,7 @@ class InviteChecker(commands.Cog):
         )
         initial_msg = await ctx.send(embed=initial_embed)
         
-        # Delete previous invite check embeds in this channel (last 50 messages)
-        try:
-            deleted_count = 0
-            async for message in ctx.channel.history(limit=50):
-                if (message.author == self.bot.user and 
-                    message.embeds and 
-                    len(message.embeds) > 0 and
-                    any(keyword in str(message.embeds[0].to_dict()).lower() for keyword in 
-                        ['invite check', 'category', 'sprouts check', 'check complete'])):
-                    try:
-                        await message.delete()
-                        deleted_count += 1
-                    except:
-                        continue
-            if deleted_count > 0:
-                print(f"Cleaned up {deleted_count} previous invite check messages")
-        except:
-            pass  # Continue if cleanup fails
+        # Advanced invite checker - no cleanup needed
         
         # Don't send additional scanning status - keep initial message unchanged
         
