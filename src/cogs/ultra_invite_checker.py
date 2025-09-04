@@ -558,9 +558,9 @@ class UltraInviteChecker(commands.Cog):
                         
                         # Send ping messages for invalid invites in that channel
                         for invalid_invite in result["invalid_invites"]:
-                            if invalid_invite.get("author_id"):
+                            if invalid_invite.get("author"):
                                 try:
-                                    await channel.send(f"<@{invalid_invite['author_id']}> Your invite `{invalid_invite['code']}` is invalid/expired.")
+                                    await channel.send(f"<@{invalid_invite['author'].id}> Your invite `{invalid_invite['code']}` is invalid/expired.")
                                 except:
                                     pass  # Skip if we can't send message
                 else:
