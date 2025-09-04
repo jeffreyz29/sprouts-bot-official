@@ -2456,7 +2456,7 @@ class DevOnly(commands.Cog):
         
         try:
             # Clear global slash commands
-            self.bot.tree.clear_commands()
+            self.bot.tree.clear_commands(guild=None)
             await self.bot.tree.sync()
             
             # Clear guild-specific slash commands for all guilds
