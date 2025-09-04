@@ -329,6 +329,92 @@ class UltraInviteChecker(commands.Cog):
         """Test if the bot is responding"""
         await ctx.reply("Bot is working! Ultra invite checker is ready.", mention_author=False)
 
+    @commands.command(name="settings")
+    @commands.has_permissions(administrator=True)
+    async def view_settings(self, ctx):
+        """View current ultra invite checker settings"""
+        guild_id = str(ctx.guild.id)
+        guild_config = self.ensure_guild_config(guild_id)
+        
+        embed = discord.Embed(
+            title="Ultra Invite Checker Settings",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Check channel
+        check_channel_id = guild_config.get("invite_check_channel")
+        if check_channel_id:
+            check_channel = ctx.guild.get_channel(check_channel_id)
+            check_channel_text = check_channel.mention if check_channel else f"Invalid channel (ID: {check_channel_id})"
+        else:
+            check_channel_text = "Not configured"
+        
+        embed.add_field(
+            name="Check Channel",
+            value=check_channel_text,
+            inline=False
+        )
+        
+        # Categories
+        scan_categories = guild_config.get("scan_categories", [])
+        if scan_categories:
+            category_list = []
+            for category_id in scan_categories:
+                category = ctx.guild.get_channel(category_id)
+                if category:
+                    category_list.append(f"• {category.name} (ID: {category_id})")
+                else:
+                    category_list.append(f"• Unknown Category (ID: {category_id})")
+            
+            embed.add_field(
+                name=f"Scan Categories ({len(scan_categories)})",
+                value="\n".join(category_list),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Scan Categories",
+                value="None configured",
+                inline=False
+            )
+        
+        # Ignored channels
+        ignore_channels = guild_config.get("ignore_channels", [])
+        if ignore_channels:
+            embed.add_field(
+                name=f"Ignored Channels ({len(ignore_channels)})",
+                value=f"{len(ignore_channels)} channels blacklisted",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Ignored Channels", 
+                value="None",
+                inline=False
+            )
+        
+        # Status
+        if check_channel_id and scan_categories:
+            embed.add_field(
+                name="Status",
+                value="Ready for ultracheck",
+                inline=False
+            )
+        else:
+            missing = []
+            if not check_channel_id:
+                missing.append("check channel")
+            if not scan_categories:
+                missing.append("categories")
+            
+            embed.add_field(
+                name="Status",
+                value=f"Missing: {', '.join(missing)}",
+                inline=False
+            )
+        
+        await ctx.reply(embed=embed, mention_author=False)
+
     @commands.command(name="ultracheck")
     @commands.has_permissions(administrator=True)
     async def ultra_fast_check(self, ctx, limit: int = 20):
