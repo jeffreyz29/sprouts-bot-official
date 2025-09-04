@@ -1353,21 +1353,41 @@ class EmbedBuilder(commands.Cog):
             is_new_embed = not existing_embed.get('title') or existing_embed.get('title') == 'New Embed'
             status_text = "Creating new embed" if is_new_embed else "Editing existing embed"
             
-            # Start legacy editing session
+            # Start enhanced legacy editing session
             edit_embed = discord.Embed(
-                title="Legacy Text Editor",
-                description=f"{status_text}: **{name}**\n\n"
-                           f"**Current Title:** {existing_embed.get('title', 'None')}\n"
-                           f"**Current Description:** {existing_embed.get('description', 'None')[:100]}{'...' if existing_embed.get('description', '') and len(existing_embed.get('description', '')) > 100 else ''}\n"
-                           f"**Current Color:** {existing_embed.get('color', 'Default')}\n\n"
-                           f"Reply with:\n"
-                           f"`title: Your new title` - Set title\n"
-                           f"`desc: Your description` - Set description\n"
-                           f"`color: #hex` - Set color\n"
-                           f"`save` - Save changes\n"
-                           f"`cancel` - Cancel editing",
-                color=EMBED_COLOR_NORMAL
+                title="📝 Enhanced Text Editor",
+                description=f"{status_text}: **{name}**",
+                color=existing_embed.get('color', EMBED_COLOR_NORMAL)
             )
+            
+            # Show current values in fields for better organization
+            edit_embed.add_field(
+                name="📋 Current Values",
+                value=f"**Title:** {existing_embed.get('title', 'None')}\n"
+                      f"**Description:** {existing_embed.get('description', 'None')[:80]}{'...' if existing_embed.get('description', '') and len(existing_embed.get('description', '')) > 80 else ''}\n"
+                      f"**Color:** #{format(existing_embed.get('color', EMBED_COLOR_NORMAL), '06x')}",
+                inline=False
+            )
+            
+            edit_embed.add_field(
+                name="✏️ Quick Commands",
+                value="`t <title>` - Set title\n"
+                      "`d <description>` - Set description\n"
+                      "`c <#hex>` - Set color\n"
+                      "`preview` - Show current embed\n"
+                      "`reset` - Reset to defaults",
+                inline=True
+            )
+            
+            edit_embed.add_field(
+                name="💾 Session Control",
+                value="`save` - Save and finish\n"
+                      "`cancel` - Cancel changes\n"
+                      "`help` - Show all commands",
+                inline=True
+            )
+            
+            edit_embed.set_footer(text="💡 Tip: Use short commands for faster editing! Session expires in 5 minutes.")
             
             await ctx.reply(embed=edit_embed, mention_author=False)
             
@@ -1416,47 +1436,98 @@ class EmbedBuilder(commands.Cog):
                         await msg.reply(embed=save_embed, mention_author=False)
                         break
                     
-                    elif content.lower().startswith('title:'):
-                        new_title = content[6:].strip()
+                    # Enhanced command handling with short aliases
+                    elif content.lower().startswith(('title:', 't ')):
+                        prefix = 'title:' if content.startswith('title:') else 't '
+                        new_title = content[len(prefix):].strip()
                         if len(new_title) > 256:
-                            await msg.reply("Title too long! Maximum 256 characters.", mention_author=False)
+                            await msg.reply("⚠️ Title too long! Maximum 256 characters.", mention_author=False)
                             continue
                         editing_embed['title'] = new_title
-                        await msg.reply(f"✅ Title updated to: **{new_title}**", mention_author=False)
+                        await msg.reply(f"📝 Title updated to: **{new_title}**", mention_author=False)
                     
-                    elif content.lower().startswith('desc:'):
-                        new_desc = content[5:].strip()
+                    elif content.lower().startswith(('desc:', 'd ')):
+                        prefix = 'desc:' if content.startswith('desc:') else 'd '
+                        new_desc = content[len(prefix):].strip()
                         if len(new_desc) > 4096:
-                            await msg.reply("Description too long! Maximum 4096 characters.", mention_author=False)
+                            await msg.reply("⚠️ Description too long! Maximum 4096 characters.", mention_author=False)
                             continue
                         editing_embed['description'] = new_desc
-                        preview = new_desc[:100] + ('...' if len(new_desc) > 100 else '')
-                        await msg.reply(f"✅ Description updated: {preview}", mention_author=False)
+                        preview = new_desc[:80] + ('...' if len(new_desc) > 80 else '')
+                        await msg.reply(f"📄 Description updated: {preview}", mention_author=False)
                     
-                    elif content.lower().startswith('color:'):
-                        new_color = content[6:].strip()
+                    elif content.lower().startswith(('color:', 'c ')):
+                        prefix = 'color:' if content.startswith('color:') else 'c '
+                        new_color = content[len(prefix):].strip()
                         if new_color.startswith('#'):
                             new_color = new_color[1:]
                         
                         try:
                             color_int = int(new_color, 16)
                             editing_embed['color'] = color_int
-                            await msg.reply(f"✅ Color updated to: #{new_color}", mention_author=False)
+                            await msg.reply(f"🎨 Color updated to: #{new_color}", mention_author=False)
                         except ValueError:
-                            await msg.reply("Invalid color! Use hex format like #ff0000", mention_author=False)
+                            await msg.reply("❌ Invalid color! Use hex format like #ff0000 or ff0000", mention_author=False)
                     
-                    else:
+                    elif content.lower() == 'preview':
+                        # Show live preview of current embed
+                        preview_embed = discord.Embed(
+                            title=editing_embed.get('title', 'No Title'),
+                            description=editing_embed.get('description', 'No Description'),
+                            color=editing_embed.get('color', EMBED_COLOR_NORMAL)
+                        )
+                        preview_embed.set_footer(text="👆 Live Preview - This is how your embed will look")
+                        await msg.reply(embed=preview_embed, mention_author=False)
+                    
+                    elif content.lower() == 'reset':
+                        editing_embed = {
+                            'title': 'New Embed',
+                            'description': 'This is a new embed created with the enhanced text editor.',
+                            'color': EMBED_COLOR_NORMAL
+                        }
+                        await msg.reply("🔄 Embed reset to defaults!", mention_author=False)
+                    
+                    elif content.lower() == 'help':
                         help_embed = discord.Embed(
-                            title="Invalid Command",
-                            description="Use:\n"
-                                       "`title: Your title` - Set title\n"
-                                       "`desc: Your description` - Set description\n"
-                                       "`color: #hex` - Set color\n"
-                                       "`save` - Save changes\n"
-                                       "`cancel` - Cancel editing",
-                            color=EMBED_COLOR_ERROR
+                            title="📝 Enhanced Text Editor Commands",
+                            color=EMBED_COLOR_NORMAL
+                        )
+                        help_embed.add_field(
+                            name="✏️ Editing Commands",
+                            value="`t <title>` or `title: <title>` - Set title\n"
+                                  "`d <desc>` or `desc: <desc>` - Set description\n"
+                                  "`c <#hex>` or `color: <#hex>` - Set color",
+                            inline=False
+                        )
+                        help_embed.add_field(
+                            name="🔧 Utility Commands",
+                            value="`preview` - Show live preview\n"
+                                  "`reset` - Reset to defaults\n"
+                                  "`help` - Show this help",
+                            inline=False
+                        )
+                        help_embed.add_field(
+                            name="💾 Session Commands",
+                            value="`save` - Save and finish\n"
+                                  "`cancel` - Cancel editing",
+                            inline=False
                         )
                         await msg.reply(embed=help_embed, mention_author=False)
+                    
+                    else:
+                        quick_help = discord.Embed(
+                            title="❓ Unknown Command",
+                            description=f"**`{content}`** is not recognized.\n\n"
+                                       "**Quick Commands:**\n"
+                                       "`t <title>` - Set title\n"
+                                       "`d <description>` - Set description\n"
+                                       "`c <#hex>` - Set color\n"
+                                       "`preview` - Show preview\n"
+                                       "`save` - Save embed\n"
+                                       "`help` - Full command list",
+                            color=EMBED_COLOR_ERROR
+                        )
+                        await msg.reply(embed=quick_help, mention_author=False)
                 
                 except asyncio.TimeoutError:
                     timeout_embed = discord.Embed(
