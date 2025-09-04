@@ -1242,6 +1242,27 @@ class HelpCommand(commands.Cog):
                 inline=False
             )
             
+            # Invite Checker commands
+            invite_checker_commands = [
+                "`ultracheck` - Advanced invite validation across all configured categories",
+                "`checkchannel` - Set the channel for invite check results", 
+                "`category add/remove/list` - Manage categories to scan for invites",
+                "`settings` - View current invite checker configuration",
+                "`cleanup` - Remove unwanted ping messages from previous scans"
+            ]
+            
+            embed.add_field(
+                name="Utilities", 
+                value="\n".join(utilities_commands),
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Invite Checker",
+                value="\n".join(invite_checker_commands),
+                inline=False
+            )
+            
             # Ticket commands
             ticket_commands = [
                 "`new` - Create support ticket",
