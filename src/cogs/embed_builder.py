@@ -254,8 +254,8 @@ class EmbedEditorView(discord.ui.View):
         
         embed = discord.Embed(
             description=f"Embed '**{embed_name}**' saved successfully!\n\n"
-                       f"Use `{ctx.prefix}embedlist` to see your saved embeds\n"
-                       f"Use `{ctx.prefix}embedview {embed_name}` to preview it",
+                       f"Use `s.embedlist` to see your saved embeds\n"
+                       f"Use `s.embedview {embed_name}` to preview it",
             color=EMBED_COLOR_NORMAL
         )
         await interaction.response.edit_message(embed=embed, view=None)
