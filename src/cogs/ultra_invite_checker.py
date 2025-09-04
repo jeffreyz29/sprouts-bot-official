@@ -331,6 +331,48 @@ class UltraInviteChecker(commands.Cog):
         """Test if the bot is responding"""
         await ctx.reply("Bot is working! Ultra invite checker is ready.", mention_author=False)
 
+    @commands.command(name="cleanup")
+    @commands.has_permissions(administrator=True)
+    async def cleanup_ping_messages(self, ctx, limit: int = 50):
+        """Clean up unwanted ping messages from the bot"""
+        guild_id = str(ctx.guild.id)
+        guild_config = self.ensure_guild_config(guild_id)
+        
+        scan_categories = guild_config.get("scan_categories", [])
+        if not scan_categories:
+            await ctx.reply("No categories configured to clean.", mention_author=False)
+            return
+        
+        deleted_count = 0
+        status_msg = await ctx.reply("🧹 Cleaning up unwanted ping messages...", mention_author=False)
+        
+        # Get all channels from categories
+        all_channels = []
+        for category_id in scan_categories:
+            category = ctx.guild.get_channel(category_id)
+            if category and isinstance(category, discord.CategoryChannel):
+                for channel in category.channels:
+                    if isinstance(channel, discord.TextChannel):
+                        all_channels.append(channel)
+        
+        # Look for and delete the specific ping messages
+        for channel in all_channels:
+            try:
+                async for message in channel.history(limit=limit):
+                    if (message.author == self.bot.user and 
+                        "Your invite" in message.content and 
+                        "is invalid/expired" in message.content):
+                        
+                        await message.delete()
+                        deleted_count += 1
+            except:
+                continue  # Skip channels we can't access
+        
+        await status_msg.edit(content=f"✅ Cleanup complete! Deleted {deleted_count} unwanted ping messages.")
+        
+        if deleted_count == 0:
+            await status_msg.edit(content="✅ No unwanted ping messages found to delete.")
+
     @commands.command(name="settings")
     @commands.has_permissions(administrator=True)
     async def view_settings(self, ctx):
