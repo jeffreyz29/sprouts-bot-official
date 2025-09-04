@@ -558,11 +558,8 @@ class InviteChecker(commands.Cog):
         
         scan_time = time.time() - start_time
         
-        # Delete the status message now that scanning is complete
-        try:
-            await status_msg.delete()
-        except:
-            pass
+        # Keep the initial status message visible - don't delete it
+        # Users can see the scanning progress and results together
         
         # Process results
         channels_with_invites = [r for r in results if len(r["invites"]) > 0]
