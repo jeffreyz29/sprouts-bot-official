@@ -1381,7 +1381,7 @@ class EmbedBuilder(commands.Cog):
                     
                     if content.lower() == 'cancel':
                         cancel_embed = discord.Embed(
-                            title="Editing Cancelled",
+                            title=f"{SPROUTS_ERROR} Editing Cancelled",
                             description="No changes were saved.",
                             color=EMBED_COLOR_ERROR
                         )
