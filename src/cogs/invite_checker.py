@@ -598,15 +598,15 @@ class InviteChecker(commands.Cog):
                         user_count = 0
                         if result["valid_invites"]:
                             user_count = result["valid_invites"][0].get("member_count", 0)
-                        category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `{user_count:,} Users`")
+                        category_lines.append(f"{emoji} {channel.mention} - {valid_count}/{total_in_channel} {status} ({user_count:,} members)")
                     else:
                         # Some bad - no pinging, just show status
                         emoji = f"{SPROUTS_ERROR}"
                         status = "bad"
-                        category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `0 Users`")
+                        category_lines.append(f"{emoji} {channel.mention} - {valid_count}/{total_in_channel} {status} (expired invites)")
                 else:
                     # No invites found
-                    category_lines.append(f"{SPROUTS_ERROR} {channel.mention} : 0 found `0 Users`")
+                    category_lines.append(f"{SPROUTS_ERROR} {channel.mention} - no invites found")
             
             # Only show categories with results - cleaner layout
             if category_lines:
