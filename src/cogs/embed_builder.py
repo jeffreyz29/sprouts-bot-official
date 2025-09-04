@@ -1318,34 +1318,155 @@ class EmbedBuilder(commands.Cog):
             logger.error(f"Error importing embed: {e}")
             await ctx.reply("An error occurred while importing the embed. Please check the YAML format.", mention_author=False)
     
-    @commands.command(name="embedoldedit", help="Legacy text-based embed editor (deprecated, use embededit instead)")
+    @commands.command(name="embedoldedit", help="Legacy text-based embed editor")
     async def embed_old_edit(self, ctx, *, name: str):
         """Legacy text-based embed editor
         
         Usage: `{ctx.prefix}embedoldedit <name>`
-        Opens old text-based editor (use embededit for better experience)
+        Opens text-based editor for quick embed editing
         
         Examples:
-        - `{ctx.prefix}embedoldedit welcome` - Edit with legacy interface
-        - Deprecated: Use embededit for visual interface
-        
-        Note:
-        - This command is deprecated
-        - Use embededit for modern visual editor
-        - Kept for compatibility only
+        - `{ctx.prefix}embedoldedit welcome` - Edit with text interface
+        - Simple line-by-line editing approach
         """
         try:
-            embed = discord.Embed(
-                title="Legacy Editor Deprecated",
-                description=f"The legacy text-based editor has been replaced with the enhanced visual editor.\n\n"
-                           f"Use `s.embededit {name}` to edit your embed with the new interface.",
-                color=EMBED_COLOR_ERROR
+            guild_id = ctx.guild.id if ctx.guild else None
+            user_id = ctx.author.id
+            is_admin = ctx.author.guild_permissions.administrator if ctx.guild else False
+            
+            # Check for existing embed
+            existing_embed = None
+            if guild_id and is_admin and guild_id in self.saved_embeds and name in self.saved_embeds[guild_id]:
+                existing_embed = self.saved_embeds[guild_id][name]
+            elif f"{user_id}_{guild_id}" in self.saved_embeds and name in self.saved_embeds[f"{user_id}_{guild_id}"]:
+                existing_embed = self.saved_embeds[f"{user_id}_{guild_id}"][name]
+            
+            if not existing_embed:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Embed Not Found",
+                    description=f"No embed named '**{name}**' exists. Use `{ctx.prefix}embedcreate {name}` to create it first.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Start legacy editing session
+            edit_embed = discord.Embed(
+                title="Legacy Text Editor",
+                description=f"Editing embed: **{name}**\n\n"
+                           f"**Current Title:** {existing_embed.get('title', 'None')}\n"
+                           f"**Current Description:** {existing_embed.get('description', 'None')[:100]}{'...' if existing_embed.get('description', '') and len(existing_embed.get('description', '')) > 100 else ''}\n"
+                           f"**Current Color:** {existing_embed.get('color', 'Default')}\n\n"
+                           f"Reply with:\n"
+                           f"`title: Your new title` - Set title\n"
+                           f"`desc: Your description` - Set description\n"
+                           f"`color: #hex` - Set color\n"
+                           f"`save` - Save changes\n"
+                           f"`cancel` - Cancel editing",
+                color=EMBED_COLOR_NORMAL
             )
-            await ctx.reply(embed=embed, mention_author=False)
+            
+            await ctx.reply(embed=edit_embed, mention_author=False)
+            
+            # Create copy for editing
+            editing_embed = existing_embed.copy()
+            
+            def check(m):
+                return m.author == ctx.author and m.channel == ctx.channel
+            
+            while True:
+                try:
+                    msg = await self.bot.wait_for('message', timeout=300.0, check=check)
+                    content = msg.content.strip()
+                    
+                    if content.lower() == 'cancel':
+                        cancel_embed = discord.Embed(
+                            title="Editing Cancelled",
+                            description="No changes were saved.",
+                            color=EMBED_COLOR_ERROR
+                        )
+                        await msg.reply(embed=cancel_embed, mention_author=False)
+                        break
+                    
+                    elif content.lower() == 'save':
+                        # Save the edited embed
+                        user_guild_key = f"{user_id}_{guild_id}"
+                        
+                        if is_admin:
+                            if guild_id not in self.saved_embeds:
+                                self.saved_embeds[guild_id] = {}
+                            self.saved_embeds[guild_id][name] = editing_embed
+                            scope_text = "server"
+                        else:
+                            if user_guild_key not in self.saved_embeds:
+                                self.saved_embeds[user_guild_key] = {}
+                            self.saved_embeds[user_guild_key][name] = editing_embed
+                            scope_text = "personal"
+                        
+                        self.save_embeds()
+                        
+                        save_embed = discord.Embed(
+                            title=f"{SPROUTS_CHECK} Embed Saved",
+                            description=f"Embed '**{name}**' saved as {scope_text} embed!",
+                            color=EMBED_COLOR_NORMAL
+                        )
+                        await msg.reply(embed=save_embed, mention_author=False)
+                        break
+                    
+                    elif content.lower().startswith('title:'):
+                        new_title = content[6:].strip()
+                        if len(new_title) > 256:
+                            await msg.reply("Title too long! Maximum 256 characters.", mention_author=False)
+                            continue
+                        editing_embed['title'] = new_title
+                        await msg.reply(f"✅ Title updated to: **{new_title}**", mention_author=False)
+                    
+                    elif content.lower().startswith('desc:'):
+                        new_desc = content[5:].strip()
+                        if len(new_desc) > 4096:
+                            await msg.reply("Description too long! Maximum 4096 characters.", mention_author=False)
+                            continue
+                        editing_embed['description'] = new_desc
+                        preview = new_desc[:100] + ('...' if len(new_desc) > 100 else '')
+                        await msg.reply(f"✅ Description updated: {preview}", mention_author=False)
+                    
+                    elif content.lower().startswith('color:'):
+                        new_color = content[6:].strip()
+                        if new_color.startswith('#'):
+                            new_color = new_color[1:]
+                        
+                        try:
+                            color_int = int(new_color, 16)
+                            editing_embed['color'] = color_int
+                            await msg.reply(f"✅ Color updated to: #{new_color}", mention_author=False)
+                        except ValueError:
+                            await msg.reply("Invalid color! Use hex format like #ff0000", mention_author=False)
+                    
+                    else:
+                        help_embed = discord.Embed(
+                            title="Invalid Command",
+                            description="Use:\n"
+                                       "`title: Your title` - Set title\n"
+                                       "`desc: Your description` - Set description\n"
+                                       "`color: #hex` - Set color\n"
+                                       "`save` - Save changes\n"
+                                       "`cancel` - Cancel editing",
+                            color=EMBED_COLOR_ERROR
+                        )
+                        await msg.reply(embed=help_embed, mention_author=False)
+                
+                except asyncio.TimeoutError:
+                    timeout_embed = discord.Embed(
+                        title="Session Timeout",
+                        description="Editing session timed out. No changes saved.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.send(embed=timeout_embed)
+                    break
             
         except Exception as e:
-            logger.error(f"Error in old edit command: {e}")
-            await ctx.reply("An error occurred.", mention_author=False)
+            logger.error(f"Error in legacy editor: {e}")
+            await ctx.reply("An error occurred in the legacy editor.", mention_author=False)
 
 async def setup(bot):
     await bot.add_cog(EmbedBuilder(bot))
