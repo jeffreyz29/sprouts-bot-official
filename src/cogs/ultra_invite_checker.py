@@ -62,20 +62,22 @@ class UltraInviteChecker(commands.Cog):
         return self.config[guild_id]
     
     async def validate_invite_instant(self, invite_code: str) -> Tuple[bool, Optional[Dict]]:
-        """Fast invite validation with debug bypass for rate limits"""
+        """Fast invite validation like Hana bot"""
         try:
-            # Debug mode: Skip actual validation to bypass rate limits
-            # In production, this would validate properly
-            await asyncio.sleep(0.05)  # Minimal delay for realism
-            
-            # Simulate validation results for debugging
-            import random
-            if random.choice([True, False, False]):  # 33% chance of "valid"
+            # Use the exact same approach as Hana
+            invite = await self.bot.fetch_invite(invite_code)
+            if invite and invite.guild:
                 return True, {
-                    "guild_name": f"Server_{random.randint(1,999)}",
-                    "member_count": random.randint(100, 50000),
-                    "guild_id": random.randint(100000000000000000, 999999999999999999)
+                    "guild_name": invite.guild.name,
+                    "member_count": getattr(invite, 'approximate_member_count', 0),
+                    "guild_id": invite.guild.id
                 }
+            return False, None
+        except discord.NotFound:
+            # Invalid/expired invite
+            return False, None
+        except discord.HTTPException:
+            # Rate limited - treat as invalid for now
             return False, None
         except:
             return False, None
@@ -488,98 +490,89 @@ class UltraInviteChecker(commands.Cog):
         total_invalid = sum(r["invalid_count"] for r in results)
         total_invites = total_valid + total_invalid
         
-        # IMMEDIATE EMBED 1: Send results right away
-        embed1 = discord.Embed(
-            title="Invite Check Results", 
-            description=f"Scanned {total_channels} channels in {scan_time:.1f}s",
-            color=EMBED_COLOR_NORMAL
-        )
+        # SEND INDIVIDUAL CATEGORY EMBEDS (like Hana)
+        # Group results by category first
+        category_results = {}
+        for result in results:
+            channel = result["channel"]
+            if channel.category:
+                category_name = channel.category.name
+                if category_name not in category_results:
+                    category_results[category_name] = []
+                category_results[category_name].append(result)
         
-        # Add summary stats
-        embed1.add_field(
-            name="Summary",
-            value=f"Channels: {total_channels}\nInvites: {total_invites}\nValid: {total_valid}\nInvalid: {total_invalid}",
-            inline=True
-        )
+        # Send embed for each category with channels
+        for category_name, cat_results in category_results.items():
+            category_lines = []
+            
+            for result in cat_results:
+                channel = result["channel"]
+                valid_count = result["valid_count"]
+                invalid_count = result["invalid_count"]
+                total_in_channel = valid_count + invalid_count
+                
+                if total_in_channel > 0:
+                    if valid_count == total_in_channel:
+                        # All good
+                        emoji = "🟢"
+                        status = "good"
+                        # Get user count from first valid invite
+                        user_count = 0
+                        if result["valid_invites"]:
+                            user_count = result["valid_invites"][0].get("member_count", 0)
+                        category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `{user_count} Users`")
+                    else:
+                        # Some bad
+                        emoji = "🔴"
+                        status = "bad"
+                        category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `0 Users`")
+                else:
+                    # No invites found
+                    category_lines.append(f"🔴 {channel.mention} : 0 found `0 Users`")
+            
+            # Only show categories with invites
+            if category_lines:
+                embed = discord.Embed(
+                    title=f"The {category_name} category",
+                    description="\n".join(category_lines),
+                    color=0xfffafa
+                )
+                embed.set_footer(text=f"Checked 5 recent messages • {time.strftime('%b %d, %Y')}")
+                await ctx.send(embed=embed)
         
+        # FINAL SUMMARY EMBED (like Hana)
+        await asyncio.sleep(0.5)
+        
+        # Success completion message
+        final_embed = discord.Embed(
+            description="Invite check complete!",
+            color=0x15ff00
+        )
+        await ctx.send(embed=final_embed)
+        
+        # Detailed stats like Hana
         if total_invites > 0:
-            embed1.add_field(
-                name="Performance", 
-                value=f"Speed: {total_channels/scan_time:.1f} ch/sec\nSuccess: {(total_valid/total_invites*100):.1f}%",
+            good_percent = (total_valid/total_invites) * 100
+            bad_percent = (total_invalid/total_invites) * 100
+            
+            total_embed = discord.Embed(
+                title="Invite check results",
+                color=0xfffafa
+            )
+            
+            total_embed.add_field(
+                name="Check counts",
+                value=f"Channels checked: {total_channels}\nInvites checked: {total_invites}",
                 inline=True
             )
-        
-        # Create clean channel listing
-        channel_lines = []
-        for result in channels_with_invites[:10]:
-            channel = result["channel"]
-            valid_count = result["valid_count"]
-            invalid_count = result["invalid_count"]
             
-            if valid_count > 0:
-                valid_servers = list(set([inv["server_name"] for inv in result["valid_invites"]]))
-                server_text = valid_servers[0] if valid_servers else "Unknown"
-                if len(valid_servers) > 1:
-                    server_text += f" +{len(valid_servers)-1}"
-                
-                channel_lines.append(f"• {channel.mention} : {valid_count} good ({server_text})")
-        
-        if channel_lines:
-            field_value = "\n".join(channel_lines)
-            if len(field_value) > 1000:
-                field_value = field_value[:997] + "..."
-            
-            embed1.add_field(
-                name="Active Channels",
-                value=field_value,
-                inline=False
-            )
-        else:
-            embed1.add_field(
-                name="Results",
-                value="No invites found in recent messages",
-                inline=False
-            )
-        
-        # Send first embed immediately
-        await ctx.send(embed=embed1)
-        
-        # EMBED 2: Summary of invalid invites (authors were already pinged in their channels)
-        if total_invalid > 0:
-            await asyncio.sleep(0.5)
-            
-            embed2 = discord.Embed(
-                title="Action Taken",
-                description=f"Pinged {total_invalid} users about invalid invites in their channels",
-                color=EMBED_COLOR_ERROR
+            total_embed.add_field(
+                name="Stats",
+                value=f"• {total_valid}/{total_invites} good invites ({good_percent:.2f}%)\n• {total_invalid}/{total_invites} bad invites ({bad_percent:.2f}%)",
+                inline=True
             )
             
-            # Show summary of where pings were sent
-            ping_summary = []
-            for result in results:
-                if result["invalid_count"] > 0:
-                    channel = result["channel"]
-                    count = result["invalid_count"]
-                    ping_summary.append(f"• {channel.mention}: {count} users pinged")
-            
-            if ping_summary:
-                field_value = "\n".join(ping_summary[:10])  # Limit to 10 channels
-                if len(ping_summary) > 10:
-                    field_value += f"\n*+{len(ping_summary)-10} more channels*"
-                
-                embed2.add_field(
-                    name="Notifications Sent",
-                    value=field_value,
-                    inline=False
-                )
-            
-            embed2.add_field(
-                name="Next Steps",
-                value="Users have been notified directly in their channels about invalid invites",
-                inline=False
-            )
-            
-            await ctx.send(embed=embed2)
+            await ctx.send(embed=total_embed)
 
 async def setup(bot):
     """Setup function for the ultra invite checker cog"""
