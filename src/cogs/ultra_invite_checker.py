@@ -333,17 +333,10 @@ class UltraInviteChecker(commands.Cog):
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
         
-        # Check if this is the designated invite check channel
+        # Check if check channel is configured (but allow running from any channel)
         check_channel_id = guild_config.get("invite_check_channel")
-        if not check_channel_id or ctx.channel.id != check_channel_id:
-            if check_channel_id:
-                check_channel = ctx.guild.get_channel(check_channel_id)
-                if check_channel:
-                    await ctx.reply(f"{SPROUTS_WARNING} Ultra checks can only be run in {check_channel.mention}.", mention_author=False)
-                else:
-                    await ctx.reply(f"{SPROUTS_WARNING} No valid invite check channel configured. Use `{ctx.prefix}checkchannel` to set one.", mention_author=False)
-            else:
-                await ctx.reply(f"{SPROUTS_WARNING} No invite check channel configured. Use `{ctx.prefix}checkchannel` to set one.", mention_author=False)
+        if not check_channel_id:
+            await ctx.reply(f"No invite check channel configured. Use `{ctx.prefix}checkchannel` to set one first.", mention_author=False)
             return
         
         scan_categories = guild_config.get("scan_categories", [])

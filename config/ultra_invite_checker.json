@@ -9,5 +9,10 @@
     ],
     "ignore_channels": [],
     "invite_check_channel": 1413027520403476530
+  },
+  "1412650062517108789": {
+    "scan_categories": [],
+    "ignore_channels": [],
+    "invite_check_channel": null
   }
 }
