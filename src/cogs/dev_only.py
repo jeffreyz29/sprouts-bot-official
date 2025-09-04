@@ -1710,7 +1710,7 @@ class DevOnly(commands.Cog):
             value=f"{len(unique_owner_ids)} unique owners across {len(self.bot.guilds)} servers",
             inline=True
         )
-        confirm_embed.set_footer(text="React with ✅ to confirm or ❌ to cancel")
+        confirm_embed.set_footer(text="React to confirm or cancel")
         
         confirm_msg = await ctx.reply(embed=confirm_embed, mention_author=False)
         await confirm_msg.add_reaction(SPROUTS_CHECK)
