@@ -428,6 +428,14 @@ class UltraInviteChecker(commands.Cog):
             await ctx.reply("❌ No Categories: Use `s.category add [ID]` to add them.", mention_author=False)
             return
         
+        # Send immediate response
+        start_embed = discord.Embed(
+            title="🌱 Starting Invite Check",
+            description="Scanning channels for invites...",
+            color=0x90EE90
+        )
+        status_msg = await ctx.send(embed=start_embed)
+        
         start_time = time.time()
         
         # Get all channels from categories
@@ -444,8 +452,19 @@ class UltraInviteChecker(commands.Cog):
                         all_channels.append(channel)
         
         if not all_channels:
-            await ctx.reply("❌ No accessible text channels found in the configured categories.", mention_author=False)
+            await status_msg.edit(embed=discord.Embed(
+                title="❌ No Valid Channels",
+                description="No accessible text channels found in the configured categories.",
+                color=EMBED_COLOR_ERROR
+            ))
             return
+        
+        # Update status message
+        await status_msg.edit(embed=discord.Embed(
+            title="🌱 Scanning in Progress",
+            description=f"Found {len(all_channels)} channels to scan...",
+            color=0x90EE90
+        ))
         
         # INSTANT concurrent scanning of all channels
         async def scan_channel_instantly(channel):
@@ -511,6 +530,12 @@ class UltraInviteChecker(commands.Cog):
                 await asyncio.sleep(0.5)
         
         scan_time = time.time() - start_time
+        
+        # Delete the status message now that scanning is complete
+        try:
+            await status_msg.delete()
+        except:
+            pass
         
         # Process results
         channels_with_invites = [r for r in results if len(r["invites"]) > 0]
