@@ -373,8 +373,16 @@ class InviteChecker(commands.Cog):
 
     @commands.command(name="test")
     async def test_command(self, ctx):
-        """Test if the bot is responding"""
-        await ctx.reply("Bot is working! Ultra invite checker is ready.", mention_author=False)
+        """Test if the bot is responding and emojis are working"""
+        test_message = f"""Bot is working! Ultra invite checker is ready.
+        
+**Emoji Test:**
+{SPROUTS_CHECK} Check emoji
+{SPROUTS_ERROR} Error emoji  
+{SPROUTS_WARNING} Warning emoji
+
+If you see the actual emojis above instead of text, emojis are working correctly!"""
+        await ctx.reply(test_message, mention_author=False)
 
     @commands.command(name="settings", aliases=["config", "status"])
     @commands.has_permissions(administrator=True)
