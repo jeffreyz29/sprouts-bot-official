@@ -504,16 +504,8 @@ class ChannelSelectView(discord.ui.View):
             updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
             main_view = TicketSetupView(self.ctx, self.ticket_cog)
 
-            # Send confirmation as followup message
-            success_embed = discord.Embed(
-                title="{SPROUTS_CHECK} Channel Set",
-                description=f"Ticket logging channel set to {channel.mention}",
-                color=EMBED_COLOR_NORMAL)
-
             await interaction.response.edit_message(embed=updated_embed,
                                                     view=main_view)
-            await interaction.followup.send(embed=success_embed,
-                                            ephemeral=True)
 
         except Exception as e:
             logger.error(f"Error setting log channel: {e}")
@@ -565,21 +557,8 @@ class RoleSelectView(discord.ui.View):
                 # Re-create embed after settings update
                 updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
 
-                success_embed = discord.Embed(
-                    title=f"{SPROUTS_CHECK} Staff Role Added",
-                    description=f"{role.mention} added as staff role",
-                    color=EMBED_COLOR_NORMAL)
-            else:
-                success_embed = discord.Embed(
-                    title=
-                    "{SPROUTS_WARNING} Already Added",
-                    description=f"{role.mention} is already a staff role",
-                    color=EMBED_COLOR_ERROR)
-
             await interaction.response.edit_message(embed=updated_embed,
                                                     view=main_view)
-            await interaction.followup.send(embed=success_embed,
-                                            ephemeral=True)
 
         except Exception as e:
             logger.error(f"Error adding staff role: {e}")

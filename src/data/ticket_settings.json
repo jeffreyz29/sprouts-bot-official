@@ -20,7 +20,10 @@
   },
   "1411324489333215267": {
     "log_channel_id": null,
-    "staff_role_ids": [],
+    "staff_role_ids": [
+      1411512434912395304,
+      1412527977706815598
+    ],
     "ticket_category_id": null,
     "naming_style": "numbers",
     "embed_title": "Support Ticket",
