@@ -315,6 +315,15 @@ class TicketSetupSelect(discord.ui.Select):
             discord.SelectOption(label="Embed Settings",
                                  description="Customize ticket welcome embeds",
                                  value="embed"),
+            discord.SelectOption(label="Remove Log Channel",
+                                 description="Remove current log channel setting",
+                                 value="remove_log"),
+            discord.SelectOption(label="Remove All Staff Roles",
+                                 description="Clear all staff role assignments",
+                                 value="remove_roles"),
+            discord.SelectOption(label="Remove Category",
+                                 description="Reset category to default",
+                                 value="remove_category"),
             discord.SelectOption(label="Cleanup Data",
                                  description="Clean orphaned ticket data",
                                  value="cleanup")
@@ -340,6 +349,12 @@ class TicketSetupSelect(discord.ui.Select):
                 await self.setup_naming(interaction)
             elif self.values[0] == "embed":
                 await self.setup_embeds(interaction)
+            elif self.values[0] == "remove_log":
+                await self.remove_log_channel(interaction)
+            elif self.values[0] == "remove_roles":
+                await self.remove_staff_roles(interaction)
+            elif self.values[0] == "remove_category":
+                await self.remove_category(interaction)
             elif self.values[0] == "cleanup":
                 await self.cleanup_data(interaction)
 
@@ -460,6 +475,135 @@ class TicketSetupSelect(discord.ui.Select):
                 color=EMBED_COLOR_NORMAL)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+    async def remove_log_channel(self, interaction):
+        """Remove log channel setting with confirmation"""
+        current_settings = self.ticket_cog.get_guild_settings(self.ctx.guild.id)
+        if not current_settings.get('log_channel_id'):
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} No Log Channel",
+                description="No log channel is currently set.",
+                color=EMBED_COLOR_ERROR)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="Remove Log Channel",
+            description="Are you sure you want to remove the log channel setting?\nType `yes` to confirm or `no` to cancel.",
+            color=EMBED_COLOR_NORMAL)
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # Wait for user confirmation
+        def check(m):
+            return m.author == self.ctx.author and m.channel == self.ctx.channel
+        
+        try:
+            msg = await self.ticket_cog.bot.wait_for('message', timeout=30.0, check=check)
+            if msg.content.lower() in ['yes', 'y']:
+                # Remove the setting
+                guild_settings = {'log_channel_id': None}
+                self.ticket_cog.update_guild_settings(self.ctx.guild.id, guild_settings)
+                
+                confirm_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Log Channel Removed",
+                    description="Log channel setting has been removed.",
+                    color=EMBED_COLOR_NORMAL)
+                await msg.reply(embed=confirm_embed)
+            else:
+                cancel_embed = discord.Embed(
+                    title="Cancelled",
+                    description="Log channel removal cancelled.",
+                    color=EMBED_COLOR_NORMAL)
+                await msg.reply(embed=cancel_embed)
+        except:
+            pass
+
+    async def remove_staff_roles(self, interaction):
+        """Remove all staff roles with confirmation"""
+        current_settings = self.ticket_cog.get_guild_settings(self.ctx.guild.id)
+        if not current_settings.get('staff_role_ids'):
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} No Staff Roles",
+                description="No staff roles are currently set.",
+                color=EMBED_COLOR_ERROR)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="Remove All Staff Roles",
+            description="Are you sure you want to remove ALL staff role assignments?\nType `yes` to confirm or `no` to cancel.",
+            color=EMBED_COLOR_NORMAL)
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # Wait for user confirmation
+        def check(m):
+            return m.author == self.ctx.author and m.channel == self.ctx.channel
+        
+        try:
+            msg = await self.ticket_cog.bot.wait_for('message', timeout=30.0, check=check)
+            if msg.content.lower() in ['yes', 'y']:
+                # Remove all staff roles
+                guild_settings = {'staff_role_ids': []}
+                self.ticket_cog.update_guild_settings(self.ctx.guild.id, guild_settings)
+                
+                confirm_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Staff Roles Removed",
+                    description="All staff role assignments have been removed.",
+                    color=EMBED_COLOR_NORMAL)
+                await msg.reply(embed=confirm_embed)
+            else:
+                cancel_embed = discord.Embed(
+                    title="Cancelled",
+                    description="Staff role removal cancelled.",
+                    color=EMBED_COLOR_NORMAL)
+                await msg.reply(embed=cancel_embed)
+        except:
+            pass
+
+    async def remove_category(self, interaction):
+        """Remove category setting with confirmation"""
+        current_settings = self.ticket_cog.get_guild_settings(self.ctx.guild.id)
+        if not current_settings.get('ticket_category_id'):
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} No Category",
+                description="No ticket category is currently set.",
+                color=EMBED_COLOR_ERROR)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="Remove Category Setting",
+            description="Are you sure you want to remove the ticket category setting?\nTickets will be created in the general channel instead.\nType `yes` to confirm or `no` to cancel.",
+            color=EMBED_COLOR_NORMAL)
+        
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        
+        # Wait for user confirmation
+        def check(m):
+            return m.author == self.ctx.author and m.channel == self.ctx.channel
+        
+        try:
+            msg = await self.ticket_cog.bot.wait_for('message', timeout=30.0, check=check)
+            if msg.content.lower() in ['yes', 'y']:
+                # Remove the setting
+                guild_settings = {'ticket_category_id': None}
+                self.ticket_cog.update_guild_settings(self.ctx.guild.id, guild_settings)
+                
+                confirm_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Category Removed",
+                    description="Ticket category setting has been removed.\nTickets will now be created in the general channel.",
+                    color=EMBED_COLOR_NORMAL)
+                await msg.reply(embed=confirm_embed)
+            else:
+                cancel_embed = discord.Embed(
+                    title="Cancelled",
+                    description="Category removal cancelled.",
+                    color=EMBED_COLOR_NORMAL)
+                await msg.reply(embed=cancel_embed)
+        except:
+            pass
 
 
 class TicketSetupView(discord.ui.View):
