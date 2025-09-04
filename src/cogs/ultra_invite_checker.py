@@ -324,6 +324,11 @@ class UltraInviteChecker(commands.Cog):
         else:
             await ctx.reply(f"{SPROUTS_WARNING} Invalid action. Use `add`, `remove`, or `list`.", mention_author=False)
 
+    @commands.command(name="test")
+    async def test_command(self, ctx):
+        """Test if the bot is responding"""
+        await ctx.reply("Bot is working! Ultra invite checker is ready.", mention_author=False)
+
     @commands.command(name="ultracheck")
     @commands.has_permissions(administrator=True)
     async def ultra_fast_check(self, ctx, limit: int = 20):
@@ -333,17 +338,28 @@ class UltraInviteChecker(commands.Cog):
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
         
-        # Check if check channel is configured (but allow running from any channel)
+        # Check if check channel is configured 
         check_channel_id = guild_config.get("invite_check_channel")
         if not check_channel_id:
-            await ctx.reply(f"No invite check channel configured. Use `{ctx.prefix}checkchannel` to set one first.", mention_author=False)
+            embed = discord.Embed(
+                title="Setup Required",
+                description=f"Please set up the invite checker first:\n\n"
+                           f"**1.** `{ctx.prefix}checkchannel #channel` - Set check channel\n"
+                           f"**2.** `{ctx.prefix}ids` - View category IDs\n"
+                           f"**3.** `{ctx.prefix}category add [ID]` - Add categories\n"
+                           f"**4.** `{ctx.prefix}ultracheck` - Run scan",
+                color=EMBED_COLOR_NORMAL
+            )
+            await ctx.reply(embed=embed, mention_author=False)
             return
         
         scan_categories = guild_config.get("scan_categories", [])
         if not scan_categories:
             embed = discord.Embed(
-                title=f"{SPROUTS_WARNING} No Categories Configured",
-                description=f"No categories are set up for scanning. Use `{ctx.prefix}category add [categoryID]` to configure categories.",
+                title="No Categories",
+                description=f"No categories configured for scanning.\n\n"
+                           f"Use `{ctx.prefix}ids` to see available categories\n"
+                           f"Use `{ctx.prefix}category add [ID]` to add categories",
                 color=EMBED_COLOR_ERROR
             )
             await ctx.reply(embed=embed, mention_author=False)
