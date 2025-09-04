@@ -1,0 +1,22 @@
+{
+  "tb1hKU7r": {
+    "guild_id": 1411324489333215267,
+    "channel_id": 1413187123393200320,
+    "message_id": 1413288081024356382,
+    "title": "Support Tickets",
+    "created_by": 764874247646085151,
+    "created_at": "2025-09-04T22:22:16.210984",
+    "category_id": 1412714273557450752,
+    "default_reason": "Support Request"
+  },
+  "US7zAirO": {
+    "guild_id": 1411324489333215267,
+    "channel_id": 1413187123393200320,
+    "message_id": 1413288112724901999,
+    "title": "Support Tickets",
+    "created_by": 764874247646085151,
+    "created_at": "2025-09-04T22:22:23.877055",
+    "category_id": 1412714273557450752,
+    "default_reason": "Support Request"
+  }
+}
