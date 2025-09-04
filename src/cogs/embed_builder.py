@@ -602,7 +602,7 @@ class EmbedBuilder(commands.Cog):
                 invalid_cmd = args.split()[0] if args.split() else args
                 
                 embed = discord.Embed(
-                    title="{SPROUTS_WARNING} Invalid Subcommand",
+                    title=f"{SPROUTS_WARNING} Invalid Subcommand",
                     description=f"**`{invalid_cmd}`** is not a valid embed subcommand.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -610,26 +610,26 @@ class EmbedBuilder(commands.Cog):
                 # Core Commands
                 embed.add_field(
                     name="Core Commands",
-                    value="``{ctx.prefix}embedcreate [name]` - Create a new embed\n"
-                          "`{ctx.prefix}embedlist` - List your saved embeds\n"
-                          "`{ctx.prefix}embedview <name>` - View a saved embed\n"
-                          "`{ctx.prefix}embededit <name>` - Edit an existing embed",
+                    value=f"`{ctx.prefix}embedcreate [name]` - Create a new embed\n"
+                          f"`{ctx.prefix}embedlist` - List your saved embeds\n"
+                          f"`{ctx.prefix}embedview <name>` - View a saved embed\n"
+                          f"`{ctx.prefix}embededit <name>` - Edit an existing embed",
                     inline=False
                 )
                 
                 # Management Commands
                 embed.add_field(
                     name="Management",
-                    value="`{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
-                          "`{ctx.prefix}embedexport <name>` - Export as YAML\n"
-                          "`{ctx.prefix}embedimport <yaml>` - Import from YAML",
+                    value=f"`{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
+                          f"`{ctx.prefix}embedexport <name>` - Export as YAML\n"
+                          f"`{ctx.prefix}embedimport <yaml>` - Import from YAML",
                     inline=False
                 )
                 
                 # Help Reference
                 embed.add_field(
                     name="Need More Help?",
-                    value="Use `{ctx.prefix}embed` to see all available commands with detailed descriptions.",
+                    value=f"Use `{ctx.prefix}embed` to see all available commands with detailed descriptions.",
                     inline=False
                 )
                 await ctx.reply(embed=embed, mention_author=False)
