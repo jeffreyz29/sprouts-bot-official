@@ -1262,7 +1262,7 @@ class TicketSystem(commands.Cog):
 
             scope_text = "server" if is_guild_embed else "personal"
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Welcome Embed Set",
+                title=f"{SPROUTS_CHECK} Welcome Embed Set",
                 description=
                 f"Ticket system will now use {scope_text} embed '**{embed_name}**' for welcome messages",
                 color=EMBED_COLOR_NORMAL)
