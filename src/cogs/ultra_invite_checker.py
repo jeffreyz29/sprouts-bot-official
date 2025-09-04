@@ -617,30 +617,84 @@ class UltraInviteChecker(commands.Cog):
         )
         await ctx.send(embed=final_embed)
         
-        # Detailed stats like Hana
+        # Detailed stats with comprehensive information
         if total_invites > 0:
             good_percent = (total_valid/total_invites) * 100
             bad_percent = (total_invalid/total_invites) * 100
             
             total_embed = discord.Embed(
-                title="🌱 Sprouts check results",
+                title="🌱 Sprouts Check Results - Detailed Report",
+                description=f"Comprehensive scan completed in **{scan_time:.2f} seconds**",
                 color=0x90EE90
             )
             
+            # Scanning performance stats
             total_embed.add_field(
-                name="Check counts",
-                value=f"📊 {total_channels} channels, {total_invites} invites",
+                name="📊 Scan Performance",
+                value=f"**{total_channels}** channels scanned\n**{len(channels_with_invites)}** channels with invites\n**{total_channels/scan_time:.1f}** channels/sec",
                 inline=True
             )
             
+            # Invite quality breakdown
             total_embed.add_field(
-                name="Stats",
-                value=f"{SPROUTS_CHECK} {total_valid}/{total_invites} good ({good_percent:.1f}%)\n{SPROUTS_ERROR} {total_invalid}/{total_invites} bad ({bad_percent:.1f}%)",
+                name="🎯 Invite Quality",
+                value=f"{SPROUTS_CHECK} **{total_valid}** valid invites ({good_percent:.1f}%)\n{SPROUTS_ERROR} **{total_invalid}** expired invites ({bad_percent:.1f}%)\n📈 **{total_invites}** total found",
                 inline=True
             )
             
-            total_embed.set_footer(text="🌱 Sprouts keeps your server healthy!")
+            # Server health assessment
+            if good_percent >= 90:
+                health_status = "🌟 Excellent"
+                health_desc = "Server invites are in great shape!"
+            elif good_percent >= 75:
+                health_status = "💚 Good"
+                health_desc = "Most invites are working well"
+            elif good_percent >= 50:
+                health_status = "⚠️ Fair"
+                health_desc = "Some cleanup needed"
+            else:
+                health_status = "🔴 Poor"
+                health_desc = "Many expired invites found"
+            
+            total_embed.add_field(
+                name="🏥 Server Health",
+                value=f"{health_status}\n{health_desc}",
+                inline=True
+            )
+            
+            # Add member count stats if available
+            total_members = 0
+            valid_guilds = 0
+            for result in results:
+                for invite in result["valid_invites"]:
+                    if invite.get("member_count", 0) > 0:
+                        total_members += invite["member_count"]
+                        valid_guilds += 1
+            
+            if total_members > 0:
+                avg_members = total_members // valid_guilds if valid_guilds > 0 else 0
+                total_embed.add_field(
+                    name="👥 Partner Network",
+                    value=f"**{total_members:,}** total members\n**{valid_guilds}** active servers\n**{avg_members:,}** avg members/server",
+                    inline=False
+                )
+            
+            total_embed.set_footer(text=f"🌱 Sprouts keeps your server healthy! • Checked {limit} recent messages per channel")
             await ctx.send(embed=total_embed)
+        else:
+            # No invites found
+            no_invites_embed = discord.Embed(
+                title="🌱 Sprouts Check Results",
+                description=f"Scanned **{total_channels}** channels in **{scan_time:.2f}s**",
+                color=0xFFB6C1
+            )
+            no_invites_embed.add_field(
+                name="📊 Results",
+                value="No invites found in recent messages\nChannels appear to be clean!",
+                inline=False
+            )
+            no_invites_embed.set_footer(text="🌱 Sprouts keeps your server healthy!")
+            await ctx.send(embed=no_invites_embed)
 
 async def setup(bot):
     """Setup function for the ultra invite checker cog"""
