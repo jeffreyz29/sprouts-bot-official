@@ -1030,12 +1030,12 @@ class TicketSystem(commands.Cog):
             log_channel = self.bot.get_channel(
                 current_settings['log_channel_id'])
 
-        category_name = "Not set"
+        category_display = "Not set"
         if current_settings.get('ticket_category_id'):
             category = self.bot.get_channel(
                 current_settings['ticket_category_id'])
             if category:
-                category_name = category.name
+                category_display = f"{category.mention} (`{category.name}`)"
 
         staff_roles = []
         for role_id in current_settings.get('staff_role_ids', []):
@@ -1048,7 +1048,7 @@ class TicketSystem(commands.Cog):
             value=
             f"**Log Channel:** {log_channel.mention if log_channel else 'Not set'}\n"
             f"**Staff Roles:** {', '.join(staff_roles) if staff_roles else 'Not set'}\n"
-            f"**Category:** {category_name}\n"
+            f"**Category:** {category_display}\n"
             f"**Naming Style:** {current_settings.get('naming_style', 'numbers')}",
             inline=False)
 
