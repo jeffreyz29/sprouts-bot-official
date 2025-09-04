@@ -74,6 +74,12 @@ class InviteChecker(commands.Cog):
             self.save_config()
         return self.config[guild_id]
     
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        """Initialize config when bot joins a new guild"""
+        guild_id = str(guild.id)
+        self.ensure_guild_config(guild_id)
+    
     async def validate_invite(self, invite_code: str) -> Tuple[bool, Optional[Dict]]:
         """
         Validate a Discord invite and return server information

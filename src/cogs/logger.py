@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from typing import Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
+from src.emojis import SPROUTS_ERROR
 
 logger = logging.getLogger(__name__)
 
