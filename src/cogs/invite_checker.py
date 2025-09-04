@@ -611,26 +611,55 @@ class InviteChecker(commands.Cog):
         )
         await ctx.send(embed=final_embed)
         
-        # Simple, clean results summary
+        # Detailed results summary
         if total_invites > 0:
             good_percent = (total_valid/total_invites) * 100
             
+            # Create a more descriptive title based on results
+            if good_percent >= 90:
+                title = "Sprouts Check Results - Excellent Server Health"
+                description = "Your server's invites are in excellent condition!"
+            elif good_percent >= 75:
+                title = "Sprouts Check Results - Good Server Health"
+                description = "Most of your server's invites are working well."
+            elif good_percent >= 50:
+                title = "Sprouts Check Results - Fair Server Health"
+                description = "Some of your invites may need attention."
+            else:
+                title = "Sprouts Check Results - Server Health Issues"
+                description = "Many invites are expired and need updating."
+            
             total_embed = discord.Embed(
-                title="Sprouts check results",
+                title=title,
+                description=description,
                 color=0x90EE90
             )
             
             total_embed.add_field(
-                name="Check counts",
-                value=f"{total_channels} channels, {total_invites} invites",
+                name="Scan Summary",
+                value=f"Checked **{total_channels}** channels\nFound **{total_invites}** total invites\nCompleted in **{scan_time:.1f}** seconds",
                 inline=True
             )
             
             total_embed.add_field(
-                name="Stats",
-                value=f"{SPROUTS_CHECK} {total_valid}/{total_invites} good ({good_percent:.1f}%)\n{SPROUTS_ERROR} {total_invalid}/{total_invites} bad ({100-good_percent:.1f}%)",
+                name="Invite Quality",
+                value=f"{SPROUTS_CHECK} **{total_valid}** working invites ({good_percent:.1f}%)\n{SPROUTS_ERROR} **{total_invalid}** expired invites ({100-good_percent:.1f}%)",
                 inline=True
             )
+            
+            # Add recommendation based on results
+            if total_invalid > 0:
+                total_embed.add_field(
+                    name="Recommendation",
+                    value=f"Consider updating the {total_invalid} expired invite{'s' if total_invalid != 1 else ''} to maintain server accessibility.",
+                    inline=False
+                )
+            else:
+                total_embed.add_field(
+                    name="Status",
+                    value="All invites are fresh and working perfectly!",
+                    inline=False
+                )
             
             total_embed.set_footer(text="Sprouts keeps your server healthy!")
             await ctx.send(embed=total_embed)
