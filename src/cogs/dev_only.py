@@ -101,8 +101,9 @@ class GuildsPaginationView(discord.ui.View):
         self.message = None
         
         # Update button states for single page
-        if self.max_pages == 1:
+        if self.max_pages <= 1:
             self.next_page.disabled = True
+            self.previous_page.disabled = True
         
     async def create_embed(self, page):
         """Create embed for specific page"""
@@ -478,7 +479,7 @@ class DevOnly(commands.Cog):
         """Shutdown the bot"""
         try:
             embed = discord.Embed(
-                title="Bot Shutdown",
+                title=f"{SPROUTS_WARNING} Bot Shutdown",
                 description="Bot is shutting down...",
                 color=EMBED_COLOR_NORMAL
             )
@@ -492,6 +493,40 @@ class DevOnly(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
+    
+    @commands.command(name="restart", description="Restart the bot", hidden=True)
+    @commands.is_owner()
+    async def restart_bot(self, ctx):
+        """Restart the bot"""
+        try:
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Bot Restart",
+                description="Bot is restarting...\nThis may take a few moments to reconnect.",
+                color=EMBED_COLOR_WARNING
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Bot restart initiated by {ctx.author}")
+            
+            # Close the bot gracefully
+            await self.bot.close()
+            
+            # In production environments like Replit, the bot will automatically restart
+            # due to the deployment configuration
+            
+        except Exception as e:
+            logger.error(f"Error during restart: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Restart Failed",
+                description=f"Failed to restart bot: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
     
     @commands.command(name="eval", description="Evaluate Python code", hidden=True)
     @commands.is_owner()

@@ -73,8 +73,17 @@ class TicketButtons(discord.ui.View):
 
         except Exception as e:
             logger.error(f"Error in close ticket button: {e}")
-            await interaction.response.send_message("Error closing ticket",
-                                                    ephemeral=True)
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        f"{SPROUTS_ERROR} Error closing ticket. Please try again.",
+                        ephemeral=True)
+                else:
+                    await interaction.followup.send(
+                        f"{SPROUTS_ERROR} Error closing ticket. Please try again.",
+                        ephemeral=True)
+            except Exception as followup_error:
+                logger.error(f"Error sending error message: {followup_error}")
 
     @discord.ui.button(label="Claim Ticket",
                        style=discord.ButtonStyle.secondary,
@@ -102,12 +111,24 @@ class TicketButtons(discord.ui.View):
             ctx.channel = interaction.channel
 
             await ticket_cog.claim_ticket(ctx)
-            await interaction.response.defer()
+            try:
+                await interaction.response.defer()
+            except discord.InteractionAlreadyAcknowledged:
+                pass  # Already handled by claim_ticket
 
         except Exception as e:
             logger.error(f"Error in claim ticket button: {e}")
-            await interaction.response.send_message("Error claiming ticket",
-                                                    ephemeral=True)
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        f"{SPROUTS_ERROR} Error claiming ticket. Please try again.",
+                        ephemeral=True)
+                else:
+                    await interaction.followup.send(
+                        f"{SPROUTS_ERROR} Error claiming ticket. Please try again.",
+                        ephemeral=True)
+            except Exception as followup_error:
+                logger.error(f"Error sending claim error message: {followup_error}")
 
 
 class CloseConfirmation(discord.ui.View):
@@ -172,14 +193,19 @@ class CloseConfirmation(discord.ui.View):
         """Handle timeout"""
         if not self.confirmed:
             embed = discord.Embed(
-                title="Close Confirmation Timed Out",
+                title=f"{SPROUTS_WARNING} Close Confirmation Timed Out",
                 description=
                 "The ticket close confirmation has timed out. Please run the close command again if you want to close this ticket.",
                 color=EMBED_COLOR_ERROR)
             try:
-                await self.ctx.edit_last_response(embed=embed, view=None)
-            except:
-                pass
+                # Try to edit the original message if we have access to it
+                if hasattr(self, 'message') and self.message:
+                    await self.message.edit(embed=embed, view=None)
+                else:
+                    # Send a new message if we can't edit the original
+                    await self.ctx.send(embed=embed)
+            except Exception as e:
+                logger.error(f"Error handling close confirmation timeout: {e}")
 
 
 class StaffPanel(discord.ui.View):
@@ -214,29 +240,29 @@ class StaffPanel(discord.ui.View):
                 color=EMBED_COLOR_NORMAL)
 
             embed.add_field(name="Basic Commands",
-                            value="`{ctx.prefix}add @user` - Add member to ticket\n"
-                            "`{ctx.prefix}remove @user` - Remove member from ticket\n"
-                            "`{ctx.prefix}topic <topic>` - Set ticket topic\n"
-                            "`s{ctx.prefix}rename <name>` - Rename ticket channel",
+                            value="`s.add @user` - Add member to ticket\n"
+                            "`s.remove @user` - Remove member from ticket\n"
+                            "`s.topic <topic>` - Set ticket topic\n"
+                            "`s.rename <name>` - Rename ticket channel",
                             inline=True)
 
             embed.add_field(name="Advanced Commands",
-                            value="`{ctx.prefix}move <category>` - Move to category\n"
-                            "`{ctx.prefix}priority <high/medium/low>` - Set priority\n"
-                            "`{ctx.prefix}transfer @staff` - Transfer to staf",
+                            value="`s.move <category>` - Move to category\n"
+                            "`s.claim` - Claim ticket ownership\n"
+                            "`s.unclaim` - Release ticket claim",
                             inline=True)
 
             embed.add_field(name="Quick Actions",
-                            value="`{ctx.prefix}release` - Release claimed ticket\n"
-                            "`{ctx.prefix}forceclose` - Force close ticket\n"
-                            "`{ctx.prefix}listtickets` - List all open tickets",
+                            value="`s.forceclose` - Force close ticket\n"
+                            "`s.listtickets` - List all open tickets\n"
+                            "`s.transcript` - Generate ticket transcript",
                             inline=False)
 
             embed.add_field(
                 name="Panel Management",
-                value="`{ctx.prefix}panel <title>` - Create ticket panel\n"
-                "`{ctx.prefix}panels` - List all panels\n"
-                "`{ctx.prefix}delpanel <panel_id>` - Deletes an active panel",
+                value="`s.createpanel <title>` - Create ticket panel\n"
+                "`s.listpanels` - List all panels\n"
+                "`s.delpanel <id>` - Delete ticket panel",
                 inline=False)
 
             embed.set_footer(text=f"Staff: {interaction.user.display_name}",
