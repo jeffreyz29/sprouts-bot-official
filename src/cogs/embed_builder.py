@@ -629,7 +629,8 @@ class EmbedBuilder(commands.Cog):
                 # Help Reference
                 embed.add_field(
                     name="Need More Help?",
-                    value=f"Use `{ctx.prefix}embed` to see all available commands with detailed descriptions.",
+                    value=f"Use `{ctx.prefix}embed` to see all available commands with detailed descriptions.\n\n"
+                          f"💡 **Did you mean `{ctx.prefix}embedcreate`?**",
                     inline=False
                 )
                 await ctx.reply(embed=embed, mention_author=False)
