@@ -1758,7 +1758,7 @@ class DevOnly(commands.Cog):
             color=EMBED_COLOR_NORMAL
         )
         dm_embed.add_field(
-            name=f"{SPROUTS_WARNING} Changelog Notice",
+            name="Changelog Notice",
             value="This is an official changelog update from the Sprouts development team.",
             inline=False
         )
