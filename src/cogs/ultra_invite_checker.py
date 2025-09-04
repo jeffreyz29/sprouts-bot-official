@@ -62,8 +62,10 @@ class UltraInviteChecker(commands.Cog):
         return self.config[guild_id]
     
     async def validate_invite_instant(self, invite_code: str) -> Tuple[bool, Optional[Dict]]:
-        """Instant invite validation with no delays"""
+        """Fast invite validation with smart rate limiting"""
         try:
+            # Add small delay to avoid rate limits
+            await asyncio.sleep(0.1)
             invite = await self.bot.fetch_invite(invite_code)
             if invite and invite.guild:
                 return True, {
@@ -71,6 +73,9 @@ class UltraInviteChecker(commands.Cog):
                     "member_count": getattr(invite, 'approximate_member_count', 0),
                     "guild_id": invite.guild.id
                 }
+            return False, None
+        except discord.HTTPException:
+            # Rate limited or invalid
             return False, None
         except:
             return False, None
@@ -380,12 +385,15 @@ class UltraInviteChecker(commands.Cog):
             try:
                 channel_invites = []
                 
-                # Only scan most recent messages for speed
-                async for message in channel.history(limit=min(limit, 10)):
+                # Only scan most recent messages for speed - limit to 5 for rate limiting
+                message_count = 0
+                async for message in channel.history(limit=5):
+                    message_count += 1
                     if any(pattern in message.content.lower() for pattern in ['discord.gg/', 'discord.com/invite/', 'discordapp.com/invite/']):
                         invites = self.extract_invites(message.content)
                         
-                        for invite_code in invites:
+                        # Limit to first 2 invites per channel to avoid rate limits
+                        for invite_code in invites[:2]:
                             is_valid, invite_info = await self.validate_invite_instant(invite_code)
                             
                             if is_valid and invite_info:
@@ -395,6 +403,13 @@ class UltraInviteChecker(commands.Cog):
                                     "author": message.author,
                                     "message_link": f"https://discord.com/channels/{ctx.guild.id}/{channel.id}/{message.id}"
                                 })
+                            
+                            # Stop if we found valid invites to avoid rate limits
+                            if len(channel_invites) >= 2:
+                                break
+                    
+                    if len(channel_invites) >= 2:
+                        break
                 
                 return {
                     "channel": channel,
@@ -405,9 +420,19 @@ class UltraInviteChecker(commands.Cog):
             except:
                 return {"channel": channel, "invites": [], "valid_count": 0, "status": "error"}
         
-        # Process ALL channels simultaneously for maximum speed
-        tasks = [scan_channel_instantly(channel) for channel in all_channels]
-        results = await asyncio.gather(*tasks)
+        # Process channels in smaller batches to avoid rate limits
+        batch_size = 3  # Smaller batches to avoid rate limits
+        results = []
+        
+        for i in range(0, len(all_channels), batch_size):
+            batch = all_channels[i:i+batch_size]
+            tasks = [scan_channel_instantly(channel) for channel in batch]
+            batch_results = await asyncio.gather(*tasks)
+            results.extend(batch_results)
+            
+            # Small delay between batches
+            if i + batch_size < len(all_channels):
+                await asyncio.sleep(0.5)
         
         scan_time = time.time() - start_time
         
