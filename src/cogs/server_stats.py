@@ -401,7 +401,7 @@ class ServerStatsMonitor(commands.Cog):
             
             # Confirm monitoring started
             confirm_embed = discord.Embed(
-                title="{SPROUTS_CHECK} Monitoring Started",
+                title=f"{SPROUTS_CHECK} Monitoring Started",
                 description=f"Server stats monitoring started in {ctx.channel.mention}.\n"
                            f"Stats will update automatically every 30 seconds.",
                 color=EMBED_COLOR_NORMAL
@@ -411,7 +411,7 @@ class ServerStatsMonitor(commands.Cog):
         except Exception as e:
             logger.error(f"Error starting server stats monitoring: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to start server stats monitoring.",
                 color=EMBED_COLOR_ERROR
             )
@@ -426,7 +426,7 @@ class ServerStatsMonitor(commands.Cog):
             
             if channel_id not in self.active_monitors:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Error",
+                    title=f"{SPROUTS_ERROR} Error",
                     description="Server stats are not being monitored in this channel.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -446,7 +446,7 @@ class ServerStatsMonitor(commands.Cog):
             self.save_stats_config()
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Monitoring Stopped",
+                title=f"{SPROUTS_CHECK} Monitoring Stopped",
                 description="Server stats monitoring has been stopped in this channel.",
                 color=EMBED_COLOR_NORMAL
             )
@@ -455,7 +455,7 @@ class ServerStatsMonitor(commands.Cog):
         except Exception as e:
             logger.error(f"Error stopping server stats monitoring: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to stop server stats monitoring.",
                 color=EMBED_COLOR_ERROR
             )
@@ -468,7 +468,7 @@ class ServerStatsMonitor(commands.Cog):
             stats = self.get_system_stats()
             if not stats:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Error",
+                    title=f"{SPROUTS_ERROR} Error",
                     description="Failed to get system statistics.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -481,7 +481,7 @@ class ServerStatsMonitor(commands.Cog):
         except Exception as e:
             logger.error(f"Error showing server stats: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to get server statistics.",
                 color=EMBED_COLOR_ERROR
             )
@@ -494,7 +494,7 @@ class ServerStatsMonitor(commands.Cog):
         try:
             if not self.active_monitors:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} No Active Monitors",
+                    title=f"{SPROUTS_ERROR} No Active Monitors",
                     description="There are no active server stats monitors.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -502,7 +502,7 @@ class ServerStatsMonitor(commands.Cog):
                 return
             
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Active Server Stats Monitors",
+                title=f"{SPROUTS_CHECK} Active Server Stats Monitors",
                 description=f"Total: {len(self.active_monitors)}",
                 color=EMBED_COLOR_NORMAL
             )
@@ -525,7 +525,7 @@ class ServerStatsMonitor(commands.Cog):
         except Exception as e:
             logger.error(f"Error listing monitors: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to list active monitors.",
                 color=EMBED_COLOR_ERROR
             )
