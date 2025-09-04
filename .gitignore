@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environment variables
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Bot specific - DO NOT IGNORE THESE FOR GITHUB DEPLOYMENT
+# Keep backups/ folder for restoration
+# Keep github_restore_backup.json for auto-restore
+# Keep config/ and src/data/ for deployment
+
+# Temporary files only
+temp/
+tmp/
+cache/
+
+# Replit specific (optional - keep if using Replit)
+.replit
+replit.nix
+.config/
+.upm/
+venv/

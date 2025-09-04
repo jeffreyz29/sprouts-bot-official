@@ -1,6 +1,6 @@
 {
   "backup_name": "startup_backup",
-  "timestamp": "2025-09-04T23:13:55.622636",
+  "timestamp": "2025-09-04T23:16:32.847342",
   "files_backed_up": [
     "config/guild_settings.json",
     "config/tickets_data.json",
@@ -13,7 +13,13 @@
     "config/tags_data.json",
     "src/data/saved_embeds.json",
     "src/data/sticky_messages.json",
-    "src/data/ticket_settings.json"
+    "src/data/ticket_settings.json",
+    "src/data/autoresponders.json",
+    "src/data/reminders.json",
+    "src/data/reminder_counter.json",
+    "src/data/panels_data.json",
+    "config/global_cooldown.json",
+    "src/data/maintenance.json"
   ],
-  "total_files": 12
+  "total_files": 18
 }

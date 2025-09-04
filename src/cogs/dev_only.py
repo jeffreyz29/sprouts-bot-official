@@ -1665,7 +1665,8 @@ class DevOnly(commands.Cog):
                 "`s.backup [name]` - Create backup of all bot configurations\n"
                 "`s.restore <name>` - Restore data from backup (use with caution!)\n"
                 "`s.listbackups` - Show all available backups\n"
-                "`s.integrity` - Check data file integrity and health"
+                "`s.integrity` - Check data file integrity and health\n"
+                "`s.prepgithub [backup]` - Prepare backup for GitHub deployment auto-restore"
             ),
             inline=False
         )
@@ -2576,8 +2577,18 @@ class DevOnly(commands.Cog):
     @commands.command(name="restore", description="Restore bot data from backup", hidden=True)
     @commands.is_owner()
     async def restore_backup(self, ctx, backup_name: str):
-        """Restore bot data from a backup"""
+        """Restore bot data from a backup (OWNER ONLY)"""
         try:
+            # Double-check owner permission for security
+            if ctx.author.id != BOT_OWNER_ID:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only the bot owner can restore data backups.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
             from src.data_manager import data_manager
             
             embed = discord.Embed(
@@ -2588,6 +2599,11 @@ class DevOnly(commands.Cog):
             embed.add_field(
                 name="⚠️ Warning",
                 value="This will overwrite current configurations. Make sure the bot is in maintenance mode!",
+                inline=False
+            )
+            embed.add_field(
+                name="🔒 Security",
+                value=f"Restore authorized by bot owner: {ctx.author.mention}",
                 inline=False
             )
             msg = await ctx.reply(embed=embed, mention_author=False)
@@ -2613,7 +2629,7 @@ class DevOnly(commands.Cog):
                 )
             
             await msg.edit(embed=embed)
-            logger.info(f"Backup restore attempted by {ctx.author}: {backup_name} - {'Success' if success else 'Failed'}")
+            logger.info(f"SECURE RESTORE: Backup restore attempted by OWNER {ctx.author} (ID: {ctx.author.id}): {backup_name} - {'Success' if success else 'Failed'}")
             
         except Exception as e:
             embed = discord.Embed(
@@ -2729,6 +2745,91 @@ class DevOnly(commands.Cog):
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Integrity Check Error",
                 description=f"Error checking integrity: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="prepgithub", description="Prepare backup for GitHub deployment restoration", hidden=True)
+    @commands.is_owner()
+    async def prepare_github_deployment(self, ctx, backup_name: str = None):
+        """Prepare a backup for automatic restoration on GitHub deployment (OWNER ONLY)"""
+        try:
+            # Double-check owner permission for security
+            if ctx.author.id != BOT_OWNER_ID:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only the bot owner can prepare GitHub deployments.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            from src.data_manager import data_manager
+            
+            # If no backup name provided, create a new backup
+            if not backup_name:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Creating GitHub Backup",
+                    description="Creating a new backup for GitHub deployment...",
+                    color=EMBED_COLOR_NORMAL
+                )
+                msg = await ctx.reply(embed=embed, mention_author=False)
+                
+                backup_path = data_manager.create_backup("github_deployment")
+                if not backup_path:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} Backup Failed",
+                        description="Failed to create backup for GitHub deployment.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await msg.edit(embed=embed)
+                    return
+                
+                backup_name = os.path.basename(backup_path)
+            
+            # Create GitHub restore file
+            success = data_manager.create_github_restore_file(backup_name, ctx.author.id)
+            
+            if success:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} GitHub Deployment Ready",
+                    description=f"Prepared backup `{backup_name}` for GitHub deployment restoration.",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                embed.add_field(
+                    name="📋 Next Steps",
+                    value=(
+                        "1. Commit `github_restore_backup.json` to your GitHub repository\n"
+                        "2. Commit the `backups/` folder with your backup\n"
+                        "3. Deploy to your platform (Replit, Railway, etc.)\n"
+                        "4. Bot will automatically restore data on startup!"
+                    ),
+                    inline=False
+                )
+                embed.add_field(
+                    name="🔒 Security Note",
+                    value="Only you can create/use GitHub restore files. The restoration is automatic but secure.",
+                    inline=False
+                )
+                
+                if 'msg' in locals():
+                    await msg.edit(embed=embed)
+                else:
+                    await ctx.reply(embed=embed, mention_author=False)
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} GitHub Prep Failed",
+                    description="Failed to create GitHub restore file.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"GITHUB PREP: GitHub deployment prepared by OWNER {ctx.author} (ID: {ctx.author.id}) with backup: {backup_name}")
+            
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} GitHub Prep Error",
+                description=f"Error preparing GitHub deployment: {str(e)}",
                 color=EMBED_COLOR_ERROR
             )
             await ctx.reply(embed=embed, mention_author=False)

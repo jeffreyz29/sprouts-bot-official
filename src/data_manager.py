@@ -249,6 +249,9 @@ class DataManager:
     async def auto_backup_on_startup(self):
         """Create an automatic backup when the bot starts"""
         try:
+            # Check if this is a fresh deployment from GitHub
+            is_fresh_deployment = self.detect_fresh_deployment()
+            
             # Only create startup backup if we have existing data
             has_data = any(os.path.exists(path) for path in self.config_files.values())
             
@@ -259,9 +262,91 @@ class DataManager:
                     
                     # Clean up old startup backups (keep only 5 most recent)
                     await self.cleanup_old_backups(backup_prefix="startup_backup", keep_count=5)
+            
+            # If fresh deployment and we have a GitHub backup, restore it
+            if is_fresh_deployment:
+                await self.try_restore_from_github()
                     
         except Exception as e:
             logger.error(f"Failed to create startup backup: {e}")
+    
+    def detect_fresh_deployment(self) -> bool:
+        """Detect if this is a fresh deployment from GitHub"""
+        try:
+            # Check for GitHub deployment indicators
+            indicators = [
+                # Check if .git directory exists (GitHub deployment)
+                os.path.exists('.git'),
+                # Check if most config files are missing (fresh deployment)
+                len([path for path in self.config_files.values() if os.path.exists(path)]) < 3,
+                # Check if backups directory is empty or missing
+                not os.path.exists(self.backup_dir) or len(os.listdir(self.backup_dir)) == 0
+            ]
+            
+            is_fresh = sum(indicators) >= 2
+            if is_fresh:
+                logger.info("🚀 Detected fresh GitHub deployment")
+            
+            return is_fresh
+            
+        except Exception as e:
+            logger.error(f"Error detecting deployment status: {e}")
+            return False
+    
+    async def try_restore_from_github(self):
+        """Try to restore data from a GitHub-committed backup"""
+        try:
+            # Look for a special GitHub backup file
+            github_backup_file = "github_restore_backup.json"
+            
+            if os.path.exists(github_backup_file):
+                logger.info("📥 Found GitHub restore backup file")
+                
+                with open(github_backup_file, 'r') as f:
+                    restore_data = json.load(f)
+                
+                backup_name = restore_data.get('backup_name')
+                owner_id = restore_data.get('owner_id')
+                created_by = restore_data.get('created_by')
+                
+                if backup_name and os.path.exists(os.path.join(self.backup_dir, backup_name)):
+                    logger.info(f"🔄 Auto-restoring from GitHub backup: {backup_name}")
+                    success = self.restore_backup(backup_name)
+                    
+                    if success:
+                        logger.info("✅ Successfully restored data from GitHub backup")
+                        # Remove the restore trigger file
+                        os.remove(github_backup_file)
+                    else:
+                        logger.error("❌ Failed to restore GitHub backup")
+                else:
+                    logger.warning(f"⚠️ GitHub backup '{backup_name}' not found")
+            else:
+                logger.info("ℹ️ No GitHub restore backup file found - fresh start")
+                
+        except Exception as e:
+            logger.error(f"Error restoring from GitHub: {e}")
+    
+    def create_github_restore_file(self, backup_name: str, owner_id: int) -> bool:
+        """Create a GitHub restore file for deployment restoration"""
+        try:
+            restore_data = {
+                "backup_name": backup_name,
+                "owner_id": owner_id,
+                "created_by": "Sprouts Bot Owner",
+                "created_at": datetime.now().isoformat(),
+                "description": "This file triggers automatic data restoration on GitHub deployment"
+            }
+            
+            with open("github_restore_backup.json", 'w') as f:
+                json.dump(restore_data, f, indent=2)
+            
+            logger.info(f"📝 Created GitHub restore file for backup: {backup_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating GitHub restore file: {e}")
+            return False
     
     async def cleanup_old_backups(self, backup_prefix: str = None, keep_count: int = 10):
         """Clean up old backups to save space"""
