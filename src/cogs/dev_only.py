@@ -1688,10 +1688,16 @@ class DevOnly(commands.Cog):
             await ctx.reply(embed=embed, mention_author=False)
             return
         
+        # Count unique owners for confirmation
+        unique_owner_ids = set()
+        for guild in self.bot.guilds:
+            if guild.owner:
+                unique_owner_ids.add(guild.owner.id)
+        
         # Confirmation step
         confirm_embed = discord.Embed(
             title=f"{SPROUTS_WARNING} Changelog Confirmation",
-            description=f"You are about to send this changelog to **{len(self.bot.guilds)}** server owners:",
+            description=f"You are about to send this changelog to **{len(unique_owner_ids)}** unique server owners:",
             color=EMBED_COLOR_WARNING
         )
         confirm_embed.add_field(
@@ -1700,8 +1706,8 @@ class DevOnly(commands.Cog):
             inline=False
         )
         confirm_embed.add_field(
-            name="Servers:",
-            value=f"{len(self.bot.guilds)} servers will receive this message",
+            name="Recipients:",
+            value=f"{len(unique_owner_ids)} unique owners across {len(self.bot.guilds)} servers",
             inline=True
         )
         confirm_embed.set_footer(text=f"React with {SPROUTS_CHECK} to confirm or {SPROUTS_ERROR} to cancel")
@@ -1762,31 +1768,69 @@ class DevOnly(commands.Cog):
         )
         dm_embed.timestamp = discord.utils.utcnow()
         
+        # Collect unique owners and their servers
+        unique_owners = {}  # {owner_id: {owner: User, guilds: [Guild1, Guild2, ...]}}
+        
         for guild in self.bot.guilds:
+            if guild.owner:
+                owner_id = guild.owner.id
+                if owner_id not in unique_owners:
+                    unique_owners[owner_id] = {
+                        'owner': guild.owner,
+                        'guilds': []
+                    }
+                unique_owners[owner_id]['guilds'].append(guild)
+            else:
+                failed += 1
+                failed_owners.append(f"{guild.name} (No owner found)")
+        
+        # Send one message per unique owner
+        for owner_id, owner_data in unique_owners.items():
+            owner = owner_data['owner']
+            owned_guilds = owner_data['guilds']
+            
             try:
-                if guild.owner:
-                    await guild.owner.send(embed=dm_embed)
-                    successful += 1
-                    logger.info(f"Changelog sent to {guild.owner} (Owner of {guild.name})")
+                # Create custom embed with server info if they own multiple
+                custom_dm_embed = dm_embed.copy()
+                if len(owned_guilds) > 1:
+                    guild_list = ", ".join([guild.name for guild in owned_guilds[:5]])
+                    if len(owned_guilds) > 5:
+                        guild_list += f" and {len(owned_guilds) - 5} more"
+                    custom_dm_embed.add_field(
+                        name=f"Your {len(owned_guilds)} Servers:",
+                        value=guild_list,
+                        inline=False
+                    )
                 else:
-                    failed += 1
-                    failed_owners.append(f"{guild.name} (No owner found)")
+                    custom_dm_embed.add_field(
+                        name="Your Server:",
+                        value=owned_guilds[0].name,
+                        inline=False
+                    )
+                
+                await owner.send(embed=custom_dm_embed)
+                successful += 1
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                logger.info(f"Changelog sent to {owner} (Owner of {len(owned_guilds)} servers: {server_names})")
                 
                 # Rate limiting - wait a bit between sends
                 await asyncio.sleep(1)
                 
             except discord.Forbidden:
                 failed += 1
-                failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - DMs disabled")
-                logger.warning(f"Failed to send changelog to {guild.owner} (Owner of {guild.name}) - DMs disabled")
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                failed_owners.append(f"{owner.display_name} ({len(owned_guilds)} servers: {server_names}) - DMs disabled")
+                logger.warning(f"Failed to send changelog to {owner} (Owner of {len(owned_guilds)} servers) - DMs disabled")
             except discord.HTTPException as e:
                 failed += 1
-                failed_owners.append(f"{guild.owner.display_name} ({guild.name}) - Error: {str(e)}")
-                logger.error(f"Failed to send changelog to {guild.owner} (Owner of {guild.name}) - Error: {e}")
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                failed_owners.append(f"{owner.display_name} ({len(owned_guilds)} servers: {server_names}) - Error: {str(e)}")
+                logger.error(f"Failed to send changelog to {owner} (Owner of {len(owned_guilds)} servers) - Error: {e}")
             except Exception as e:
                 failed += 1
-                failed_owners.append(f"{guild.name} - Unexpected error")
-                logger.error(f"Unexpected error sending changelog to owner of {guild.name}: {e}")
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                failed_owners.append(f"{owner.display_name} ({len(owned_guilds)} servers) - Unexpected error")
+                logger.error(f"Unexpected error sending changelog to {owner} (Owner of {len(owned_guilds)} servers): {e}")
         
         # Results embed
         results_embed = discord.Embed(
