@@ -1790,25 +1790,7 @@ class DevOnly(commands.Cog):
             owned_guilds = owner_data['guilds']
             
             try:
-                # Create custom embed with server info if they own multiple
-                custom_dm_embed = dm_embed.copy()
-                if len(owned_guilds) > 1:
-                    guild_list = ", ".join([guild.name for guild in owned_guilds[:5]])
-                    if len(owned_guilds) > 5:
-                        guild_list += f" and {len(owned_guilds) - 5} more"
-                    custom_dm_embed.add_field(
-                        name=f"Your {len(owned_guilds)} Servers:",
-                        value=guild_list,
-                        inline=False
-                    )
-                else:
-                    custom_dm_embed.add_field(
-                        name="Your Server:",
-                        value=owned_guilds[0].name,
-                        inline=False
-                    )
-                
-                await owner.send(embed=custom_dm_embed)
+                await owner.send(embed=dm_embed)
                 successful += 1
                 server_names = ", ".join([guild.name for guild in owned_guilds])
                 logger.info(f"Changelog sent to {owner} (Owner of {len(owned_guilds)} servers: {server_names})")
