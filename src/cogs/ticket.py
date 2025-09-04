@@ -1515,7 +1515,6 @@ class TicketSystem(commands.Cog):
 
             embed.add_field(name="Status", value="Open", inline=True)
             embed.add_field(name="Claimed By", value="None", inline=True)
-            embed.add_field(name="Priority", value="Normal", inline=True)
 
             embed.set_thumbnail(url=user.display_avatar.url)
             embed.set_footer(
@@ -2229,19 +2228,13 @@ class TicketSystem(commands.Cog):
             # Find ticket by current channel
             ticket_data = None
             ticket_id = None
-            logger.info(f"Looking for ticket with channel_id {ctx.channel.id}")
-            logger.info(f"Available tickets: {list(self.tickets_data.keys())}")
-            
             for tid, tdata in self.tickets_data.items():
-                logger.info(f"Checking ticket {tid}: channel_id={tdata.get('channel_id')}, creator_id={tdata.get('creator_id')}")
                 if tdata.get('channel_id') == ctx.channel.id:
                     ticket_id = tid
                     ticket_data = tdata
-                    logger.info(f"Found matching ticket: {tid}")
                     break
 
             if not ticket_data:
-                logger.error(f"No ticket data found for channel {ctx.channel.id}")
                 return
 
             # Get the ticket creator FIRST before any async operations
@@ -3149,7 +3142,7 @@ class TicketSystem(commands.Cog):
                 embed.add_field(
                     name=f"Ticket #{ticket_id}",
                     value=
-                    f"**Creator:** {creator_name}\n**Claimed:** {claimed_text}\n**Priority:** {ticket.get('priority', 'medium').title()}",
+                    f"**Creator:** {creator_name}\n**Claimed:** {claimed_text}",
                     inline=True)
 
             await ctx.reply(embed=embed, mention_author=False)
@@ -3383,7 +3376,6 @@ class TicketSystem(commands.Cog):
                             value=panel_data.get('default_reason',
                                                  'Support Request'),
                             inline=True)
-            embed.add_field(name="Priority", value="Medium", inline=True)
             embed.set_footer(text=f"Ticket ID: {ticket_channel.id}")
             embed.timestamp = discord.utils.utcnow()
 

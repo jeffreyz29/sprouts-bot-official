@@ -38,5 +38,15 @@
     "created_at": "2025-09-04T22:37:22.242214",
     "category_id": 1412714273557450752,
     "default_reason": "Support Request"
+  },
+  "k5saiRu0": {
+    "guild_id": 1411324489333215267,
+    "channel_id": 1413187123393200320,
+    "message_id": 1413292341631910030,
+    "title": "Support Tickets",
+    "created_by": 764874247646085151,
+    "created_at": "2025-09-04T22:39:12.077129",
+    "category_id": 1412714273557450752,
+    "default_reason": "Support Request"
   }
 }
