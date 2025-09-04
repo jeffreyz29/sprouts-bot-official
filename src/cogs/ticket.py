@@ -470,7 +470,7 @@ class TicketSetupSelect(discord.ui.Select):
                 color=EMBED_COLOR_NORMAL)
         else:
             embed = discord.Embed(
-                title="All Clean",
+                title=f"{SPROUTS_CHECK} All Clean",
                 description=
                 "No orphaned tickets found - all ticket data is clean",
                 color=EMBED_COLOR_NORMAL)
