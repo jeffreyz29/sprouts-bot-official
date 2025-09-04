@@ -1650,9 +1650,10 @@ class DevOnly(commands.Cog):
         embed.add_field(
             name="System Management",
             value=(
-                "`s.cooldown` - Set global command cooldown (supports 1s, 5m, 2h, 1d)\n"
-                "`s.maintenance` - Toggle maintenance mode (complete silence for others)\n"
                 "`s.shutdown` - Safely shut down the bot\n"
+                "`s.restart` - Restart the bot instance\n"
+                "`s.maintenance` - Toggle maintenance mode (complete silence for others)\n"
+                "`s.cooldown` - Set global command cooldown (supports 1s, 5m, 2h, 1d)\n"
                 "`s.clearslash` - Remove all slash commands from Discord"
             ),
             inline=False

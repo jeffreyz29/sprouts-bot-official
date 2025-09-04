@@ -262,44 +262,6 @@ class DetailedCommandHelpView(discord.ui.View):
                 ]
             },
             
-            # System Management Commands (Owner Only)
-            "shutdown": {
-                "category": "System Management",
-                "description": "Safely shutdown the bot (Owner only)",
-                "usage": f"{self.prefix}shutdown",
-                "detailed_usage": [
-                    f"`{self.prefix}shutdown` - Gracefully shuts down the bot"
-                ],
-                "examples": [
-                    f"`{self.prefix}shutdown` - Stops the bot completely",
-                    "Bot will disconnect from Discord and stop all processes"
-                ],
-                "permissions": "**Bot Owner** required",
-                "cooldown": "No cooldown",
-                "error_scenarios": [
-                    "**Not owner:** `Only the bot owner can use this command.`",
-                    "**Already shutting down:** Bot may not respond if shutdown is in progress"
-                ]
-            },
-            
-            "restart": {
-                "category": "System Management", 
-                "description": "Restart the bot instance (Owner only)",
-                "usage": f"{self.prefix}restart",
-                "detailed_usage": [
-                    f"`{self.prefix}restart` - Restarts the bot process"
-                ],
-                "examples": [
-                    f"`{self.prefix}restart` - Restarts bot with updated code",
-                    "Bot will reconnect automatically after restart"
-                ],
-                "permissions": "**Bot Owner** required",
-                "cooldown": "No cooldown", 
-                "error_scenarios": [
-                    "**Not owner:** `Only the bot owner can use this command.`",
-                    "**Environment dependent:** May not work in all hosting environments"
-                ]
-            },
             
             # Utility Commands
             "serverinfo": {
@@ -1332,20 +1294,6 @@ class HelpCommand(commands.Cog):
                 inline=False
             )
             
-            # System Management commands (Owner only)
-            system_commands = [
-                "`shutdown` - Safely shutdown the bot (Owner only)",
-                "`restart` - Restart the bot instance (Owner only)",
-                "`maintenance` - Toggle maintenance mode (Owner only)",
-                "`setstatus` - Set bot's Discord status (Owner only)",
-                "`setactivity` - Set bot's activity status (Owner only)"
-            ]
-            
-            embed.add_field(
-                name="System Management",
-                value="\n".join(system_commands),
-                inline=False
-            )
             
             
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
