@@ -3350,18 +3350,22 @@ class TicketSystem(commands.Cog):
                 f"Ticket opened by {interaction.user} | ID: {interaction.user.id}"
             )
 
-            # Store ticket data
+            # Store ticket data (using consistent field names)
             self.tickets_data[str(ticket_channel.id)] = {
-                'user_id': interaction.user.id,
-                'user_name': str(interaction.user),
+                'id': f"ticket-{interaction.user.name}",
+                'creator_id': interaction.user.id,
+                'creator_name': str(interaction.user),
                 'channel_id': ticket_channel.id,
                 'guild_id': guild_id,
                 'created_at': datetime.utcnow().isoformat(),
                 'status': 'open',
                 'claimed_by': None,
                 'priority': 'medium',
+                'topic': panel_data.get('default_reason', 'Support Request'),
+                'members': [interaction.user.id],
+                'tags': [],
                 'panel_id': panel_data.get('panel_id'),
-                'reason': panel_data.get('default_reason', 'Support Request')
+                'log_channel_id': ticket_settings.get('log_channel_id')
             }
             TicketData.save_tickets(self.tickets_data)
 

@@ -28,5 +28,15 @@
     "created_at": "2025-09-04T22:33:43.703297",
     "category_id": 1412714273557450752,
     "default_reason": "Support Request"
+  },
+  "3Nkfmcyw": {
+    "guild_id": 1411324489333215267,
+    "channel_id": 1413187123393200320,
+    "message_id": 1413291880812253268,
+    "title": "Support Tickets",
+    "created_by": 764874247646085151,
+    "created_at": "2025-09-04T22:37:22.242214",
+    "category_id": 1412714273557450752,
+    "default_reason": "Support Request"
   }
 }
