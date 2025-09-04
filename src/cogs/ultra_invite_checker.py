@@ -543,7 +543,7 @@ class UltraInviteChecker(commands.Cog):
                 if total_in_channel > 0:
                     if valid_count == total_in_channel:
                         # All good
-                        emoji = "🟢"
+                        emoji = f"{SPROUTS_CHECK}"
                         status = "good"
                         # Get user count from first valid invite
                         user_count = 0
@@ -551,21 +551,26 @@ class UltraInviteChecker(commands.Cog):
                             user_count = result["valid_invites"][0].get("member_count", 0)
                         category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `{user_count:,} Users`")
                     else:
-                        # Some bad - ping authors of invalid invites
-                        emoji = "🔴"
+                        # Some bad - ping authors of invalid invites (but check twice to avoid cache issues)
+                        emoji = f"{SPROUTS_ERROR}"
                         status = "bad"
                         category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `0 Users`")
                         
-                        # Send ping messages for invalid invites in that channel
+                        # Double-check invalid invites to avoid Discord cache issues
                         for invalid_invite in result["invalid_invites"]:
                             if invalid_invite.get("author"):
                                 try:
-                                    await channel.send(f"<@{invalid_invite['author'].id}> Your invite `{invalid_invite['code']}` is invalid/expired.")
+                                    # Re-validate the invite to avoid cache issues
+                                    recheck_valid, _ = await self.validate_invite_instant(invalid_invite['code'])
+                                    
+                                    # Only ping if it's still invalid after recheck
+                                    if not recheck_valid:
+                                        await channel.send(f"<@{invalid_invite['author'].id}> Your invite `{invalid_invite['code']}` is invalid/expired.")
                                 except:
                                     pass  # Skip if we can't send message
                 else:
                     # No invites found
-                    category_lines.append(f"🔴 {channel.mention} : 0 found `0 Users`")
+                    category_lines.append(f"{SPROUTS_ERROR} {channel.mention} : 0 found `0 Users`")
             
             # Only show categories with results
             if category_lines:
@@ -605,7 +610,7 @@ class UltraInviteChecker(commands.Cog):
             
             total_embed.add_field(
                 name="Stats",
-                value=f"✅ {total_valid}/{total_invites} good ({good_percent:.1f}%)\n❌ {total_invalid}/{total_invites} bad ({bad_percent:.1f}%)",
+                value=f"{SPROUTS_CHECK} {total_valid}/{total_invites} good ({good_percent:.1f}%)\n{SPROUTS_ERROR} {total_invalid}/{total_invites} bad ({bad_percent:.1f}%)",
                 inline=True
             )
             
