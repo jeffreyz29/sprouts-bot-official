@@ -1,6 +1,6 @@
 # Ticket System
 
-A comprehensive support ticket system with panels, claiming, priorities, transcripts, and advanced management features.
+A comprehensive support ticket system with panels, claiming, transcripts, and advanced management features.
 
 ## 🎫 Overview
 
@@ -13,7 +13,6 @@ The Sprouts ticket system provides a professional support experience for Discord
 - **👥 Staff Management** - Role-based access and claiming system  
 - **📝 Comprehensive Logging** - Full activity tracking and transcripts
 - **🔄 Auto-Management** - Cleanup and maintenance features
-- **📊 Priority System** - Organize tickets by importance
 
 ## 🚀 Initial Setup
 
@@ -163,33 +162,18 @@ Transcripts include:
 
 ## 🎯 Advanced Features
 
-### Priority System
+### Unclaiming Tickets
 
-Organize tickets by importance:
-
-```
-s.priority high        # Set high priority
-s.priority medium      # Set medium priority  
-s.priority low         # Set low priority
-```
-
-Priority indicators:
-- 🔴 **High**: Urgent issues requiring immediate attention
-- 🟡 **Medium**: Standard support requests
-- 🟢 **Low**: General questions and feedback
-
-### Transfer System
-
-Move tickets between staff members:
+Release ownership of claimed tickets:
 
 ```
-s.transfer @newstaff   # Transfer to specific staff
+s.unclaim               # Release current ticket claim
 ```
 
-Transfer features:
-- **🔄 Permission update** - New staff gets access
-- **📝 Notification** - Both staff members notified
-- **📊 Tracking** - Transfer logged for accountability
+When unclaimed:
+- ✅ Ticket becomes available for other staff
+- 📝 Unclaim action is logged in the log channel
+- 👥 Other staff members can now claim the ticket
 
 ### Bulk Operations
 
@@ -228,7 +212,7 @@ Configure automatic ticket closure:
 | `s.forceclose` | Force close ticket | `s.forceclose` |
 | `s.add <member>` | Add member to ticket | `s.add @user` |
 | `s.remove <member>` | Remove from ticket | `s.remove @user` |
-| `s.transfer <@staff>` | Transfer ticket | `s.transfer @staff` |
+| `s.unclaim` | Release ticket claim | `s.unclaim` |
 
 ### Management Commands
 | Command | Description | Usage |
@@ -240,12 +224,11 @@ Configure automatic ticket closure:
 | `s.delpanel <id>` | Delete panel | `s.delpanel abc123` |
 | `s.ticketlimit [num]` | Set user limit | `s.ticketlimit 5` |
 
-### Priority Commands
+### Claim Commands
 | Command | Description | Usage |
 |---------|-------------|-------|
-| `s.priority high` | High priority | `s.priority high` |
-| `s.priority medium` | Medium priority | `s.priority medium` |
-| `s.priority low` | Low priority | `s.priority low` |
+| `s.claim` | Claim ticket | `s.claim` |
+| `s.unclaim` | Release claim | `s.unclaim` |
 
 ## 📊 Ticket Statistics
 

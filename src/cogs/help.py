@@ -506,15 +506,15 @@ class DetailedCommandHelpView(discord.ui.View):
                 ]
             },
             
-            "release": {
+            "unclaim": {
                 "category": "Ticket System",
                 "description": "Release ownership of a claimed ticket",
-                "usage": f"{self.prefix}release",
+                "usage": f"{self.prefix}unclaim",
                 "detailed_usage": [
-                    f"`{self.prefix}release` - Release ownership of current ticket"
+                    f"`{self.prefix}unclaim` - Release ownership of current ticket"
                 ],
                 "examples": [
-                    f"`{self.prefix}release` - Remove yourself as assigned staf",
+                    f"`{self.prefix}unclaim` - Remove yourself as assigned staff",
                     "Makes ticket available for other staff to claim"
                 ],
                 "permissions": "**Manage Channels** required",
@@ -591,27 +591,6 @@ class DetailedCommandHelpView(discord.ui.View):
                 ]
             },
             
-            "transfer": {
-                "category": "Ticket System",
-                "description": "Transfer ticket ownership to another staff member",
-                "usage": f"{self.prefix}transfer <@staff>",
-                "detailed_usage": [
-                    f"`{self.prefix}transfer @StaffMember` - Transfer to mentioned staf",
-                    f"`{self.prefix}transfer StaffName` - Transfer by username"
-                ],
-                "examples": [
-                    f"`{self.prefix}transfer @ModeratorJohn` - Transfer to ModeratorJohn",
-                    f"`{self.prefix}transfer SupportTeam` - Transfer to SupportTeam user"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**User not staff:** `Target user must have Manage Channels permission.`",
-                    "**User not found:** `Could not find the specified staff member.`"
-                ]
-            },
             
             "rename": {
                 "category": "Ticket System",
@@ -659,28 +638,6 @@ class DetailedCommandHelpView(discord.ui.View):
                 ]
             },
             
-            "priority": {
-                "category": "Ticket System",
-                "description": "Set ticket priority level",
-                "usage": f"{self.prefix}priority <high|medium|low>",
-                "detailed_usage": [
-                    f"`{self.prefix}priority high` - Set to high priority",
-                    f"`{self.prefix}priority medium` - Set to medium priority",
-                    f"`{self.prefix}priority low` - Set to low priority"
-                ],
-                "examples": [
-                    f"`{self.prefix}priority high` - Mark as urgent/critical issue",
-                    f"`{self.prefix}priority medium` - Standard priority level",
-                    f"`{self.prefix}priority low` - Non-urgent or general inquiry"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**Invalid priority:** `Priority must be: high, medium, or low.`"
-                ]
-            },
             
             # Embed Builder Commands
             "embed": {
@@ -1251,12 +1208,10 @@ class HelpCommand(commands.Cog):
                 "`close` - Close ticket",
                 "`forceclose` - Force close ticket",
                 "`move` - Move to a new ticket category",
-                "`priority` - Sets the ticket priority",
-                "`release` - Unclaim ticket ownership",
+                "`unclaim` - Release ticket ownership",
                 "`remove` - Remove member from ticket",
                 "`listtickets` - List active guild tickets",
                 "`topic` - Sets the topic of the ticket",
-                "`transfer` - Transfer ownership of the ticket",
                 "`rename` - Rename a ticket channel",
                 "`createpanel` - Create a new ticket panel",
                 "`listpanels` - List the active ticket panels",
