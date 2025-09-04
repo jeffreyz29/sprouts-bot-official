@@ -2208,7 +2208,7 @@ class TicketSystem(commands.Cog):
             transcript_file_path = None
             try:
                 # Create transcripts directory if it doesn't exist
-                transcript_dir = "transcripts"
+                transcript_dir = "src/data/transcripts"
                 if not os.path.exists(transcript_dir):
                     os.makedirs(transcript_dir)
 
