@@ -566,8 +566,7 @@ class RoleSelectView(discord.ui.View):
                 updated_embed = self.ticket_cog.create_setup_embed(self.ctx)
 
                 success_embed = discord.Embed(
-                    title=
-                    "{SPROUTS_CHECK} Staff Role Added",
+                    title="Staff Role Added",
                     description=f"{role.mention} added as staff role",
                     color=EMBED_COLOR_NORMAL)
             else:
@@ -2699,103 +2698,19 @@ class TicketSystem(commands.Cog):
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
 
+
     @commands.command(
-        name="priority",
-        help="Set ticket priority level (low, normal, high, urgent)")
+        name="unclaim",
+        help="Unclaim ownership of claimed ticket for other staff to handle")
     @commands.has_permissions(manage_channels=True)
-    async def set_priority(self, ctx, priority: str):
-        """Set ticket priority"""
+    async def unclaim_ticket(self, ctx):
+        """Unclaim ticket command"""
         try:
             if not isinstance(ctx.author, discord.Member) or not self.is_staff(
                     ctx.author):
                 embed = discord.Embed(
-                    title=
-                    f"{SPROUTS_ERROR} Access Denied",
-                    description="Only staff members can set ticket priority.",
-                    color=EMBED_COLOR_ERROR)
-                embed.set_footer(
-                    text=f"Requested by {ctx.author.display_name}",
-                    icon_url=ctx.author.display_avatar.url)
-                embed.timestamp = discord.utils.utcnow()
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-
-            valid_priorities = ["low", "medium", "high", "urgent"]
-            if priority.lower() not in valid_priorities:
-                embed = discord.Embed(
-                    description=
-                    f"Priority must be one of: {', '.join(valid_priorities)}",
-                    color=EMBED_COLOR_ERROR)
-                embed.set_footer(
-                    text=f"Requested by {ctx.author.display_name}",
-                    icon_url=ctx.author.display_avatar.url)
-                embed.timestamp = discord.utils.utcnow()
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-
-            # Find ticket
-            for ticket_id, ticket_data in self.tickets_data.items():
-                if ticket_data.get('channel_id') == ctx.channel.id:
-                    ticket_data['priority'] = priority.lower()
-                    TicketData.save_tickets(self.tickets_data)
-
-                    # Update the ticket embed with new priority
-                    await self.update_ticket_embed(ctx.channel, ticket_data)
-
-                    embed = discord.Embed(
-                        description=
-                        f"Ticket priority set to **{priority.lower()}**.",
-                        color=EMBED_COLOR_NORMAL)
-                    await ctx.reply(embed=embed, mention_author=False)
-                    return
-
-            embed = discord.Embed(
-                title=
-                f"{SPROUTS_ERROR} Invalid Channel",
-                description="This is not a ticket channel.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
-                             icon_url=ctx.author.display_avatar.url)
-            await ctx.reply(embed=embed, mention_author=False)
-
-        except Exception as e:
-            logger.error(f"Error setting priority: {e}")
-
-    @set_priority.error
-    async def set_priority_error(self, ctx, error):
-        """Handle priority command errors"""
-        if isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Priority",
-                description="Please specify a priority level.\n\n**Usage:** `s.priority <level>`\n**Valid levels:** low, medium, high, urgent",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
-                           icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        elif isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Access Denied",
-                description="You need **Manage Channels** permission to set ticket priority.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
-                           icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-
-    @commands.command(
-        name="release",
-        help="Release ownership of claimed ticket for other staff to handle")
-    @commands.has_permissions(manage_channels=True)
-    async def release_ticket(self, ctx):
-        """Release ticket command"""
-        try:
-            if not isinstance(ctx.author, discord.Member) or not self.is_staff(
-                    ctx.author):
-                embed = discord.Embed(
-                    title=
-                    f"{SPROUTS_ERROR} Access Denied",
-                    description="Only staff members can release tickets.",
+                    title="Access Denied",
+                    description="Only staff members can unclaim tickets.",
                     color=EMBED_COLOR_ERROR)
                 embed.set_footer(
                     text=f"Requested by {ctx.author.display_name}",
@@ -2809,10 +2724,8 @@ class TicketSystem(commands.Cog):
                 if ticket_data.get('channel_id') == ctx.channel.id:
                     if ticket_data.get('claimed_by') != ctx.author.id:
                         embed = discord.Embed(
-                            title=
-                            f"{SPROUTS_ERROR} Access Denied",
-                            description=
-                            "You can only release tickets you have claimed.",
+                            title="Access Denied",
+                            description="You can only unclaim tickets you have claimed.",
                             color=EMBED_COLOR_ERROR)
                         embed.set_footer(
                             text=f"Requested by {ctx.author.display_name}",
@@ -2827,20 +2740,17 @@ class TicketSystem(commands.Cog):
                     await self.update_ticket_embed(ctx.channel, ticket_data)
 
                     embed = discord.Embed(
-                        title=
-                        f"{SPROUTS_CHECK} Ticket Released",
-                        description=
-                        "This ticket has been released and can now be claimed by other staff.",
+                        title="Ticket Unclaimed",
+                        description="This ticket has been unclaimed and can now be claimed by other staff.",
                         color=EMBED_COLOR_NORMAL)
                     embed.set_footer(
-                        text=f"Released by {ctx.author.display_name}",
+                        text=f"Unclaimed by {ctx.author.display_name}",
                         icon_url=ctx.author.display_avatar.url)
                     await ctx.reply(embed=embed, mention_author=False)
                     return
 
             embed = discord.Embed(
-                title=
-                f"{SPROUTS_ERROR} Invalid Channel",
+                title="Invalid Channel",
                 description="This is not a ticket channel.",
                 color=EMBED_COLOR_ERROR)
             embed.set_footer(text=f"Requested by {ctx.author.display_name}",
@@ -2848,7 +2758,7 @@ class TicketSystem(commands.Cog):
             await ctx.reply(embed=embed, mention_author=False)
 
         except Exception as e:
-            logger.error(f"Error releasing ticket: {e}")
+            logger.error(f"Error unclaiming ticket: {e}")
 
     @commands.command(name="remove",
                       help="Remove a member from the current ticket channel")
@@ -3213,87 +3123,6 @@ class TicketSystem(commands.Cog):
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
 
-    @commands.command(name="transfer",
-                      help="Transfer ticket ownership to another staff member")
-    @commands.has_permissions(manage_channels=True)
-    async def transfer_ticket(self, ctx, member: discord.Member):
-        """Transfer ticket to another staff member"""
-        try:
-            if not isinstance(ctx.author, discord.Member) or not self.is_staff(
-                    ctx.author):
-                embed = discord.Embed(
-                    title=
-                    f"{SPROUTS_ERROR} Access Denied",
-                    description="Only staff members can transfer tickets.",
-                    color=EMBED_COLOR_ERROR)
-                embed.set_footer(
-                    text=f"Requested by {ctx.author.display_name}",
-                    icon_url=ctx.author.display_avatar.url)
-                embed.timestamp = discord.utils.utcnow()
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-
-            if not self.is_staff(member):
-                embed = discord.Embed(
-                    title=
-                    f"{SPROUTS_ERROR} Invalid Target",
-                    description="Can only transfer to staff members.",
-                    color=EMBED_COLOR_ERROR)
-                embed.set_footer(
-                    text=f"Requested by {ctx.author.display_name}",
-                    icon_url=ctx.author.display_avatar.url)
-                embed.timestamp = discord.utils.utcnow()
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-
-            # Find ticket
-            for ticket_id, ticket_data in self.tickets_data.items():
-                if ticket_data.get('channel_id') == ctx.channel.id:
-                    ticket_data['claimed_by'] = member.id
-                    TicketData.save_tickets(self.tickets_data)
-                    embed = discord.Embed(
-                        description=f"Ticket transferred to {member.mention}.",
-                        color=EMBED_COLOR_NORMAL)
-                    embed.set_footer(
-                        text=f"Requested by {ctx.author.display_name}",
-                        icon_url=ctx.author.display_avatar.url)
-                    embed.timestamp = discord.utils.utcnow()
-                    await ctx.reply(embed=embed, mention_author=False)
-                    return
-
-            embed = discord.Embed(
-                title=
-                f"{SPROUTS_ERROR} Invalid Channel",
-                description="This is not a ticket channel.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
-                             icon_url=ctx.author.display_avatar.url)
-            await ctx.reply(embed=embed, mention_author=False)
-
-        except Exception as e:
-            logger.error(f"Error transferring ticket: {e}")
-
-    @transfer_ticket.error
-    async def transfer_ticket_error(self, ctx, error):
-        """Handle transfer command errors"""
-        if isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Missing Member",
-                description="Please specify a staff member to transfer the ticket to.\n\n**Usage:** `s.transfer @staff-member`",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
-                           icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        elif isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Access Denied",
-                description="You need **Manage Channels** permission to transfer tickets.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", 
-                           icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
 
     @commands.command(name="rename",
                       help="Rename the current ticket channel with new name")
