@@ -650,38 +650,38 @@ class EmbedBuilder(commands.Cog):
             
             # Core Commands
             embed.add_field(
-                name="Core Commands",
-                value="`{ctx.prefix}embedcreate [name]` - Create a new embed with enhanced editor\n"
-                      "`{ctx.prefix}embedlist` - List your saved embeds\n"
-                      "`{ctx.prefix}embedview <name>` - View a saved embed\n"
-                      "`{ctx.prefix}embededit <name>` - Edit an existing embed",
+                name=f"{SPROUTS_CHECK} Core Commands",
+                value=f"{SPROUTS_CHECK} `{ctx.prefix}embedcreate [name]` - Create a new embed with enhanced editor\n"
+                      f"{SPROUTS_CHECK} `{ctx.prefix}embedlist` - List your saved embeds\n"
+                      f"{SPROUTS_CHECK} `{ctx.prefix}embedview <name>` - View a saved embed\n"
+                      f"{SPROUTS_CHECK} `{ctx.prefix}embededit <name>` - Edit an existing embed",
                 inline=False
             )
             
             # Management Commands
             embed.add_field(
-                name="Management",
-                value="`{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
-                      "`{ctx.prefix}embedexport <name>` - Export as YAML template\n"
-                      "`{ctx.prefix}embedimport <yaml>` - Import from YAML template",
+                name=f"{SPROUTS_WARNING} Management",
+                value=f"{SPROUTS_ERROR} `{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
+                      f"{SPROUTS_WARNING} `{ctx.prefix}embedexport <name>` - Export as YAML template\n"
+                      f"{SPROUTS_WARNING} `{ctx.prefix}embedimport <yaml>` - Import from YAML template",
                 inline=False
             )
             
             # Variables and Help
             embed.add_field(
-                name="Additional Help",
-                value="`variables` - View all available variables\n"
-                      "`{ctx.prefix}embedoldedit <name>` - Use legacy editing mode",
+                name=f"{SPROUTS_ERROR} Additional Help",
+                value=f"{SPROUTS_CHECK} `variables` - View all available variables\n"
+                      f"{SPROUTS_WARNING} `{ctx.prefix}embedoldedit <name>` - Use legacy editing mode",
                 inline=False
             )
             
             # Features highlight
             embed.add_field(
-                name="New Features",
-                value="**Organized Select Menus** - No more button clutter\n"
-                      "**Live Preview** - See changes instantly\n"
-                      "**Enhanced Field Management** - Add, edit, remove fields easily\n"
-                      "**Quick Actions** - Clear, preview, and manage with ease",
+                name=f"{SPROUTS_CHECK} New Features",
+                value=f"{SPROUTS_CHECK} **Organized Select Menus** - No more button clutter\n"
+                      f"{SPROUTS_CHECK} **Live Preview** - See changes instantly\n"
+                      f"{SPROUTS_CHECK} **Enhanced Field Management** - Add, edit, remove fields easily\n"
+                      f"{SPROUTS_CHECK} **Quick Actions** - Clear, preview, and manage with ease",
                 inline=False
             )
             
