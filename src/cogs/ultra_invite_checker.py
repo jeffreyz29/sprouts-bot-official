@@ -373,21 +373,16 @@ class UltraInviteChecker(commands.Cog):
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
         
-        # Send initial status message
-        status_msg = await ctx.reply("🔍 Starting ultra-fast invite scan...", mention_author=False)
-        
-        # Check if check channel is configured 
+        # Check setup without status messages - just start immediately
         check_channel_id = guild_config.get("invite_check_channel")
         if not check_channel_id:
-            await status_msg.edit(content="❌ Setup Required: No check channel configured. Use `s.checkchannel #channel` first.")
+            await ctx.reply("❌ Setup Required: Use `s.checkchannel #channel` first.", mention_author=False)
             return
         
         scan_categories = guild_config.get("scan_categories", [])
         if not scan_categories:
-            await status_msg.edit(content="❌ No Categories: Use `s.ids` to see categories, then `s.category add [ID]` to add them.")
+            await ctx.reply("❌ No Categories: Use `s.category add [ID]` to add them.", mention_author=False)
             return
-        
-        await status_msg.edit(content=f"⚡ Scanning {len(scan_categories)} categories...")
         
         start_time = time.time()
         
@@ -435,10 +430,19 @@ class UltraInviteChecker(commands.Cog):
                                 "server_name": invite_info.get("guild_name", "Unknown") if invite_info else "Invalid",
                                 "member_count": invite_info.get("member_count", 0) if invite_info else 0,
                                 "author": message.author,
-                                "message_link": f"https://discord.com/channels/{ctx.guild.id}/{channel.id}/{message.id}"
+                                "message_link": f"https://discord.com/channels/{ctx.guild.id}/{channel.id}/{message.id}",
+                                "channel": channel
                             }
                             
                             channel_invites.append(invite_entry)
+                            
+                            # IMMEDIATE PING: If invalid, ping author in their channel right away
+                            if not is_valid:
+                                try:
+                                    ping_msg = f"{message.author.mention} Your invite `{invite_code}` is invalid/expired."
+                                    await channel.send(ping_msg)
+                                except:
+                                    pass  # Ignore if can't send
                             
                             # Stop if we found enough invites
                             if len(channel_invites) >= 2:
@@ -484,13 +488,10 @@ class UltraInviteChecker(commands.Cog):
         total_invalid = sum(r["invalid_count"] for r in results)
         total_invites = total_valid + total_invalid
         
-        # Update status message
-        await status_msg.edit(content=f"✅ Scan complete! Processing {total_invites} invites...")
-        
-        # EMBED 1: Clean Channel Listing
+        # IMMEDIATE EMBED 1: Send results right away
         embed1 = discord.Embed(
             title="Invite Check Results", 
-            description=f"Checked {total_channels} channels in {scan_time:.1f}s",
+            description=f"Scanned {total_channels} channels in {scan_time:.1f}s",
             color=EMBED_COLOR_NORMAL
         )
         
@@ -508,15 +509,14 @@ class UltraInviteChecker(commands.Cog):
                 inline=True
             )
         
-        # Create clean channel listing (limit to avoid embed size issues)
+        # Create clean channel listing
         channel_lines = []
-        for result in channels_with_invites[:10]:  # Limit to 10 channels
+        for result in channels_with_invites[:10]:
             channel = result["channel"]
             valid_count = result["valid_count"]
             invalid_count = result["invalid_count"]
             
             if valid_count > 0:
-                # Get unique server names for valid invites
                 valid_servers = list(set([inv["server_name"] for inv in result["valid_invites"]]))
                 server_text = valid_servers[0] if valid_servers else "Unknown"
                 if len(valid_servers) > 1:
@@ -525,7 +525,6 @@ class UltraInviteChecker(commands.Cog):
                 channel_lines.append(f"• {channel.mention} : {valid_count} good ({server_text})")
         
         if channel_lines:
-            # Ensure field value is under 1024 characters
             field_value = "\n".join(channel_lines)
             if len(field_value) > 1000:
                 field_value = field_value[:997] + "..."
@@ -542,41 +541,43 @@ class UltraInviteChecker(commands.Cog):
                 inline=False
             )
         
-        await status_msg.delete()
+        # Send first embed immediately
         await ctx.send(embed=embed1)
         
-        # EMBED 2: Invalid Invites with Author Pings
-        channels_with_invalid = [r for r in results if r["invalid_count"] > 0]
-        if channels_with_invalid:
+        # EMBED 2: Summary of invalid invites (authors were already pinged in their channels)
+        if total_invalid > 0:
             await asyncio.sleep(0.5)
             
             embed2 = discord.Embed(
-                title="Issues Found",
-                description=f"{total_invalid} invalid invites detected",
+                title="Action Taken",
+                description=f"Pinged {total_invalid} users about invalid invites in their channels",
                 color=EMBED_COLOR_ERROR
             )
             
-            for result in channels_with_invalid[:3]:  # Limit to 3 channels to avoid embed size
-                channel = result["channel"]
-                invalid_list = []
+            # Show summary of where pings were sent
+            ping_summary = []
+            for result in results:
+                if result["invalid_count"] > 0:
+                    channel = result["channel"]
+                    count = result["invalid_count"]
+                    ping_summary.append(f"• {channel.mention}: {count} users pinged")
+            
+            if ping_summary:
+                field_value = "\n".join(ping_summary[:10])  # Limit to 10 channels
+                if len(ping_summary) > 10:
+                    field_value += f"\n*+{len(ping_summary)-10} more channels*"
                 
-                for invite in result["invalid_invites"][:2]:  # Top 2 invalid per channel
-                    invalid_list.append(f"• {invite['author'].mention} `{invite['code']}`")
-                
-                if invalid_list:
-                    field_value = "\n".join(invalid_list)
-                    if len(result['invalid_invites']) > 2:
-                        field_value += f"\n*+{len(result['invalid_invites'])-2} more*"
-                    
-                    # Ensure field value is under 1024 characters
-                    if len(field_value) > 1000:
-                        field_value = field_value[:997] + "..."
-                    
-                    embed2.add_field(
-                        name=f"{channel.mention}",
-                        value=field_value,
-                        inline=False
-                    )
+                embed2.add_field(
+                    name="Notifications Sent",
+                    value=field_value,
+                    inline=False
+                )
+            
+            embed2.add_field(
+                name="Next Steps",
+                value="Users have been notified directly in their channels about invalid invites",
+                inline=False
+            )
             
             await ctx.send(embed=embed2)
 
