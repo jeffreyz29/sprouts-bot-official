@@ -1,0 +1,7 @@
+{
+  "backup_name": "production_config",
+  "owner_id": 764874247646085151,
+  "created_by": "Sprouts Bot Owner",
+  "created_at": "2025-09-04T23:19:50.617598",
+  "description": "This file triggers automatic data restoration on GitHub deployment"
+}
