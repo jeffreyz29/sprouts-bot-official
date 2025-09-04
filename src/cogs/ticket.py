@@ -659,18 +659,12 @@ class NamingSelectView(discord.ui.View):
             style_name = "Numbers" if naming_style == "numbers" else "Discord Username"
             example = "ticket-001" if naming_style == "numbers" else "ticket-username"
 
-            # Send confirmation as followup message
-            success_embed = discord.Embed(
-                title=
-                "{SPROUTS_CHECK} Naming Style Set",
-                description=
-                f"Ticket naming style set to **{style_name}**\nExample: {example}",
+            # Dismiss this menu with a confirmation
+            confirm_embed = discord.Embed(
+                title="Naming Style Set",
+                description=f"Ticket naming style set to **{style_name}**\nExample: {example}",
                 color=EMBED_COLOR_NORMAL)
-
-            await interaction.response.edit_message(embed=updated_embed,
-                                                    view=main_view)
-            await interaction.followup.send(embed=success_embed,
-                                            ephemeral=True)
+            await interaction.response.edit_message(embed=confirm_embed, view=None)
 
         except Exception as e:
             logger.error(f"Error setting naming style: {e}")
