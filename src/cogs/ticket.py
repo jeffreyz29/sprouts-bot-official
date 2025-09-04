@@ -1534,7 +1534,7 @@ class TicketSystem(commands.Cog):
 
     async def update_ticket_embed(self, channel: discord.TextChannel,
                                   ticket_data: dict):
-        """Update the ticket embed in the channel with current priority and claim status"""
+        """Update the ticket embed in the channel with current claim status"""
         try:
             # Find the ticket embed message - look for the message with Support Ticket title or Status field
             async for message in channel.history(limit=50):
@@ -1588,7 +1588,7 @@ class TicketSystem(commands.Cog):
                         # Copy non-status fields first
                         for field in embed.fields:
                             if field.name not in [
-                                    "Status", "Claimed By", "Priority"
+                                    "Status", "Claimed By"
                             ]:
                                 new_embed.add_field(name=field.name,
                                                     value=field.value,
@@ -1612,18 +1612,6 @@ class TicketSystem(commands.Cog):
                                             value=claimed_value,
                                             inline=True)
 
-                        # Priority field with colors
-                        priority = ticket_data.get('priority',
-                                                   'medium').lower()
-                        priority_display = {
-                            'low': 'Low',
-                            'medium': 'Medium',
-                            'high': '🟠 High',
-                            'urgent': 'Urgent'
-                        }.get(priority, 'Medium')
-                        new_embed.add_field(name="Priority",
-                                            value=priority_display,
-                                            inline=True)
 
                         # Update the message with new embed and preserve buttons
                         try:
