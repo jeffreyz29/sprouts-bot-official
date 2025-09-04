@@ -5,13 +5,15 @@ Sprouts is a comprehensive, production-ready Discord bot designed for server man
 **PRODUCTION STATUS: FINALIZED AND DEPLOYMENT READY**
 - Bot completely restructured and optimized for single-instance deployment
 - All environment variables properly configured in app.json and .do/app.yaml
-- Zero LSP diagnostics - clean, error-free codebase
+- Clean, organized codebase with proper file structure
 - Single web process configuration eliminates duplicate message issues
 - All features operational: ticket system, embed builder, auto-responders, logging, web dashboard
 - Proper production logging and graceful shutdown handling implemented
-- Clean file structure with unnecessary directories and files removed
-- ALL default Unicode emojis removed - only 3 custom animated emojis used
-- About command updated with dynamic title and Top.gg vote link
+- Clean file structure with unnecessary files removed and data properly organized
+- ALL default Unicode emojis replaced with 3 custom animated SPROUTS emojis
+- Invite checker system removed for simplified bot functionality
+- Help command cleaned of duplicates and properly organized
+- Data files organized: config/ for settings, src/data/ for application data and transcripts
 - Ready for GitHub commit and Digital Ocean App Platform deployment
 
 # User Preferences
@@ -40,7 +42,10 @@ Bot deployment preference: Digital Ocean App Platform with single-instance confi
 ## Database and Storage
 - **File-based Storage**: JSON files for configuration and persistent data
 - **MongoDB Support**: Required MongoDB integration via pymongo for data persistence
-- **Data Organization**: Structured data storage in config/ and src/data/ directories
+- **Organized Data Structure**: 
+  - `config/` - Configuration files (guild settings, server stats, etc.)
+  - `src/data/` - Application data (saved embeds, sticky messages, ticket settings)
+  - `src/data/transcripts/` - Ticket transcripts and logs
 
 ## Security and Access Control
 - **Owner-only Commands**: Developer commands restricted by Discord user ID
@@ -51,6 +56,29 @@ Bot deployment preference: Digital Ocean App Platform with single-instance confi
 - **Comprehensive Logging**: Multi-level logging to both file and console
 - **Error Recovery**: Graceful error handling with fallback mechanisms
 - **Event Tracking**: Command usage and DM logging capabilities
+
+# Feature Set
+
+## Core Systems
+- **Ticket System**: Complete support ticket management with panels, claiming, priorities, transcripts
+- **Embed Builder**: Visual embed creation with dropdown menus, live preview, and variable processing
+- **Auto Responders**: Trigger-based automated message responses with variable support
+- **Sticky Messages**: Channel-specific persistent messages that auto-repost
+- **Reminders**: User reminder system with time parsing and notifications
+- **Utilities**: Server info, user info, avatar display, ping checks, variable reference
+
+## Administrative Features
+- **Developer Commands**: Bot management, data operations, maintenance mode, changelog distribution
+- **Server Stats**: Real-time server monitoring with auto-updating embeds
+- **Event Logging**: Command logging, DM logging, guild event tracking
+- **Rate Limit Monitoring**: Automatic rate limit detection and alerting
+
+## Custom Branding
+- **SPROUTS Animated Emojis**: Three custom animated emojis used throughout the bot
+  - `SPROUTS_CHECK` - Success/confirmation actions
+  - `SPROUTS_ERROR` - Error/failure messages  
+  - `SPROUTS_WARNING` - Warning/caution notifications
+- **Consistent Visual Identity**: All help commands and messages use custom emoji branding
 
 # External Dependencies
 
@@ -85,14 +113,14 @@ The bot is designed to run in containerized environments like Replit and Digital
 - `main.py` - Production entry point with logging and graceful shutdown
 - `bot.py` - Discord bot class definition and configuration  
 - `bot_with_web.py` - Combined bot + web server (current workflow)
-- `src/cogs/help.py` - Help command system (duplicate modern_help.py removed)
-- `src/cogs/invite_checker.py` - Advanced Discord invite validation system
+- `config/` - All configuration files (server stats, guild settings, etc.)
+- `src/data/` - All application data (embeds, tickets, transcripts)
 
-**Structure Purpose:**
-- `main.py` handles production startup, logging, signal handling
-- `bot.py` contains the DiscordBot class and core functionality
-- `bot_with_web.py` orchestrates both Discord bot and web dashboard
-- `invite_checker.py` provides comprehensive invite scanning and validation
+**Organized Data Structure:**
+- Configuration files in `config/` for settings and bot configuration
+- Application data in `src/data/` including user embeds and ticket information  
+- Transcripts properly stored in `src/data/transcripts/` for organization
+- Source code modularized in `src/cogs/` by functionality
 
 ## Deployment Configuration
 
@@ -120,3 +148,22 @@ The bot is designed to run in containerized environments like Replit and Digital
 - Keep-alive endpoint on port 8080
 - Web dashboard on port 5000
 - Automatic health checks configured
+
+# Recent Updates
+
+**File Organization (Latest):**
+- Moved `server_stats.json` from `src/data/` to `config/` for proper organization
+- Relocated `transcripts/` folder into `src/data/transcripts/` for unified data structure
+- Removed duplicate empty `data/` folder from root directory
+- Updated all file references to use new organized structure
+
+**System Cleanup:**
+- Removed entire invite checker system (files, imports, help sections)
+- Cleaned duplicate "Utilities" section from help command
+- Removed all Python cache files and __pycache__ directories
+- Updated data management help descriptions to reflect actual data types managed
+
+**Emoji Implementation:**
+- Replaced all Unicode emojis with custom SPROUTS animated emojis throughout the bot
+- Fixed emoji display issues in ticket system, embed builder, and error messages
+- Ensured consistent branding across all bot interactions and help commands
