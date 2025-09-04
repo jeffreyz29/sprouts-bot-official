@@ -1356,7 +1356,7 @@ class EmbedBuilder(commands.Cog):
             
             # Start enhanced legacy editing session
             edit_embed = discord.Embed(
-                title="Enhanced Text Editor",
+                title=f"{SPROUTS_CHECK} Enhanced Text Editor",
                 description=f"{status_text}: **{name}**",
                 color=existing_embed.get('color', EMBED_COLOR_NORMAL)
             )
@@ -1442,20 +1442,20 @@ class EmbedBuilder(commands.Cog):
                         prefix = 'title:' if content.startswith('title:') else 't '
                         new_title = content[len(prefix):].strip()
                         if len(new_title) > 256:
-                            await msg.reply("Title too long! Maximum 256 characters.", mention_author=False)
+                            await msg.reply(f"{SPROUTS_WARNING} Title too long! Maximum 256 characters.", mention_author=False)
                             continue
                         editing_embed['title'] = new_title
-                        await msg.reply(f"Title updated to: **{new_title}**", mention_author=False)
+                        await msg.reply(f"{SPROUTS_CHECK} Title updated to: **{new_title}**", mention_author=False)
                     
                     elif content.lower().startswith(('desc:', 'd ')):
                         prefix = 'desc:' if content.startswith('desc:') else 'd '
                         new_desc = content[len(prefix):].strip()
                         if len(new_desc) > 4096:
-                            await msg.reply("Description too long! Maximum 4096 characters.", mention_author=False)
+                            await msg.reply(f"{SPROUTS_WARNING} Description too long! Maximum 4096 characters.", mention_author=False)
                             continue
                         editing_embed['description'] = new_desc
                         preview = new_desc[:80] + ('...' if len(new_desc) > 80 else '')
-                        await msg.reply(f"Description updated: {preview}", mention_author=False)
+                        await msg.reply(f"{SPROUTS_CHECK} Description updated: {preview}", mention_author=False)
                     
                     elif content.lower().startswith(('color:', 'c ')):
                         prefix = 'color:' if content.startswith('color:') else 'c '
@@ -1466,9 +1466,9 @@ class EmbedBuilder(commands.Cog):
                         try:
                             color_int = int(new_color, 16)
                             editing_embed['color'] = color_int
-                            await msg.reply(f"Color updated to: #{new_color}", mention_author=False)
+                            await msg.reply(f"{SPROUTS_CHECK} Color updated to: #{new_color}", mention_author=False)
                         except ValueError:
-                            await msg.reply("Invalid color! Use hex format like #ff0000 or ff0000", mention_author=False)
+                            await msg.reply(f"{SPROUTS_WARNING} Invalid color! Use hex format like #ff0000 or ff0000", mention_author=False)
                     
                     elif content.lower() == 'preview':
                         # Show live preview of current embed
@@ -1486,11 +1486,11 @@ class EmbedBuilder(commands.Cog):
                             'description': 'This is a new embed created with the enhanced text editor.',
                             'color': EMBED_COLOR_NORMAL
                         }
-                        await msg.reply("Embed reset to defaults!", mention_author=False)
+                        await msg.reply(f"{SPROUTS_CHECK} Embed reset to defaults!", mention_author=False)
                     
                     elif content.lower() == 'help':
                         help_embed = discord.Embed(
-                            title="Enhanced Text Editor Commands",
+                            title=f"{SPROUTS_CHECK} Enhanced Text Editor Commands",
                             color=EMBED_COLOR_NORMAL
                         )
                         help_embed.add_field(
@@ -1517,7 +1517,7 @@ class EmbedBuilder(commands.Cog):
                     
                     else:
                         quick_help = discord.Embed(
-                            title="Unknown Command",
+                            title=f"{SPROUTS_WARNING} Unknown Command",
                             description=f"**`{content}`** is not recognized.\n\n"
                                        "**Quick Commands:**\n"
                                        "`t <title>` - Set title\n"
