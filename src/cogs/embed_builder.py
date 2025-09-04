@@ -874,10 +874,10 @@ class EmbedBuilder(commands.Cog):
             embed.description = "No saved embeds found.\n\nUse `s.embedcreate` to create your first embed!"
         else:
             embed.add_field(
-                name="Commands",
-                value="`{ctx.prefix}embedview <name>` - Preview an embed\n"
-                      "`{ctx.prefix}embededit <name>` - Edit an embed\n"
-                      "`{ctx.prefix}embeddelete <name>` - Delete an embed",
+                name=f"{SPROUTS_CHECK} Commands",
+                value=f"{SPROUTS_CHECK} `{ctx.prefix}embedview <name>` - Preview an embed\n"
+                      f"{SPROUTS_CHECK} `{ctx.prefix}embededit <name>` - Edit an embed\n"
+                      f"{SPROUTS_ERROR} `{ctx.prefix}embeddelete <name>` - Delete an embed",
                 inline=False
             )
         

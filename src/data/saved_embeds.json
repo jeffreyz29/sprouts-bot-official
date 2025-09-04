@@ -69,5 +69,20 @@
       "image": "",
       "fields": []
     }
+  },
+  "799781059503456287": {
+    "ticket_embed": {
+      "name": "ticket_embed",
+      "title": "",
+      "description": "Run `.start` to begin massing\nTag all invalids channels\n\n*1 ticket/3ads max*",
+      "color": 12779488,
+      "author_name": "",
+      "author_icon": "",
+      "footer_text": "",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
+    }
   }
 }

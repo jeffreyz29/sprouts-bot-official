@@ -607,7 +607,7 @@ class ChannelSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error setting log channel: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to set the logging channel.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -662,7 +662,7 @@ class RoleSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error adding staff role: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to add the staff role.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -708,7 +708,7 @@ class CategorySelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error setting category: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to set the ticket category.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -766,7 +766,7 @@ class NamingSelectView(discord.ui.View):
         except Exception as e:
             logger.error(f"Error setting naming style: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to set the naming style.",
                 color=EMBED_COLOR_ERROR)
             await interaction.response.send_message(embed=error_embed,
@@ -1181,7 +1181,7 @@ class TicketSystem(commands.Cog):
         except Exception as e:
             logger.error(f"Error in ticket setup: {e}")
             error_embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description=
                 f"An error occurred while setting up the ticket system: {str(e)}",
                 color=EMBED_COLOR_ERROR)

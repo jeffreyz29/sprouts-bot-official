@@ -60,7 +60,8 @@
     "embed_author_name": null,
     "embed_author_icon": null,
     "max_tickets_per_user": 10,
-    "use_saved_embed": false,
-    "saved_embed_name": null
+    "use_saved_embed": true,
+    "saved_embed_name": "ticket_embed",
+    "embed_set_by_user": null
   }
 }
