@@ -55,6 +55,19 @@
       "thumbnail": "",
       "image": "",
       "fields": []
+    },
+    "embed_1": {
+      "name": "embed_1",
+      "title": "",
+      "description": "asdasd",
+      "color": 12779488,
+      "author_name": "",
+      "author_icon": "",
+      "footer_text": "",
+      "footer_icon": "",
+      "thumbnail": "",
+      "image": "",
+      "fields": []
     }
   }
 }
