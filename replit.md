@@ -86,11 +86,13 @@ The bot is designed to run in containerized environments like Replit and Digital
 - `bot.py` - Discord bot class definition and configuration  
 - `bot_with_web.py` - Combined bot + web server (current workflow)
 - `src/cogs/help.py` - Help command system (duplicate modern_help.py removed)
+- `src/cogs/invite_checker.py` - Advanced Discord invite validation system
 
 **Structure Purpose:**
 - `main.py` handles production startup, logging, signal handling
 - `bot.py` contains the DiscordBot class and core functionality
 - `bot_with_web.py` orchestrates both Discord bot and web dashboard
+- `invite_checker.py` provides comprehensive invite scanning and validation
 
 ## Deployment Configuration
 
