@@ -519,114 +519,98 @@ class UltraInviteChecker(commands.Cog):
         total_invalid = sum(r["invalid_count"] for r in results)
         total_invites = total_valid + total_invalid
         
-        # CUTE SPROUTS-STYLE LAYOUT 🌱
+        # SEND INDIVIDUAL CATEGORY EMBEDS (Hana-style with Sprouts touches)
+        # Group results by category first
+        category_results = {}
+        for result in results:
+            channel = result["channel"]
+            if channel.category:
+                category_name = channel.category.name
+                if category_name not in category_results:
+                    category_results[category_name] = []
+                category_results[category_name].append(result)
         
-        # Main results embed with cute design
-        main_embed = discord.Embed(
-            title="🌱 Sprouts Invite Check Results",
-            description=f"Scanned **{total_channels}** channels in **{scan_time:.1f}s**",
-            color=0x90EE90  # Light green
+        # Send embed for each category with channels
+        for category_name, cat_results in category_results.items():
+            category_lines = []
+            
+            for result in cat_results:
+                channel = result["channel"]
+                valid_count = result["valid_count"]
+                invalid_count = result["invalid_count"]
+                total_in_channel = valid_count + invalid_count
+                
+                if total_in_channel > 0:
+                    if valid_count == total_in_channel:
+                        # All good
+                        emoji = "🟢"
+                        status = "good"
+                        # Get user count from first valid invite
+                        user_count = 0
+                        if result["valid_invites"]:
+                            user_count = result["valid_invites"][0].get("member_count", 0)
+                        category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `{user_count:,} Users`")
+                    else:
+                        # Some bad - ping authors of invalid invites
+                        emoji = "🔴"
+                        status = "bad"
+                        category_lines.append(f"{emoji} {channel.mention} : {valid_count}/{total_in_channel} {status} `0 Users`")
+                        
+                        # Send ping messages for invalid invites in that channel
+                        for invalid_invite in result["invalid_invites"]:
+                            if invalid_invite.get("author_id"):
+                                try:
+                                    await channel.send(f"<@{invalid_invite['author_id']}> Your invite `{invalid_invite['code']}` is invalid/expired.")
+                                except:
+                                    pass  # Skip if we can't send message
+                else:
+                    # No invites found
+                    category_lines.append(f"🔴 {channel.mention} : 0 found `0 Users`")
+            
+            # Only show categories with results
+            if category_lines:
+                embed = discord.Embed(
+                    title=f"🌱 The {category_name} category",
+                    description="\n".join(category_lines),
+                    color=0x98FB98  # Light Sprouts green
+                )
+                embed.set_footer(text=f"🌱 Checked {limit} recent messages • {time.strftime('%b %d, %Y')}")
+                await ctx.send(embed=embed)
+        
+        # FINAL SUMMARY EMBED (Hana-style with Sprouts touches)
+        await asyncio.sleep(0.5)
+        
+        # Success completion message
+        final_embed = discord.Embed(
+            description="🌱 Invite check complete!",
+            color=0x98FB98
         )
+        await ctx.send(embed=final_embed)
         
-        # Add cute summary
+        # Detailed stats like Hana
         if total_invites > 0:
             good_percent = (total_valid/total_invites) * 100
-            main_embed.add_field(
-                name="🎯 Summary",
-                value=f"**{total_invites}** invites found\n**{total_valid}** fresh & valid\n**{total_invalid}** expired",
+            bad_percent = (total_invalid/total_invites) * 100
+            
+            total_embed = discord.Embed(
+                title="🌱 Sprouts check results",
+                color=0x90EE90
+            )
+            
+            total_embed.add_field(
+                name="Check counts",
+                value=f"📊 {total_channels} channels, {total_invites} invites",
                 inline=True
             )
             
-            main_embed.add_field(
-                name="📊 Quality",
-                value=f"**{good_percent:.1f}%** success rate\nSpeed: **{total_channels/scan_time:.1f}** ch/sec",
+            total_embed.add_field(
+                name="Stats",
+                value=f"✅ {total_valid}/{total_invites} good ({good_percent:.1f}%)\n❌ {total_invalid}/{total_invites} bad ({bad_percent:.1f}%)",
                 inline=True
             )
-        else:
-            main_embed.add_field(
-                name="🔍 Results", 
-                value="No invites found in recent messages",
-                inline=False
-            )
-        
-        await ctx.send(embed=main_embed)
-        
-        # Show channels with invites in a clean list
-        if channels_with_invites:
-            await asyncio.sleep(0.3)
             
-            # Group by categories for cute organization
-            category_groups = {}
-            for result in channels_with_invites:
-                channel = result["channel"]
-                category_name = channel.category.name if channel.category else "No Category"
-                if category_name not in category_groups:
-                    category_groups[category_name] = []
-                category_groups[category_name].append(result)
-            
-            # Create a single clean embed for all results
-            results_embed = discord.Embed(
-                title="🌸 Active Channels",
-                color=0xFFB6C1  # Light pink
-            )
-            
-            for category_name, cat_results in category_groups.items():
-                channel_lines = []
-                
-                for result in cat_results[:5]:  # Limit to 5 per category to keep clean
-                    channel = result["channel"]
-                    valid_count = result["valid_count"]
-                    
-                    if valid_count > 0:
-                        # Get member count from first valid invite
-                        member_count = 0
-                        if result["valid_invites"]:
-                            member_count = result["valid_invites"][0].get("member_count", 0)
-                        
-                        if member_count > 0:
-                            channel_lines.append(f"✨ {channel.mention} - **{valid_count}** invites (**{member_count:,}** members)")
-                        else:
-                            channel_lines.append(f"✨ {channel.mention} - **{valid_count}** invites")
-                
-                if channel_lines:
-                    field_value = "\n".join(channel_lines)
-                    if len(cat_results) > 5:
-                        field_value += f"\n*...and {len(cat_results)-5} more channels*"
-                    
-                    results_embed.add_field(
-                        name=f"📁 {category_name}",
-                        value=field_value,
-                        inline=False
-                    )
-            
-            if results_embed.fields:  # Only send if we have results
-                results_embed.set_footer(text=f"🌱 Sprouts checked recent messages • Today")
-                await ctx.send(embed=results_embed)
-        
-        # CUTE COMPLETION MESSAGE
-        await asyncio.sleep(0.3)
-        
-        completion_embed = discord.Embed(
-            title="🌱 Check Complete!",
-            description="All channels have been scanned successfully",
-            color=0x98FB98  # Pale green
-        )
-        
-        if total_invalid > 0:
-            completion_embed.add_field(
-                name="⚠️ Note",
-                value=f"Found **{total_invalid}** expired invites that may need attention",
-                inline=False
-            )
-        else:
-            completion_embed.add_field(
-                name="🎉 Perfect!",
-                value="All found invites are fresh and valid",
-                inline=False
-            )
-        
-        completion_embed.set_footer(text="🌱 Sprouts keeps your server healthy!")
-        await ctx.send(embed=completion_embed)
+            total_embed.set_footer(text="🌱 Sprouts keeps your server healthy!")
+            await ctx.send(embed=total_embed)
 
 async def setup(bot):
     """Setup function for the ultra invite checker cog"""
