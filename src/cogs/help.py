@@ -1244,7 +1244,7 @@ class HelpCommand(commands.Cog):
             
             # Invite Checker commands
             invite_checker_commands = [
-                "`ultracheck` - Advanced invite validation across all configured categories",
+                "`check` - Advanced invite validation across all configured categories",
                 "`checkchannel` - Set the channel for invite check results", 
                 "`category add/remove/list` - Manage categories to scan for invites",
                 "`settings` - View current invite checker configuration",

@@ -408,11 +408,11 @@ class InviteChecker(commands.Cog):
         
         await ctx.reply(response, mention_author=False)
 
-    @commands.command(name="ultracheck")
+    @commands.command(name="check", aliases=["ultracheck"])
     @commands.has_permissions(administrator=True)
     async def ultra_fast_check(self, ctx, limit: int = 20):
         """
-        Ultra-fast invite checker with instant results and channel listings
+        Advanced invite checker with instant results and channel listings
         """
         guild_id = str(ctx.guild.id)
         guild_config = self.ensure_guild_config(guild_id)
@@ -428,7 +428,29 @@ class InviteChecker(commands.Cog):
             await ctx.reply("❌ No Categories: Use `s.category add [ID]` to add them.", mention_author=False)
             return
         
-        # Send immediate response
+        # Send initial status message and clean up previous results
+        initial_msg = await ctx.send("An invite check is currently in process. Please wait a few minutes as rapid inv check searches your categories.")
+        
+        # Delete previous invite check embeds in this channel (last 50 messages)
+        try:
+            deleted_count = 0
+            async for message in ctx.channel.history(limit=50):
+                if (message.author == self.bot.user and 
+                    message.embeds and 
+                    len(message.embeds) > 0 and
+                    any(keyword in str(message.embeds[0].to_dict()).lower() for keyword in 
+                        ['invite check', 'category', 'sprouts check', 'check complete'])):
+                    try:
+                        await message.delete()
+                        deleted_count += 1
+                    except:
+                        continue
+            if deleted_count > 0:
+                print(f"Cleaned up {deleted_count} previous invite check messages")
+        except:
+            pass  # Continue if cleanup fails
+        
+        # Send scanning status
         start_embed = discord.Embed(
             title="🌱 Starting Invite Check",
             description="Scanning channels for invites...",
