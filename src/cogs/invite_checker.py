@@ -428,8 +428,13 @@ class InviteChecker(commands.Cog):
             await ctx.reply("❌ No Categories: Use `s.category add [ID]` to add them.", mention_author=False)
             return
         
-        # Send initial status message and clean up previous results
-        initial_msg = await ctx.send("An invite check is currently in process. Please wait a few minutes as rapid inv check searches your categories.")
+        # Send initial status message as embed and clean up previous results
+        initial_embed = discord.Embed(
+            title="Invite Check Starting",
+            description="An invite check is currently in process. Please wait a few minutes as rapid inv check searches your categories.",
+            color=0x90EE90
+        )
+        initial_msg = await ctx.send(embed=initial_embed)
         
         # Delete previous invite check embeds in this channel (last 50 messages)
         try:
@@ -452,7 +457,7 @@ class InviteChecker(commands.Cog):
         
         # Send scanning status
         start_embed = discord.Embed(
-            title="🌱 Starting Invite Check",
+            title="Starting Invite Check",
             description="Scanning channels for invites...",
             color=0x90EE90
         )
@@ -629,13 +634,13 @@ class InviteChecker(commands.Cog):
             good_percent = (total_valid/total_invites) * 100
             
             total_embed = discord.Embed(
-                title="🌱 Sprouts check results",
+                title="Sprouts check results",
                 color=0x90EE90
             )
             
             total_embed.add_field(
                 name="Check counts",
-                value=f"📊 {total_channels} channels, {total_invites} invites",
+                value=f"{total_channels} channels, {total_invites} invites",
                 inline=True
             )
             
@@ -645,7 +650,7 @@ class InviteChecker(commands.Cog):
                 inline=True
             )
             
-            total_embed.set_footer(text="🌱 Sprouts keeps your server healthy!")
+            total_embed.set_footer(text="Sprouts keeps your server healthy!")
             await ctx.send(embed=total_embed)
 
 async def setup(bot):
