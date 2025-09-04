@@ -680,7 +680,7 @@ class InviteChecker(commands.Cog):
             
             await ctx.send(embed=invalid_embed)
     
-    @invite_check.command(name="channels")
+    @commands.group(name="invitechannels", invoke_without_command=True)
     @commands.has_permissions(administrator=True)
     async def manage_channels(self, ctx, action: str = None, *, channel: discord.TextChannel = None):
         """
@@ -785,7 +785,7 @@ class InviteChecker(commands.Cog):
         else:
             await ctx.reply(f"{SPROUTS_WARNING} Invalid action. Use `list`, `add`, `remove`, or `clear`.", mention_author=False)
     
-    @invite_check.command(name="config")
+    @commands.command(name="inviteconfig")
     @commands.has_permissions(administrator=True) 
     async def configure(self, ctx, setting: str = None, *, value: str = None):
         """
