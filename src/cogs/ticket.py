@@ -1036,6 +1036,13 @@ class TicketSystem(commands.Cog):
                 current_settings['ticket_category_id'])
             if category:
                 category_display = f"{category.mention} (`{category.name}`)"
+        else:
+            # Show general channel when no category is set
+            general_channel = discord.utils.get(ctx.guild.channels, name='general')
+            if not general_channel:
+                general_channel = ctx.guild.text_channels[0] if ctx.guild.text_channels else None
+            if general_channel:
+                category_display = f"Not set - tickets will be created in {general_channel.mention}"
 
         staff_roles = []
         for role_id in current_settings.get('staff_role_ids', []):
