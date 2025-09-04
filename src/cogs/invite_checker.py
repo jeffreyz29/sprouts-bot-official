@@ -60,6 +60,20 @@ class InviteChecker(commands.Cog):
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f, indent=2)
     
+    def ensure_guild_config(self, guild_id: str):
+        """Ensure guild configuration exists"""
+        if guild_id not in self.config:
+            self.config[guild_id] = {
+                "enabled": False,
+                "scan_categories": [],
+                "ignore_channels": [],
+                "auto_delete": False,
+                "invite_check_channel": None,
+                "allowed_servers": []
+            }
+            self.save_config()
+        return self.config[guild_id]
+    
     async def validate_invite(self, invite_code: str) -> Tuple[bool, Optional[Dict]]:
         """
         Validate a Discord invite and return server information
@@ -115,7 +129,7 @@ class InviteChecker(commands.Cog):
         - s.category list - List configured categories
         """
         guild_id = str(ctx.guild.id)
-        guild_config = self.config.get(guild_id, {})
+        guild_config = self.ensure_guild_config(guild_id)
         
         if not action:
             embed = discord.Embed(
@@ -294,7 +308,7 @@ class InviteChecker(commands.Cog):
         - s.ignore list - List blacklisted channels
         """
         guild_id = str(ctx.guild.id)
-        guild_config = self.config.get(guild_id, {})
+        guild_config = self.ensure_guild_config(guild_id)
         
         if not action:
             embed = discord.Embed(
@@ -388,7 +402,7 @@ class InviteChecker(commands.Cog):
             limit: Number of recent messages to scan per channel (default: 10, max: 100)
         """
         guild_id = str(ctx.guild.id)
-        guild_config = self.config.get(guild_id, {})
+        guild_config = self.ensure_guild_config(guild_id)
         
         # Check if this is the designated invite check channel
         check_channel_id = guild_config.get("invite_check_channel")
@@ -693,7 +707,7 @@ class InviteChecker(commands.Cog):
         - invitecheck channels clear - Clear all scan channels
         """
         guild_id = str(ctx.guild.id)
-        guild_config = self.config.get(guild_id, {})
+        guild_config = self.ensure_guild_config(guild_id)
         
         if not action:
             # Show help
