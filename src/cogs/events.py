@@ -256,7 +256,7 @@ class BotEvents(commands.Cog):
         # Check if command is disabled (maintenance mode is handled in bot.py global_check)
         if devonly_cog and ctx.command.name in devonly_cog.disabled_commands:
             embed = discord.Embed(
-                title="{SPROUTS_WARNING} Command Disabled",
+                title=f"{SPROUTS_WARNING} Command Disabled",
                 description=f"The `{ctx.command.name}` command is currently disabled.",
                 color=EMBED_COLOR_ERROR
             )

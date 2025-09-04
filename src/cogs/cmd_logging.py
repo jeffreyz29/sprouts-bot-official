@@ -480,7 +480,7 @@ class CommandLoggingCog(commands.Cog):
             # Global stats
             all_guilds = cmd_logging.get_all_cmd_logging_guilds()
             embed.add_field(
-                name="{SPROUTS_CHECK} Global Statistics",
+                name=f"{SPROUTS_CHECK} Global Statistics",
                 value=f"Command logging active in **{len(all_guilds)}** servers",
                 inline=False
             )

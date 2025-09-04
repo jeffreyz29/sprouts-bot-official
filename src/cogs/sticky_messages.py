@@ -297,7 +297,7 @@ class StickyMessages(commands.Cog):
             self.save_stickies()
 
             embed = discord.Embed(
-                title="{SPROUTS_CHECK} Sticky Stopped",
+                title=f"{SPROUTS_CHECK} Sticky Stopped",
                 description="Sticky message has been stopped in this channel",
                 color=EMBED_COLOR_NORMAL
             )
@@ -364,7 +364,7 @@ class StickyMessages(commands.Cog):
 
             if channel_id not in self.stickies:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} No Sticky Message",
+                    title=f"{SPROUTS_ERROR} No Sticky Message",
                     description="There is no sticky message in this channel",
                     color=EMBED_COLOR_ERROR
                 )
@@ -387,7 +387,7 @@ class StickyMessages(commands.Cog):
             self.save_stickies()
 
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Sticky Removed",
+                title=f"{SPROUTS_ERROR} Sticky Removed",
                 description="Sticky message has been completely removed from this channel",
                 color=EMBED_COLOR_NORMAL
             )
@@ -398,7 +398,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error removing sticky: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to remove sticky message",
                 color=EMBED_COLOR_ERROR
             )
@@ -417,7 +417,7 @@ class StickyMessages(commands.Cog):
 
             if not guild_stickies:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} No Sticky Messages",
+                    title=f"{SPROUTS_ERROR} No Sticky Messages",
                     description="No sticky messages configured in this server",
                     color=EMBED_COLOR_NORMAL
                 )
@@ -478,7 +478,7 @@ class StickyMessages(commands.Cog):
 
             if channel_id not in self.stickies:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} No Sticky Message",
+                    title=f"{SPROUTS_ERROR} No Sticky Message",
                     description="There is no sticky message in this channel",
                     color=EMBED_COLOR_ERROR
                 )
@@ -510,7 +510,7 @@ class StickyMessages(commands.Cog):
             # Validate speed
             if speed < 1 or speed > 50:
                 embed = discord.Embed(
-                    title="{SPROUTS_ERROR} Invalid Speed",
+                    title=f"{SPROUTS_ERROR} Invalid Speed",
                     description="Speed must be between 1 and 50 messages",
                     color=EMBED_COLOR_ERROR
                 )
@@ -540,7 +540,7 @@ class StickyMessages(commands.Cog):
         except Exception as e:
             logger.error(f"Error changing sticky speed: {e}")
             embed = discord.Embed(
-                title="{SPROUTS_ERROR} Error",
+                title=f"{SPROUTS_ERROR} Error",
                 description="Failed to change sticky speed",
                 color=EMBED_COLOR_ERROR
             )

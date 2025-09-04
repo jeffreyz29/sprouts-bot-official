@@ -2078,13 +2078,13 @@ class DevOnly(commands.Cog):
                             with open(file_path, 'r') as f:
                                 data = json.load(f)
                                 if identifier in data:
-                                    user_files.append(f"✅ {os.path.basename(file_path)} - Has data")
+                                    user_files.append(f"{SPROUTS_CHECK} {os.path.basename(file_path)} - Has data")
                                 else:
-                                    user_files.append(f"❌ {os.path.basename(file_path)} - No data")
+                                    user_files.append(f"{SPROUTS_ERROR} {os.path.basename(file_path)} - No data")
                         except:
-                            user_files.append(f"⚠️ {os.path.basename(file_path)} - Error reading")
+                            user_files.append(f"{SPROUTS_WARNING} {os.path.basename(file_path)} - Error reading")
                     else:
-                        user_files.append(f"❌ {os.path.basename(file_path)} - File not found")
+                        user_files.append(f"{SPROUTS_ERROR} {os.path.basename(file_path)} - File not found")
                 
                 embed = discord.Embed(
                     title=f"{SPROUTS_CHECK} User Data Files",
@@ -2134,11 +2134,11 @@ class DevOnly(commands.Cog):
                             with open(file_path, 'r') as f:
                                 data = json.load(f)
                                 if identifier in data:
-                                    guild_files.append(f"✅ {os.path.basename(file_path)} - Has data")
+                                    guild_files.append(f"{SPROUTS_CHECK} {os.path.basename(file_path)} - Has data")
                                 else:
-                                    guild_files.append(f"❌ {os.path.basename(file_path)} - No data")
+                                    guild_files.append(f"{SPROUTS_ERROR} {os.path.basename(file_path)} - No data")
                         except:
-                            guild_files.append(f"⚠️ {os.path.basename(file_path)} - Error reading")
+                            guild_files.append(f"{SPROUTS_WARNING} {os.path.basename(file_path)} - Error reading")
                 
                 embed = discord.Embed(
                     title=f"{SPROUTS_CHECK} Guild Data Files",
@@ -2249,19 +2249,19 @@ class DevOnly(commands.Cog):
             embed = discord.Embed(
                 title=f"{SPROUTS_WARNING} Confirm Data Deletion",
                 description=f"**Data Type:** {data_type}\n**Identifier:** {identifier}\n\n"
-                           "**⚠️ This action cannot be undone!**\n\n"
-                           "React with ✅ to confirm or ❌ to cancel.",
+                           f"**{SPROUTS_WARNING} This action cannot be undone!**\n\n"
+                           f"React with {SPROUTS_CHECK} to confirm or {SPROUTS_ERROR} to cancel.",
                 color=EMBED_COLOR_WARNING
             )
             embed.set_footer(text="You have 30 seconds to confirm")
             embed.timestamp = discord.utils.utcnow()
             
             confirm_msg = await ctx.reply(embed=embed, mention_author=False)
-            await confirm_msg.add_reaction("✅")
-            await confirm_msg.add_reaction("❌")
+            await confirm_msg.add_reaction(SPROUTS_CHECK)
+            await confirm_msg.add_reaction(SPROUTS_ERROR)
             
             def check(reaction, user):
-                return user == ctx.author and str(reaction.emoji) in ["✅", "❌"] and reaction.message.id == confirm_msg.id
+                return user == ctx.author and str(reaction.emoji) in [SPROUTS_CHECK, SPROUTS_ERROR] and reaction.message.id == confirm_msg.id
             
             try:
                 reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)

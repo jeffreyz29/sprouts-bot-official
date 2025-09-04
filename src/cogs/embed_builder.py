@@ -1246,7 +1246,7 @@ class EmbedBuilder(commands.Cog):
             
             if not attachment.filename.endswith(('.yaml', '.yml')):
                 embed = discord.Embed(
-                    title="{SPROUTS_WARNING} Invalid File Type",
+                    title=f"{SPROUTS_WARNING} Invalid File Type",
                     description="Please attach a YAML file (.yaml or .yml).",
                     color=EMBED_COLOR_ERROR
                 )
@@ -1290,7 +1290,7 @@ class EmbedBuilder(commands.Cog):
             required_fields = ['name', 'title', 'description', 'color']
             if not all(field in yaml_data for field in required_fields):
                 embed = discord.Embed(
-                    title="{SPROUTS_WARNING} Invalid YAML Structure",
+                    title=f"{SPROUTS_WARNING} Invalid YAML Structure",
                     description="The YAML file doesn't have the required embed structure.",
                     color=EMBED_COLOR_ERROR
                 )
