@@ -4,9 +4,9 @@ Centralized storage for all custom animated emojis used throughout the bot
 """
 
 # Custom Animated Emojis - The only 3 emojis used in the entire bot
-SPROUTS_CHECK = "✅"  # Using standard emoji as fallback until custom ones are available
-SPROUTS_ERROR = "❌"  # Using standard emoji as fallback until custom ones are available
-SPROUTS_WARNING = "⚠️"  # Using standard emoji as fallback until custom ones are available
+SPROUTS_CHECK = "<a:sprouts_check_dns:1411790001565466725>"
+SPROUTS_ERROR = "<a:sprouts_error_dns:1411790004652605500>"
+SPROUTS_WARNING = "<a:sprouts_warning_dns:1412200379206336522>"
 
 # Emoji dictionary for easy access
 EMOJIS = {
