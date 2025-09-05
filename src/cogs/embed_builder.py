@@ -120,7 +120,7 @@ class EmbedBuilder(commands.Cog):
         except Exception as e:
             logger.error(f"Error creating default templates: {e}")
 
-    @commands.command(name="embed", aliases=["createembed", "embedcreate"])
+    @commands.command(name="embed")
     async def embed_create(self, ctx):
         """Create a professional embed using SPROUTS advanced system"""
         try:

@@ -1,0 +1,137 @@
+{
+  "announcement": {
+    "title": "<a:sprouts_check_dns:1411790001565466725> Server Announcement",
+    "description": "Important server information and updates",
+    "color": 5793266,
+    "fields": [
+      {
+        "name": "What's New",
+        "value": "Add your announcement details here",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "Stay updated with server news"
+    }
+  },
+  "welcome": {
+    "title": "<a:sprouts_check_dns:1411790001565466725> Welcome to the Server!",
+    "description": "We're excited to have you join our community",
+    "color": 5763719,
+    "fields": [
+      {
+        "name": "Getting Started",
+        "value": "Check out our rules and guides",
+        "inline": false
+      },
+      {
+        "name": "Need Help?",
+        "value": "Ask in our support channels",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "Enjoy your stay!"
+    }
+  },
+  "rules": {
+    "title": "<a:sprouts_warning_dns:1412200379206336522> Server Rules",
+    "description": "Please follow these rules to maintain a positive environment",
+    "color": 16705372,
+    "fields": [
+      {
+        "name": "Rule 1",
+        "value": "Be respectful to all members",
+        "inline": false
+      },
+      {
+        "name": "Rule 2",
+        "value": "No spam or inappropriate content",
+        "inline": false
+      },
+      {
+        "name": "Rule 3",
+        "value": "Use appropriate channels for discussions",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "Thank you for keeping our community safe"
+    }
+  },
+  "event": {
+    "title": "<a:sprouts_information_dns:1413464347078033478> Upcoming Event",
+    "description": "Join us for an exciting community event!",
+    "color": 15418782,
+    "fields": [
+      {
+        "name": "\ud83d\udcc5 Date",
+        "value": "Add event date here",
+        "inline": true
+      },
+      {
+        "name": "\u23f0 Time",
+        "value": "Add event time here",
+        "inline": true
+      },
+      {
+        "name": "\ud83d\udccd Location",
+        "value": "Add event location/channel",
+        "inline": true
+      },
+      {
+        "name": "\ud83d\udcdd Details",
+        "value": "Add event description and requirements",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "Don't miss out on the fun!"
+    }
+  },
+  "support": {
+    "title": "<a:sprouts_error_dns:1411790004652605500> Support Ticket",
+    "description": "We're here to help you with any questions or issues",
+    "color": 15548997,
+    "fields": [
+      {
+        "name": "\ud83d\udcde Contact Info",
+        "value": "Please provide your contact details",
+        "inline": false
+      },
+      {
+        "name": "\u2753 Issue Description",
+        "value": "Describe your problem in detail",
+        "inline": false
+      },
+      {
+        "name": "\ud83d\udcf8 Screenshots",
+        "value": "Include any relevant screenshots if applicable",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "We'll respond as soon as possible"
+    }
+  },
+  "info": {
+    "title": "<a:sprouts_information_dns:1413464347078033478> Information",
+    "description": "Important information for our community",
+    "color": 55807,
+    "fields": [
+      {
+        "name": "\ud83d\udcca Key Points",
+        "value": "Add your main information here",
+        "inline": false
+      },
+      {
+        "name": "\ud83d\udd17 Resources",
+        "value": "Include helpful links and resources",
+        "inline": false
+      }
+    ],
+    "footer": {
+      "text": "Stay informed"
+    }
+  }
+}

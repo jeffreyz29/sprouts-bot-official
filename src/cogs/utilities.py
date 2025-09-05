@@ -997,19 +997,22 @@ class Utilities(commands.Cog):
             logger.error(f"Error in prefix command: {e}")
             await ctx.reply("An error occurred while fetching prefix.", mention_author=False)
 
-    @commands.command(name="variables", help="Display all available embed variables")
+    @commands.command(name="variables", help="Display all available embed variables with interactive pagination")
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def variables(self, ctx):
-        """Show available embed variables with comprehensive support using clean layout"""
+        """Show all available embed variables with interactive pagination"""
         try:
-            embed = discord.Embed(
-                title="Available Variables",
+            pages = []
+            
+            # Page 1 - Basic Variables
+            page1 = discord.Embed(
+                title="Available Variables - Basic",
                 description="Use these variables in embeds, auto responders, and ticket messages.\nFormat: `$(variable.name)`",
                 color=EMBED_COLOR_NORMAL
             )
             
             # User Variables
-            embed.add_field(
+            page1.add_field(
                 name="User Variables",
                 value="`$(user.name)` - User's username\n"
                       "`$(user.mention)` - Mentions the user\n"
@@ -1023,7 +1026,7 @@ class Utilities(commands.Cog):
             )
             
             # Server Variables
-            embed.add_field(
+            page1.add_field(
                 name="Server Variables",
                 value="`$(server.name)` - Server name\n"
                       "`$(server.membercount)` - Total member count\n"
@@ -1037,70 +1040,31 @@ class Utilities(commands.Cog):
             )
             
             # Channel Variables
-            embed.add_field(
+            page1.add_field(
                 name="Channel Variables",
                 value="`$(channel.name)` - Current channel name\n"
                       "`$(channel.id)` - Channel's Discord ID\n"
                       "`$(channel.mention)` - Mentions the current channel\n"
                       "`$(channel.topic)` - Channel's topic description\n"
                       "`$(channel.category)` - Channel's category name\n"
-                      "`$(channel.position)` - Channel's position in list\n"
-                      "`$(channel.created)` - Date channel was created\n"
-                      "`$(channel.nsfw)` - Whether channel is NSFW\n"
-                      "`$(channel.slowmode)` - Channel slowmode delay",
+                      "`$(channel.position)` - Channel's position in list",
                 inline=False
             )
             
-            embed.set_footer(text=f"Requested by {ctx.author.display_name} • Use s.variables2 for more", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
+            page1.set_footer(text=f"Page 1/2 • Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            page1.timestamp = discord.utils.utcnow()
+            pages.append(page1)
             
-            await ctx.reply(embed=embed, mention_author=False)
-            logger.info(f"Variables command used by {ctx.author}")
-            
-        except Exception as e:
-            logger.error(f"Error in variables command: {e}")
-            await ctx.reply("An error occurred while showing variables.", mention_author=False)
-    
-    @commands.command(name="variables2", help="Display advanced variables (time, math, logic, tickets)")
-    @commands.cooldown(1, 10, commands.BucketType.user)
-    async def variables2(self, ctx):
-        """Show advanced variables including time, math, logic and ticket variables"""
-        try:
-            embed = discord.Embed(
-                title="Advanced Variables",
-                description="Advanced variables for complex automation and ticket systems.\nFormat: `$(variable.name)`",
+            # Page 2 - Ticket Variables
+            page2 = discord.Embed(
+                title="Available Variables - Tickets",
+                description="Ticket-specific variables for support systems.\nFormat: `$(variable.name)`",
                 color=EMBED_COLOR_NORMAL
             )
             
-            # Time Variables
-            embed.add_field(
-                name="Time Variables",
-                value="`$(time)` - Current time\n"
-                      "`$(date)` - Current date\n"
-                      "`$(datetime)` - Current date and time\n"
-                      "`$(year)` - Current year\n"
-                      "`$(month)` - Current month name\n"
-                      "`$(day)` - Current day of month\n"
-                      "`$(weekday)` - Current day of week\n"
-                      "`$(timestamp)` - Unix timestamp",
-                inline=False
-            )
-            
-            # Math & Logic Variables
-            embed.add_field(
-                name="Math & Logic Variables",
-                value="`$(math:5+5)` - Basic math operations\n"
-                      "`$(random:1-100)` - Random number in range\n"
-                      "`$(choose:a|b|c)` - Random choice from list\n"
-                      "`$(if:user.bot?Bot:Human)` - Conditional logic\n"
-                      "`$(len:text)` - String length calculator\n"
-                      "`$(upper:text)` - Convert to uppercase",
-                inline=False
-            )
-            
-            # Advanced Ticket Variables
-            embed.add_field(
-                name="Advanced Ticket Variables",
+            # Ticket Variables
+            page2.add_field(
+                name="Ticket Variables",
                 value="`$(ticket.id)` - Ticket's unique ID number\n"
                       "`$(ticket.creator)` - User who created ticket\n"
                       "`$(ticket.category)` - Ticket category name\n"
@@ -1108,20 +1072,23 @@ class Utilities(commands.Cog):
                       "`$(ticket.staff)` - Staff member assigned\n"
                       "`$(ticket.claimed)` - Is ticket claimed (Yes/No)\n"
                       "`$(ticket.tags)` - List of ticket tags\n"
-                      "`$(ticket.panel)` - Panel used to create ticket\n"
-                      "`$(ticket.transcript)` - Transcript download URL",
+                      "`$(ticket.panel)` - Panel used to create ticket",
                 inline=False
             )
             
-            embed.set_footer(text=f"Requested by {ctx.author.display_name} • Use s.variables for basic variables", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
+            page2.set_footer(text=f"Page 2/2 • Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            page2.timestamp = discord.utils.utcnow()
+            pages.append(page2)
             
-            await ctx.reply(embed=embed, mention_author=False)
-            logger.info(f"Variables2 command used by {ctx.author}")
+            # Create pagination view
+            from src.cogs.help import HelpPaginationView
+            view = HelpPaginationView(pages, ctx.author.id, "s.")
+            await ctx.reply(embed=pages[0], view=view, mention_author=False)
+            logger.info(f"Variables command used by {ctx.author}")
             
         except Exception as e:
-            logger.error(f"Error in variables2 command: {e}")
-            await ctx.reply("An error occurred while showing advanced variables.", mention_author=False)
+            logger.error(f"Error in variables command: {e}")
+            await ctx.reply("An error occurred while showing variables.", mention_author=False)
 
 async def setup_utilities(bot):
     """Setup utilities commands for the bot"""

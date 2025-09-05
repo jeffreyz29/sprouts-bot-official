@@ -93,7 +93,6 @@ class DiscordBot(commands.AutoShardedBot):
         from src.cogs.server_stats import setup_server_stats
         from src.cogs.dm_logging import setup_dm_logging
         from src.cogs.cmd_logging import setup_cmd_logging
-        from src.cogs.feature_management import setup as setup_feature_management
         from src.cogs.persistence_commands import setup as setup_persistence_commands
         from src.cogs.cluster import setup as setup_cluster
         
@@ -111,7 +110,6 @@ class DiscordBot(commands.AutoShardedBot):
         await setup_server_stats(self)
         await setup_dm_logging(self)
         await setup_cmd_logging(self)
-        await setup_feature_management(self)
         await setup_persistence_commands(self)
         await setup_cluster(self)
         
@@ -133,15 +131,7 @@ class DiscordBot(commands.AutoShardedBot):
         """Global check that runs before every command"""
         logger.info(f"GLOBAL CHECK: Command '{ctx.command.name if ctx.command else 'unknown'}' from user {ctx.author} (ID: {ctx.author.id})")
         
-        # Check feature flags for command availability
-        if ctx.command:
-            from src.feature_flags import feature_manager
-            
-            # Always allow developer commands for bot owner
-            if ctx.author.id != self.owner_id:
-                if not feature_manager.is_command_enabled(ctx.command.name):
-                    # Silently ignore disabled commands
-                    return False
+        # Commands are always available now (except during maintenance)
         
         # Check maintenance mode first - only allow bot owner during maintenance
         devonly_cog = self.get_cog('DevOnly')

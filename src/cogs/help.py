@@ -9,7 +9,6 @@ import logging
 from typing import Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
 from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_INFORMATION
-from src.feature_flags import feature_manager
 
 # Add success color if not in config
 EMBED_COLOR_SUCCESS = 0x77DD77
@@ -1605,155 +1604,78 @@ class HelpCommand(commands.Cog):
             await ctx.reply("An error occurred while displaying help.", mention_author=False)
     
     def create_help_pages(self, prefix, author):
-        """Create dynamic help pages based on enabled features"""
+        """Create dynamic help pages with all bot commands"""
         pages = []
         
-        # Get enabled commands (automatically excludes dev-only commands)
-        enabled_commands = list(feature_manager.get_enabled_commands(self.bot))
+        # Get all bot commands
+        bot_commands = {cmd.name for cmd in self.bot.commands if not cmd.hidden}
         
-        # Define command categories and their commands
-        command_categories = {
-            "Core Commands": {
-                "commands": ["help", "ping", "avatar", "userinfo", "serverinfo"],
-                "descriptions": {
-                    "help": "Show commands list and get detailed help",
-                    "ping": "Check bot response time and API latency",
-                    "avatar": "Display user's avatar in full resolution",
-                    "userinfo": "Get detailed user information",
-                    "serverinfo": "Get comprehensive server statistics"
-                }
-            },
-            "Utility Commands": {
-                "commands": ["channelinfo", "roleinfo", "variables", "setprefix"],
-                "descriptions": {
-                    "channelinfo": "Get detailed channel information",
-                    "roleinfo": "Get detailed role information",
-                    "variables": "Show available embed variables",
-                    "setprefix": "Set custom command prefix"
-                }
-            },
-            "User Ticket Commands": {
-                "commands": ["new", "open", "close", "tickettopic"],
-                "descriptions": {
-                    "new": "Create new support ticket",
-                    "open": "Create new support ticket (alias for new)",
-                    "close": "Close current ticket with reason",
-                    "tickettopic": "Set ticket description"
-                }
-            },
-            "Staff Ticket Management": {
-                "commands": ["claim", "unclaim", "add", "remove", "rename", "transcript", "forceclose"],
-                "descriptions": {
-                    "claim": "Claim ownership of ticket",
-                    "unclaim": "Release ticket ownership", 
-                    "add": "Add user to current ticket",
-                    "remove": "Remove user from ticket",
-                    "rename": "Rename ticket channel",
-                    "transcript": "Generate ticket transcript",
-                    "forceclose": "Force close any ticket"
-                }
-            },
-            "Ticket System Setup": {
-                "commands": ["ticketsetup", "ticketpanel", "addadmin", "removeadmin", "addsupport", "removesupport"],
-                "descriptions": {
-                    "ticketsetup": "Interactive ticket system setup",
-                    "ticketpanel": "Create new ticket panel",
-                    "addadmin": "Add admin role to ticket system",
-                    "removeadmin": "Remove admin role from ticket system",
-                    "addsupport": "Add support role to ticket system", 
-                    "removesupport": "Remove support role from ticket system"
-                }
-            },
-            "Ticket Moderation": {
-                "commands": ["blacklist", "unblacklist", "blacklistcheck"],
-                "descriptions": {
-                    "blacklist": "Add user to ticket blacklist",
-                    "unblacklist": "Remove user from ticket blacklist",
-                    "blacklistcheck": "Check if user is blacklisted"
-                }
-            },
-            "Embed Builder": {
-                "commands": ["embed", "createembed", "embedcreate"],
-                "descriptions": {
-                    "embed": "SPROUTS advanced Discord-native embed builder",
-                    "createembed": "Create professional embeds with interactive forms",
-                    "embedcreate": "Advanced embed creation with live preview"
-                }
-            },
-            "Auto Systems": {
+        # Build command categories in the exact order specified by user
+        from collections import OrderedDict
+        command_categories = OrderedDict([
+            ("Uncategorized Commands", {
+                "commands": ["about", "invite", "shards", "vote"],
+                "description": "Essential bot information and system commands"
+            }),
+            ("Utility Commands", {
+                "commands": ["avatar", "channelinfo", "inviteinfo", "ping", "roleinfo", "serverinfo", "userinfo", "setprefix", "prefix", "variables"],
+                "description": "User and server information tools"
+            }),
+            ("User Ticket Commands", {
+                "commands": ["new", "close"],
+                "description": "Basic ticket commands for users"
+            }),
+            ("Staff Ticket Management", {
+                "commands": ["claim", "unclaim", "add", "remove", "rename", "topic", "move", "forceclose", "listtickets"],
+                "description": "Advanced ticket management for staff"
+            }),
+            ("Ticket Panels & Setup", {
+                "commands": ["createpanel", "listpanels", "delpanel", "ticketsetup", "ticketlimit", "ghostping"],
+                "description": "Ticket system configuration and panels"
+            }),
+            ("Embed builder", {
+                "commands": ["embed", "embedquick"],
+                "description": "Create and edit custom embeds"
+            }),
+            ("Auto responders", {
                 "commands": ["autoresponder", "autoresponderlist", "autoresponderdelete"],
-                "descriptions": {
-                    "autoresponder": "Create auto responder with modern UI",
-                    "autoresponderlist": "List all server auto responders",
-                    "autoresponderdelete": "Delete an auto responder"
-                }
-            },
-            "Sticky Messages": {
+                "description": "Automated message responses"
+            }),
+            ("Sticky messages", {
                 "commands": ["stick", "stickslow", "stickstop", "stickstart", "stickremove", "getstickies", "stickspeed"],
-                "descriptions": {
-                    "stick": "Create sticky message",
-                    "stickslow": "Create slow sticky message", 
-                    "stickstop": "Stop sticky in channel",
-                    "stickstart": "Restart sticky in channel",
-                    "stickremove": "Remove sticky completely",
-                    "getstickies": "List all server stickies",
-                    "stickspeed": "View/change sticky speed"
-                }
-            },
-            "Reminders": {
+                "description": "Persistent channel messages"
+            }),
+            ("Reminders", {
                 "commands": ["remind", "reminders", "delreminder"],
-                "descriptions": {
-                    "remind": "Set a personal reminder",
-                    "reminders": "List your active reminders",
-                    "delreminder": "Delete a specific reminder"
-                }
-            },
-            "Server Statistics": {
-                "commands": ["serverstats", "statssetup"],
-                "descriptions": {
-                    "serverstats": "View real-time server statistics",
-                    "statssetup": "Configure server stats display"
-                }
-            },
-            "Event Logging": {
-                "commands": ["eventlogging", "loggingsetup"],
-                "descriptions": {
-                    "eventlogging": "Configure guild event logging",
-                    "loggingsetup": "Setup logging channels"
-                }
-            },
-            "Command Logging": {
-                "commands": ["cmdlogging"],
-                "descriptions": {
-                    "cmdlogging": "Configure command usage logging"
-                }
-            },
-            "DM Logging": {
-                "commands": ["dmlogging"],
-                "descriptions": {
-                    "dmlogging": "Configure DM logging system"
-                }
-            }
-        }
+                "description": "Personal reminder system"
+            })
+        ])
         
         # Build pages dynamically
         current_page = None
         current_fields = 0
         page_number = 1
+        total_categories = len([cat for cat in command_categories.keys() if command_categories[cat]["commands"]])
         
+        # Process all categories in order
         for category_name, category_data in command_categories.items():
-            # Filter commands that are enabled
-            available_commands = []
+            # Get commands for this category that actually exist in the bot
+            category_commands = []
             for cmd in category_data["commands"]:
-                if cmd in enabled_commands:
-                    desc = category_data["descriptions"].get(cmd, "No description available")
+                if cmd in bot_commands:
+                    # Get description from bot command or use fallback
+                    cmd_obj = self.bot.get_command(cmd)
+                    desc = cmd_obj.help if cmd_obj and cmd_obj.help else "No description available"
+                    
+                    # Handle special cases
                     if cmd in ["new", "open"]:
-                        available_commands.append("`new` / `open` - Create new support ticket")
+                        if "new / open" not in [c.split(" - ")[0].strip("`") for c in category_commands]:
+                            category_commands.append("`new` / `open` - Create new support ticket")
                     elif cmd != "open":  # Skip open since it's combined with new
-                        available_commands.append(f"`{cmd}` - {desc}")
+                        category_commands.append(f"`{cmd}` - {desc}")
             
             # Skip empty categories
-            if not available_commands:
+            if not category_commands:
                 continue
             
             # Create new page if needed
@@ -1774,12 +1696,65 @@ class HelpCommand(commands.Cog):
                 current_fields = 0
                 page_number += 1
             
-            # Add category to current page
-            current_page.add_field(
-                name=category_name,
-                value="\n".join(available_commands),
-                inline=False
-            )
+            # Add category to current page with character limit check
+            field_value = "\n".join(category_commands)
+            
+            # Split field if it exceeds Discord's 1024 character limit
+            if len(field_value) > 1024:
+                # Split commands into chunks that fit within 1024 characters
+                chunks = []
+                current_chunk = []
+                current_length = 0
+                
+                for cmd in category_commands:
+                    cmd_with_newline = cmd + "\n" if current_chunk else cmd
+                    if current_length + len(cmd_with_newline) > 1020:  # Leave buffer for safety
+                        chunks.append("\n".join(current_chunk))
+                        current_chunk = [cmd]
+                        current_length = len(cmd)
+                    else:
+                        current_chunk.append(cmd)
+                        current_length += len(cmd_with_newline)
+                
+                # Add remaining commands
+                if current_chunk:
+                    chunks.append("\n".join(current_chunk))
+                
+                # Add first chunk
+                current_page.add_field(
+                    name=category_name,
+                    value=chunks[0],
+                    inline=False
+                )
+                current_fields += 1
+                
+                # Add remaining chunks as continuation fields
+                for i, chunk in enumerate(chunks[1:], 1):
+                    # Create new page if needed
+                    if current_fields >= 3:
+                        pages.append(current_page)
+                        current_page = discord.Embed(
+                            title="Sprouts Commands",
+                            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
+                            color=EMBED_COLOR_NORMAL
+                        )
+                        if self.bot.user and self.bot.user.display_avatar:
+                            current_page.set_thumbnail(url=self.bot.user.display_avatar.url)
+                        current_fields = 0
+                    
+                    current_page.add_field(
+                        name=f"{category_name} (continued {i+1})",
+                        value=chunk,
+                        inline=False
+                    )
+                    current_fields += 1
+            else:
+                # Field fits within limit
+                current_page.add_field(
+                    name=category_name,
+                    value=field_value,
+                    inline=False
+                )
             current_fields += 1
         
         # Add the last page if it has content
@@ -1987,7 +1962,9 @@ class HelpCommand(commands.Cog):
         """Show extremely detailed help for a specific command with interactive buttons"""
         try:
             # Check if command is enabled via feature flags first
-            if not feature_manager.is_command_enabled(command_name.lower()):
+            # REMOVED: Feature flag check for individual command help - s.help <command> should always work
+            # Users should be able to see help for any command, even if the feature is disabled
+            if False:  # Always allow individual command help
                 # Silently ignore disabled commands - don't show "not found" to prevent discovery
                 embed = discord.Embed(
                     title="Command Not Found", 
@@ -2080,7 +2057,7 @@ class DetailedCommandHelpView(discord.ui.View):
             category = "TicketSystem"
             
         embed.add_field(
-            name="📁 Category",
+            name="Category",
             value=category,
             inline=False
         )
