@@ -28,7 +28,7 @@ BOT_CONFIG = {
     'description': 'A Sprouts is a semi-public Discord bot that makes server life easier. From customizable commands to automated moderation and smooth ticket handling for APM portals, Sprouts keeps your community running effortlessly.',
     'version': '1.0.0',
     'author': 'Discord Bot Developer',
-    'color': 0xc2ffe0,  # Default embed color
+    'color': 0xCCFFD1,  # Default embed color
 }
 
 # Environment variables with fallbacks
@@ -37,7 +37,7 @@ BOT_OWNER_ID = int(os.getenv('BOT_OWNER_ID', '0'))
 MONGO_URI = os.getenv('MONGO_URI', '')
 
 # Import custom emojis
-from src.emojis import SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING, get_emoji
+from src.emojis import SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING, SPROUTS_INFORMATION, get_emoji
 
 # Logging channels
 LOG_COMMANDS_CHANNEL = int(os.getenv('LOG_COMMANDS_CHANNEL', '0') or '0')
@@ -46,11 +46,19 @@ LOG_DMS_CHANNEL = int(os.getenv('LOG_DMS_CHANNEL', '0') or '0')
 
 # Bot settings
 MAX_MESSAGE_LENGTH = 2000
-EMBED_COLOR_NORMAL = 0xc2ffe0  # Light mint green for normal embeds
-EMBED_COLOR_ERROR = 0xff2424   # Red for errors only
-EMBED_COLOR_SUCCESS = 0x00ff00  # Green for success messages
-EMBED_COLOR_INFO = 0x3498db     # Blue for informational messages
-EMBED_COLOR_WARNING = 0xffa500  # Orange for warning messages
+
+# Bot regular embed color - used for general embeds
+EMBED_COLOR_NORMAL = 0xCCFFD1      # Regular bot embed color (#CCFFD1)
+
+# SPROUTS Emoji Colors - Using official hex codes
+EMBED_COLOR_SUCCESS = 0x2ecc71     # SPROUTS_CHECK - success/configuration - Green
+EMBED_COLOR_ERROR = 0xe74c3c       # SPROUTS_ERROR - failures/bot errors - Red  
+EMBED_COLOR_WARNING = 0xffea69     # SPROUTS_WARNING - caution/user input issues - Yellow
+EMBED_COLOR_INFO = 0x69beff        # SPROUTS_INFORMATION - information/help/guides - Blue
+EMBED_COLOR_INFORMATION = 0x69beff # Alias for SPROUTS_INFORMATION
+
+# Legacy color compatibility (deprecated - use specific emoji colors above)
+EMBED_COLOR_HIERARCHY = 0xFFE682
 
 # Command cooldowns (in seconds)
 COMMAND_COOLDOWNS = {

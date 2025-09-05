@@ -1,1553 +1,953 @@
 """
-Discord Bot Embed Builder - Enhanced Select Menu System
-A powerful embed builder with organized select menus and modals
+SPROUTS Advanced Embed Builder System
+Discord-native embed creation with modal forms, live preview, and professional features
 """
 
 import discord
 from discord.ext import commands
-import logging
 import json
+import logging
 import os
-import yaml
+import re
 import asyncio
-import io
 from datetime import datetime
-from typing import Optional, Dict, Any
-from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
-from src.emojis import SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING
-from src.utils.variables import VariableProcessor
+from typing import Dict, Any, Optional, List
+
+from ..emojis import SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING, SPROUTS_INFORMATION
+
+# Define colors directly since config import may not work
+EMBED_COLOR_NORMAL = 0x2ecc71
+EMBED_COLOR_ERROR = 0xe74c3c  
+EMBED_COLOR_SUCCESS = 0x57F287
 
 logger = logging.getLogger(__name__)
 
-class EmbedData:
-    """Simple file-based data storage for embeds"""
-    
-    @staticmethod
-    def load_embeds():
-        """Load saved embeds from file"""
-        try:
-            if os.path.exists("src/data/saved_embeds.json"):
-                with open("src/data/saved_embeds.json", 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading embeds: {e}")
-        return {}
-    
-    @staticmethod
-    def save_embeds(embeds_data):
-        """Save embeds to file"""
-        try:
-            os.makedirs("src/data", exist_ok=True)
-            with open("src/data/saved_embeds.json", 'w') as f:
-                json.dump(embeds_data, f, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving embeds: {e}")
-
-
-class EmbedEditor:
-    """Interactive embed editor with enhanced select menu interface"""
-    
-    def __init__(self, bot, embed_data, user_id):
-        self.bot = bot
-        self.embed_data = embed_data
-        self.user_id = user_id
-        self.timeout_task = None
-    
-    def create_view(self):
-        """Create the interactive view with organized select menus"""
-        view = EmbedEditorView(self)
-        return view
-    
-    def generate_preview_embed(self, ctx):
-        """Generate preview embed"""
-        title = self.embed_data.get('title')
-        description = self.embed_data.get('description')
-        
-        # Ensure at least one of title or description exists
-        if not title and not description:
-            description = "*Preview will appear here as you add content*"
-        
-        embed = discord.Embed(
-            title=title or None,
-            description=description or None,
-            color=self.embed_data.get('color', EMBED_COLOR_NORMAL)
-        )
-        
-        # Add author
-        if self.embed_data.get('author_name'):
-            embed.set_author(
-                name=self.embed_data['author_name'],
-                icon_url=self.embed_data.get('author_icon') or None
-            )
-        
-        # Add footer
-        if self.embed_data.get('footer_text'):
-            embed.set_footer(
-                text=self.embed_data['footer_text'],
-                icon_url=self.embed_data.get('footer_icon') or None
-            )
-        
-        # Add thumbnail and image
-        if self.embed_data.get('thumbnail'):
-            embed.set_thumbnail(url=self.embed_data['thumbnail'])
-        
-        if self.embed_data.get('image'):
-            embed.set_image(url=self.embed_data['image'])
-        
-        # Add fields
-        for field in self.embed_data.get('fields', []):
-            embed.add_field(
-                name=field['name'],
-                value=field['value'],
-                inline=field.get('inline', False)
-            )
-        
-        return embed
-    
-    def generate_info_embed(self, ctx, message="Use the organized dropdowns below to edit your embed."):
-        """Generate the editing interface info embed"""
-        fields_count = len(self.embed_data.get('fields', []))
-        
-        embed = discord.Embed(
-            title=f"Editing: {self.embed_data.get('name', 'untitled')}",
-            description=f"{message}\n\n**Tip:** Variables like `$(user.name)` are supported!",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        # Show current content summary
-        content_summary = []
-        if self.embed_data.get('title'):
-            content_summary.append("Title")
-        if self.embed_data.get('description'):
-            content_summary.append("Description")
-        if self.embed_data.get('author_name'):
-            content_summary.append("Author")
-        if self.embed_data.get('footer_text'):
-            content_summary.append("Footer")
-        if self.embed_data.get('thumbnail'):
-            content_summary.append("Thumbnail")
-        if self.embed_data.get('image'):
-            content_summary.append("Image")
-        if fields_count > 0:
-            content_summary.append(f"{fields_count} Field{'s' if fields_count != 1 else ''}")
-        
-        if content_summary:
-            embed.add_field(
-                name="Current Content",
-                value=" • ".join(content_summary) if content_summary else "None",
-                inline=False
-            )
-        
-        embed.set_footer(text="Pro tip: Use the Preview option to see exactly how your embed will look!")
-        
-        return embed
-
-class EmbedEditorView(discord.ui.View):
-    """Simplified view for embed editing with single select menu"""
-    
-    def __init__(self, editor):
-        super().__init__(timeout=900)  # 15 minute timeout
-        self.editor = editor
-    
-    @discord.ui.select(
-        placeholder="Choose what to edit...",
-        options=[
-            discord.SelectOption(label="Edit Title", value="title", description="Set embed title"),
-            discord.SelectOption(label="Edit Description", value="description", description="Set embed text"),
-            discord.SelectOption(label="Edit Color", value="color", description="Change embed color"),
-            discord.SelectOption(label="Set Author", value="author", description="Set author name/icon"),
-            discord.SelectOption(label="Set Footer", value="footer", description="Set footer text/icon"),
-            discord.SelectOption(label="Set Thumbnail", value="thumbnail", description="Add thumbnail"),
-            discord.SelectOption(label="Set Image", value="image", description="Add main image"),
-            discord.SelectOption(label="Add Field", value="add_field", description="Add new field"),
-            discord.SelectOption(label="Edit Field", value="edit_field", description="Modify field"),
-            discord.SelectOption(label="Remove Field", value="remove_field", description="Delete field"),
-            discord.SelectOption(label="Clear Fields", value="clear_fields", description="Remove all fields"),
-            discord.SelectOption(label="Preview Embed", value="preview", description="See embed preview"),
-            discord.SelectOption(label="Clear Embed", value="clear", description="Reset embed"),
-            discord.SelectOption(label="Rename Embed", value="rename", description="Change embed name"),
-        ],
-        row=0
-    )
-    async def main_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        """Handle all embed editing actions"""
-        if interaction.user.id != self.editor.user_id:
-            await interaction.response.send_message("You cannot edit someone else's embed!", ephemeral=True)
-            return
-        
-        action = select.values[0]
-        
-        # Handle special actions directly
-        if action == "clear":
-            self.editor.embed_data = {
-                'name': self.editor.embed_data.get('name', 'untitled'),
-                'title': '',
-                'description': '',
-                'color': EMBED_COLOR_NORMAL,
-                'author_name': '',
-                'author_icon': '',
-                'footer_text': '',
-                'footer_icon': '',
-                'thumbnail': '',
-                'image': '',
-                'fields': []
-            }
-            await self.update_embed(interaction, "Embed cleared! Ready for new content.")
-        elif action == "preview":
-            preview_embed = self.editor.generate_preview_embed(interaction)
-            preview_embed.set_footer(text="This is how your embed will look when sent")
-            await interaction.response.send_message(embed=preview_embed, ephemeral=True)
-        elif action == "clear_fields":
-            self.editor.embed_data['fields'] = []
-            await self.update_embed(interaction, "All fields cleared!")
-        elif action == "edit_field":
-            if not self.editor.embed_data.get('fields'):
-                await interaction.response.send_message("No fields to edit! Add a field first.", ephemeral=True)
-                return
-            modal = FieldSelectModal(self.editor, "edit")
-            await interaction.response.send_modal(modal)
-        elif action == "remove_field":
-            if not self.editor.embed_data.get('fields'):
-                await interaction.response.send_message("No fields to remove!", ephemeral=True)
-                return
-            modal = FieldSelectModal(self.editor, "remove")
-            await interaction.response.send_modal(modal)
-        elif action == "add_field":
-            modal = EmbedEditModal(self.editor, "field")
-            await interaction.response.send_modal(modal)
-        elif action == "rename":
-            modal = EmbedEditModal(self.editor, "rename")
-            await interaction.response.send_modal(modal)
-        else:
-            modal = EmbedEditModal(self.editor, action)
-            await interaction.response.send_modal(modal)
-    
-    @discord.ui.button(label="Save & Finish", style=discord.ButtonStyle.green, row=1)
-    async def done_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Finish editing and save"""
-        if interaction.user.id != self.editor.user_id:
-            await interaction.response.send_message("You cannot edit someone else's embed!", ephemeral=True)
-            return
-        
-        # Auto-save the embed
-        user_id = str(interaction.user.id)
-        embed_name = self.editor.embed_data.get('name', 'untitled')
-        
-        # Get the cog instance to save
-        embed_cog = interaction.client.get_cog('EmbedBuilder')
-        if embed_cog:
-            # Check if user is admin and save to guild-level embeds
-            if interaction.guild and hasattr(interaction.user, 'guild_permissions') and interaction.user.guild_permissions.administrator:
-                guild_id = str(interaction.guild.id)
-                if guild_id not in embed_cog.saved_embeds:
-                    embed_cog.saved_embeds[guild_id] = {}
-                embed_cog.saved_embeds[guild_id][embed_name] = self.editor.embed_data.copy()
-            else:
-                # Save to user-level embeds for regular users (server-specific)
-                guild_id = str(interaction.guild.id) if interaction.guild else "dm"
-                user_guild_key = f"{user_id}_{guild_id}"
-                if user_guild_key not in embed_cog.saved_embeds:
-                    embed_cog.saved_embeds[user_guild_key] = {}
-                embed_cog.saved_embeds[user_guild_key][embed_name] = self.editor.embed_data.copy()
-            
-            embed_cog.save_embeds()
-        
-        # Get the bot's prefix dynamically
-        prefix = getattr(interaction.client, 'command_prefix', 's.')
-        if callable(prefix):
-            prefix = 's.'  # Default fallback
-        
-        embed = discord.Embed(
-            description=f"Embed '**{embed_name}**' saved successfully!\n\n"
-                       f"Use `{prefix}embedlist` to see your saved embeds\n"
-                       f"Use `{prefix}embedview {embed_name}` to preview it",
-            color=EMBED_COLOR_NORMAL
-        )
-        await interaction.response.edit_message(embed=embed, view=None)
-    
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, row=1)
-    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Cancel editing"""
-        if interaction.user.id != self.editor.user_id:
-            await interaction.response.send_message("You cannot edit someone else's embed!", ephemeral=True)
-            return
-        
-        embed = discord.Embed(
-            description="Embed editing cancelled.",
-            color=EMBED_COLOR_ERROR
-        )
-        await interaction.response.edit_message(embed=embed, view=None)
-    
-    async def update_embed(self, interaction, message=None):
-        """Update the embed display"""
-        info_embed = self.editor.generate_info_embed(interaction, message)
-        preview_embed = self.editor.generate_preview_embed(interaction)
-        view = EmbedEditorView(self.editor)
-        await interaction.response.edit_message(embeds=[info_embed, preview_embed], view=view)
-
-class FieldSelectModal(discord.ui.Modal):
-    """Modal for selecting which field to edit or remove"""
-    
-    def __init__(self, editor, action_type):
-        self.editor = editor
-        self.action_type = action_type  # "edit" or "remove"
-        
-        title = "Select Field to Edit" if action_type == "edit" else "Select Field to Remove"
-        super().__init__(title=title)
-        
-        # Create field selection text input
-        field_list = "\n".join([
-            f"{i+1}. {field['name'][:50]}{'...' if len(field['name']) > 50 else ''}"
-            for i, field in enumerate(editor.embed_data.get('fields', []))
-        ])
-        
-        self.add_item(discord.ui.TextInput(
-            label=f"Enter number (1-{len(editor.embed_data.get('fields', []))})",
-            placeholder="Enter the field number to edit/remove...",
-            default="",
-            max_length=2
-        ))
-        
-        # Show current fields as read-only
-        if field_list:
-            self.add_item(discord.ui.TextInput(
-                label="Available Fields:",
-                default=field_list,
-                style=discord.TextStyle.paragraph,
-                required=False,
-                max_length=1000
-            ))
-    
-    async def on_submit(self, interaction: discord.Interaction):
-        """Handle field selection"""
-        try:
-            field_num = int(self.children[0].value) - 1
-            fields = self.editor.embed_data.get('fields', [])
-            
-            if field_num < 0 or field_num >= len(fields):
-                await interaction.response.send_message("Invalid field number!", ephemeral=True)
-                return
-            
-            if self.action_type == "remove":
-                removed_field = fields.pop(field_num)
-                self.editor.embed_data['fields'] = fields
-                
-                # Update the embed display
-                info_embed = self.editor.generate_info_embed(interaction, f"Field '{removed_field['name']}' removed successfully!")
-                preview_embed = self.editor.generate_preview_embed(interaction)
-                view = EmbedEditorView(self.editor)
-                await interaction.response.edit_message(embeds=[info_embed, preview_embed], view=view)
-                
-            elif self.action_type == "edit":
-                # Open modal to edit the selected field
-                selected_field = fields[field_num]
-                modal = EmbedEditModal(self.editor, "edit_existing_field", field_num, selected_field)
-                await interaction.response.send_modal(modal)
-                
-        except ValueError:
-            await interaction.response.send_message("Please enter a valid number!", ephemeral=True)
-        except Exception as e:
-            logger.error(f"Error in field selection: {e}")
-            await interaction.response.send_message("An error occurred while processing the field selection.", ephemeral=True)
-
-class EmbedEditModal(discord.ui.Modal):
-    """Enhanced modal for editing embed properties"""
-    
-    def __init__(self, editor, action, field_index=None, field_data=None):
-        self.editor = editor
-        self.action = action
-        self.field_index = field_index
-        self.field_data = field_data
-        
-        title_map = {
-            "title": "Edit Embed Title",
-            "description": "Edit Embed Description", 
-            "color": "Set Embed Color",
-            "author": "Set Embed Author",
-            "footer": "Set Embed Footer",
-            "thumbnail": "Set Thumbnail URL",
-            "image": "Set Image URL",
-            "field": "Add Embed Field",
-            "edit_existing_field": "Edit Existing Field",
-            "rename": "Rename Embed"
-        }
-        
-        super().__init__(title=title_map.get(action, "Edit Embed"))
-        
-        # Add appropriate inputs based on action
-        if action == "title":
-            self.add_item(discord.ui.TextInput(
-                label="Title",
-                placeholder="Enter embed title...",
-                default=self.editor.embed_data.get('title', ''),
-                max_length=256
-            ))
-        
-        elif action == "description":
-            self.add_item(discord.ui.TextInput(
-                label="Description",
-                placeholder="Enter embed description...",
-                default=self.editor.embed_data.get('description', ''),
-                style=discord.TextStyle.paragraph,
-                max_length=4000
-            ))
-        
-        elif action == "color":
-            current_color = self.editor.embed_data.get('color', EMBED_COLOR_NORMAL)
-            self.add_item(discord.ui.TextInput(
-                label="Color (hex code)",
-                placeholder="#c2ffe0 or c2ffe0",
-                default=f"#{current_color:06x}",
-                max_length=7
-            ))
-        
-        elif action == "author":
-            self.add_item(discord.ui.TextInput(
-                label="Author Name",
-                placeholder="Enter author name...",
-                default=self.editor.embed_data.get('author_name', ''),
-                max_length=256
-            ))
-            self.add_item(discord.ui.TextInput(
-                label="Author Icon URL (optional)",
-                placeholder="https://example.com/icon.png",
-                default=self.editor.embed_data.get('author_icon', ''),
-                required=False,
-                max_length=500
-            ))
-        
-        elif action == "footer":
-            self.add_item(discord.ui.TextInput(
-                label="Footer Text",
-                placeholder="Enter footer text...",
-                default=self.editor.embed_data.get('footer_text', ''),
-                max_length=2048
-            ))
-            self.add_item(discord.ui.TextInput(
-                label="Footer Icon URL (optional)",
-                placeholder="https://example.com/icon.png",
-                default=self.editor.embed_data.get('footer_icon', ''),
-                required=False,
-                max_length=500
-            ))
-        
-        elif action in ["thumbnail", "image"]:
-            self.add_item(discord.ui.TextInput(
-                label=f"{action.title()} URL",
-                placeholder="https://example.com/image.png",
-                default=self.editor.embed_data.get(action, ''),
-                max_length=500
-            ))
-        
-        elif action == "rename":
-            self.add_item(discord.ui.TextInput(
-                label="New Embed Name",
-                placeholder="Enter new name for this embed...",
-                default=self.editor.embed_data.get('name', ''),
-                max_length=50
-            ))
-        
-        elif action == "field":
-            self.add_item(discord.ui.TextInput(
-                label="Field Name",
-                placeholder="Enter field name...",
-                max_length=256
-            ))
-            self.add_item(discord.ui.TextInput(
-                label="Field Value",
-                placeholder="Enter field value...",
-                style=discord.TextStyle.paragraph,
-                max_length=1024
-            ))
-            self.add_item(discord.ui.TextInput(
-                label="Inline (true/false)",
-                placeholder="true or false",
-                default="false",
-                max_length=5
-            ))
-        
-        elif action == "edit_existing_field" and field_data:
-            self.add_item(discord.ui.TextInput(
-                label="Field Name",
-                placeholder="Enter field name...",
-                default=field_data.get('name', ''),
-                max_length=256
-            ))
-            self.add_item(discord.ui.TextInput(
-                label="Field Value",
-                placeholder="Enter field value...",
-                default=field_data.get('value', ''),
-                style=discord.TextStyle.paragraph,
-                max_length=1024
-            ))
-            self.add_item(discord.ui.TextInput(
-                label="Inline (true/false)",
-                placeholder="true or false",
-                default="true" if field_data.get('inline', False) else "false",
-                max_length=5
-            ))
-    
-    async def on_submit(self, interaction: discord.Interaction):
-        """Handle modal submission"""
-        try:
-            # Get form values safely
-            def get_form_value(index, default=""):
-                try:
-                    if len(self.children) > index and hasattr(self.children[index], 'value'):
-                        return self.children[index].value or default
-                    return default
-                except:
-                    return default
-            
-            if self.action == "title":
-                self.editor.embed_data['title'] = get_form_value(0)
-            
-            elif self.action == "description":
-                self.editor.embed_data['description'] = get_form_value(0)
-            
-            elif self.action == "color":
-                color_str = get_form_value(0).strip().replace('#', '')
-                try:
-                    if color_str:
-                        self.editor.embed_data['color'] = int(color_str, 16)
-                except ValueError:
-                    await interaction.response.send_message("Invalid color format! Use hex like #c2ffe0", ephemeral=True)
-                    return
-            
-            elif self.action == "author":
-                self.editor.embed_data['author_name'] = get_form_value(0)
-                self.editor.embed_data['author_icon'] = get_form_value(1)
-            
-            elif self.action == "footer":
-                self.editor.embed_data['footer_text'] = get_form_value(0)
-                self.editor.embed_data['footer_icon'] = get_form_value(1)
-            
-            elif self.action in ["thumbnail", "image"]:
-                self.editor.embed_data[self.action] = get_form_value(0)
-            
-            elif self.action == "rename":
-                new_name = get_form_value(0, "untitled").strip()
-                if new_name:
-                    self.editor.embed_data['name'] = new_name
-                else:
-                    await interaction.response.send_message("Embed name cannot be empty!", ephemeral=True)
-                    return
-            
-            elif self.action == "field":
-                field_name = get_form_value(0, "Untitled Field")
-                field_value = get_form_value(1, "No value")
-                inline = get_form_value(2, "false").lower() == "true"
-                
-                if 'fields' not in self.editor.embed_data:
-                    self.editor.embed_data['fields'] = []
-                
-                self.editor.embed_data['fields'].append({
-                    'name': field_name,
-                    'value': field_value,
-                    'inline': inline
-                })
-            
-            elif self.action == "edit_existing_field" and self.field_index is not None:
-                field_name = get_form_value(0, "Untitled Field")
-                field_value = get_form_value(1, "No value")
-                inline = get_form_value(2, "false").lower() == "true"
-                
-                if 'fields' not in self.editor.embed_data:
-                    self.editor.embed_data['fields'] = []
-                
-                # Update the existing field
-                if self.field_index < len(self.editor.embed_data['fields']):
-                    self.editor.embed_data['fields'][self.field_index] = {
-                        'name': field_name,
-                        'value': field_value,
-                        'inline': inline
-                    }
-            
-            # Update the embed display
-            if self.action == "edit_existing_field":
-                success_msg = "Field updated successfully!"
-            elif self.action == "rename":
-                success_msg = f"Embed renamed to '{self.editor.embed_data.get('name', 'untitled')}'!"
-            else:
-                success_msg = "Changes saved!"
-            info_embed = self.editor.generate_info_embed(interaction, success_msg)
-            preview_embed = self.editor.generate_preview_embed(interaction)
-            
-            view = EmbedEditorView(self.editor)
-            await interaction.response.edit_message(embeds=[info_embed, preview_embed], view=view)
-            
-        except Exception as e:
-            logger.error(f"Error in modal submission: {e}")
-            await interaction.response.send_message("An error occurred while updating the embed.", ephemeral=True)
-
 class EmbedBuilder(commands.Cog):
-    """Enhanced embed builder with organized select menus and powerful interface"""
+    """SPROUTS Advanced Discord-Native Embed Builder"""
     
     def __init__(self, bot):
         self.bot = bot
-        self.current_embeds = {}  # Active editing sessions
-        self.saved_embeds = EmbedData.load_embeds()
-        self.variable_processor = VariableProcessor(bot)
+        self.saved_embeds_file = "src/data/saved_embeds.json"
+        self.templates_file = "src/data/embed_templates.json"
+        self.ensure_files_exist()
+        self.create_default_templates()
+        logger.info("SPROUTS Embed Builder initialized")
     
-    def save_embeds(self):
-        """Save embeds to file"""
-        EmbedData.save_embeds(self.saved_embeds)
-    
-    # Main embed command group
-    @commands.group(name="embed", invoke_without_command=True, help="Creating and managing embeds")
-    async def embed(self, ctx, *, args=None):
-        """Main embed command group"""
+    def ensure_files_exist(self):
+        """Ensure embed data files exist"""
+        for file_path in [self.saved_embeds_file, self.templates_file]:
+            if not os.path.exists(file_path):
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, 'w') as f:
+                    json.dump({}, f, indent=2)
+
+    def create_default_templates(self):
+        """Create default professional templates"""
         try:
-            logger.info(f"Embed command invoked by {ctx.author}")
+            with open(self.templates_file, 'r') as f:
+                templates = json.load(f)
             
-            # Check if there are any arguments after 'embed'
-            if args:
-                # This means they typed something like 's.embed d' or 's.embed f'
-                # Extract the first word as the invalid subcommand
-                invalid_cmd = args.split()[0] if args.split() else args
+            if not templates:  # Only create if empty
+                default_templates = {
+                    "announcement": {
+                        "title": f"{SPROUTS_CHECK} Server Announcement",
+                        "description": "Important server information and updates",
+                        "color": 0x5865F2,
+                        "fields": [
+                            {"name": "What's New", "value": "Add your announcement details here", "inline": False}
+                        ],
+                        "footer": {"text": "Stay updated with server news"}
+                    },
+                    "welcome": {
+                        "title": f"{SPROUTS_CHECK} Welcome to the Server!",
+                        "description": "We're excited to have you join our community",
+                        "color": 0x57F287,
+                        "fields": [
+                            {"name": "Getting Started", "value": "Check out our rules and guides", "inline": False},
+                            {"name": "Need Help?", "value": "Ask in our support channels", "inline": False}
+                        ],
+                        "footer": {"text": "Enjoy your stay!"}
+                    },
+                    "rules": {
+                        "title": f"{SPROUTS_WARNING} Server Rules",
+                        "description": "Please follow these rules to maintain a positive environment",
+                        "color": 0xFEE75C,
+                        "fields": [
+                            {"name": "Rule 1", "value": "Be respectful to all members", "inline": False},
+                            {"name": "Rule 2", "value": "No spam or inappropriate content", "inline": False},
+                            {"name": "Rule 3", "value": "Use appropriate channels for discussions", "inline": False}
+                        ],
+                        "footer": {"text": "Thank you for keeping our community safe"}
+                    },
+                    "event": {
+                        "title": f"{SPROUTS_INFORMATION} Upcoming Event",
+                        "description": "Join us for an exciting community event!",
+                        "color": 0xEB459E,
+                        "fields": [
+                            {"name": "📅 Date", "value": "Add event date here", "inline": True},
+                            {"name": "⏰ Time", "value": "Add event time here", "inline": True},
+                            {"name": "📍 Location", "value": "Add event location/channel", "inline": True},
+                            {"name": "📝 Details", "value": "Add event description and requirements", "inline": False}
+                        ],
+                        "footer": {"text": "Don't miss out on the fun!"}
+                    },
+                    "support": {
+                        "title": f"{SPROUTS_ERROR} Support Ticket",
+                        "description": "We're here to help you with any questions or issues",
+                        "color": 0xED4245,
+                        "fields": [
+                            {"name": "📞 Contact Info", "value": "Please provide your contact details", "inline": False},
+                            {"name": "❓ Issue Description", "value": "Describe your problem in detail", "inline": False},
+                            {"name": "📸 Screenshots", "value": "Include any relevant screenshots if applicable", "inline": False}
+                        ],
+                        "footer": {"text": "We'll respond as soon as possible"}
+                    },
+                    "info": {
+                        "title": f"{SPROUTS_INFORMATION} Information",
+                        "description": "Important information for our community",
+                        "color": 0x00D9FF,
+                        "fields": [
+                            {"name": "📊 Key Points", "value": "Add your main information here", "inline": False},
+                            {"name": "🔗 Resources", "value": "Include helpful links and resources", "inline": False}
+                        ],
+                        "footer": {"text": "Stay informed"}
+                    }
+                }
                 
-                embed = discord.Embed(
-                    title=f"{SPROUTS_WARNING} Invalid Subcommand",
-                    description=f"**`{invalid_cmd}`** is not a valid embed subcommand.",
-                    color=EMBED_COLOR_ERROR
-                )
-                
-                # Core Commands
-                embed.add_field(
-                    name="Core Commands",
-                    value=f"`{ctx.prefix}embedcreate [name]` - Create a new embed\n"
-                          f"`{ctx.prefix}embedlist` - List your saved embeds\n"
-                          f"`{ctx.prefix}embedview <name>` - View a saved embed\n"
-                          f"`{ctx.prefix}embededit <name>` - Edit an existing embed",
-                    inline=False
-                )
-                
-                # Management Commands
-                embed.add_field(
-                    name="Management",
-                    value=f"`{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
-                          f"`{ctx.prefix}embedexport <name>` - Export as YAML\n"
-                          f"`{ctx.prefix}embedimport <yaml>` - Import from YAML",
-                    inline=False
-                )
-                
-                # Help Reference
-                embed.add_field(
-                    name="Need More Help?",
-                    value=f"Use `{ctx.prefix}embed` to see all available commands with detailed descriptions.\n\n"
-                          f"**Did you mean `{ctx.prefix}embedcreate`?**",
-                    inline=False
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            # Show help if no arguments
+                with open(self.templates_file, 'w') as f:
+                    json.dump(default_templates, f, indent=2)
+                    
+        except Exception as e:
+            logger.error(f"Error creating default templates: {e}")
+
+    @commands.command(name="embed", aliases=["createembed", "embedcreate"])
+    async def embed_create(self, ctx):
+        """Create a professional embed using SPROUTS advanced system"""
+        try:
             embed = discord.Embed(
-                title="Embed Builder - Enhanced Interface",
-                description="Create and manage custom Discord embeds with an organized select menu interface.",
+                title=f"{SPROUTS_CHECK} SPROUTS Embed Builder",
+                description="Professional Discord-native embed creation with advanced features and live preview.",
                 color=EMBED_COLOR_NORMAL
             )
             
-            # Core Commands
             embed.add_field(
-                name=f"{SPROUTS_CHECK} Core Commands",
-                value=f"{SPROUTS_CHECK} `{ctx.prefix}embedcreate [name]` - Create a new embed with enhanced editor\n"
-                      f"{SPROUTS_CHECK} `{ctx.prefix}embedlist` - List your saved embeds\n"
-                      f"{SPROUTS_CHECK} `{ctx.prefix}embedview <name>` - View a saved embed\n"
-                      f"{SPROUTS_CHECK} `{ctx.prefix}embededit <name>` - Edit an existing embed",
+                name="Creation Methods",
+                value=(
+                    f"{SPROUTS_CHECK} **Interactive Builder** - Complete embed configuration\n"
+                    f"{SPROUTS_INFORMATION} **Quick Builder** - Fast single-modal creation\n"
+                    f"{SPROUTS_WARNING} **JSON Import** - Import from Glitchii's Embed Builder\n"
+                    f"{SPROUTS_CHECK} **Templates** - Professional pre-made designs"
+                ),
                 inline=False
             )
             
-            # Management Commands
             embed.add_field(
-                name=f"{SPROUTS_WARNING} Management",
-                value=f"{SPROUTS_ERROR} `{ctx.prefix}embeddelete <name>` - Delete a saved embed\n"
-                      f"{SPROUTS_WARNING} `{ctx.prefix}embedexport <name>` - Export as YAML template\n"
-                      f"{SPROUTS_WARNING} `{ctx.prefix}embedimport <yaml>` - Import from YAML template",
+                name="Advanced Features",
+                value=(
+                    "• **Complete Configuration** - Title, description, author, footer, images\n"
+                    "• **Field Management** - Add up to 25 custom fields with inline options\n"
+                    "• **Live Preview** - See your embed before sending\n"
+                    "• **Template System** - 6 professional templates included\n"
+                    "• **JSON Export** - Export for external use\n"
+                    "• **Advanced Colors** - Named colors + hex support"
+                ),
                 inline=False
             )
             
-            # Variables and Help
-            embed.add_field(
-                name=f"{SPROUTS_ERROR} Additional Help",
-                value=f"{SPROUTS_CHECK} `variables` - View all available variables\n"
-                      f"{SPROUTS_WARNING} `{ctx.prefix}embedoldedit <name>` - Use legacy editing mode",
-                inline=False
+            embed.set_footer(
+                text="Powered by SPROUTS Advanced Embed System",
+                icon_url=ctx.author.display_avatar.url
             )
             
-            # Features highlight
-            embed.add_field(
-                name=f"{SPROUTS_CHECK} New Features",
-                value=f"{SPROUTS_CHECK} **Organized Select Menus** - No more button clutter\n"
-                      f"{SPROUTS_CHECK} **Live Preview** - See changes instantly\n"
-                      f"{SPROUTS_CHECK} **Enhanced Field Management** - Add, edit, remove fields easily\n"
-                      f"{SPROUTS_CHECK} **Quick Actions** - Clear, preview, and manage with ease",
-                inline=False
-            )
-            
-            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            
-            await ctx.reply(embed=embed, mention_author=False)
+            view = EmbedBuilderView(ctx.author)
+            await ctx.send(embed=embed, view=view)
             
         except Exception as e:
             logger.error(f"Error in embed command: {e}")
-            await ctx.reply("An error occurred while processing the embed command.", mention_author=False)
-    
-    @commands.command(name="embedcreate", help="Create a new embed with interactive visual editor and dropdown menus")
-    async def embed_create(self, ctx, *, name: str = None):
-        """Create a new embed with enhanced interface
-        
-        Usage: `{ctx.prefix}embedcreate [name]`
-        Opens interactive visual editor with organized dropdowns for all embed elements
-        
-        Examples:
-        - `{ctx.prefix}embedcreate` - Auto-generates name (embed_1, embed_2, etc.)
-        - `{ctx.prefix}embedcreate` welcome - Creates embed named 'welcome'
-        - `{ctx.prefix}embedcreate` support_info - Creates embed with specific name
-        
-        Common Errors:
-        - Name exists: Use embededit to modify existing embeds
-        - Name too long: Maximum 32 characters allowed
-        - Use variables like $(user.name) for dynamic content
-        """
-        try:
-            # Use provided name or generate default
-            user_id = str(ctx.author.id)
-            if not name:
-                embed_count = len(self.saved_embeds.get(user_id, {}))
-                name = f"embed_{embed_count + 1}"
-            
-            # Clean the name
-            name = name.strip()[:32]
-            
-            # Check if name already exists
-            if user_id in self.saved_embeds and name in self.saved_embeds[user_id]:
-                embed = discord.Embed(
-                    title="Name Already Exists",
-                    description=f"An embed named '**{name}**' already exists.\n\n"
-                               f"Use `s.embededit {name}` to edit it or choose a different name.",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            # Create new embed data with the enhanced structure
-            embed_data = {
-                'name': name,
-                'title': '',
-                'description': '',
-                'color': EMBED_COLOR_NORMAL,
-                'author_name': '',
-                'author_icon': '',
-                'footer_text': '',
-                'footer_icon': '',
-                'thumbnail': '',
-                'image': '',
-                'fields': []
-            }
-            
-            # Create editor instance
-            editor = EmbedEditor(self.bot, embed_data, ctx.author.id)
-            
-            # Generate info and preview embeds
-            info_embed = editor.generate_info_embed(ctx, "Welcome to the enhanced embed editor! Start customizing your embed using the organized dropdowns below.")
-            preview_embed = editor.generate_preview_embed(ctx)
-            
-            # Create enhanced view
-            view = editor.create_view()
-            
-            await ctx.reply(embeds=[info_embed, preview_embed], view=view, mention_author=False)
-            
-        except Exception as e:
-            logger.error(f"Error creating embed: {e}")
-            await ctx.reply("An error occurred while creating the embed.", mention_author=False)
-    
-    @commands.command(name="embededit", help="Edit an existing embed with interactive visual editor interface")
-    async def embed_edit(self, ctx, *, name: str):
-        """Edit an existing embed with enhanced interface
-        
-        Usage: `{ctx.prefix}embededit <name>`
-        Opens visual editor to modify existing embed with dropdown menus
-        
-        Examples:
-        - `{ctx.prefix}embededit welcome` - Edit the 'welcome' embed
-        - `{ctx.prefix}embededit support_info` - Modify support information embed
-        - `{ctx.prefix}embededit rules` - Update server rules embed
-        
-        Common Errors:
-        - Embed not found: Use embedlist to see available embeds
-        - Permission denied: Server embeds require Administrator permission
-        - Case sensitive: Embed names must match exactly
-        """
-        user_id = str(ctx.author.id)
-        guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-        user_guild_key = f"{user_id}_{guild_id}"
-        
-        # Check for guild-level embeds if user is admin
-        embed_data = None
-        is_guild_embed = False
-        
-        if (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-            ctx.author.guild_permissions.administrator):
-            if (guild_id in self.saved_embeds and 
-                name in self.saved_embeds[guild_id]):
-                embed_data = self.saved_embeds[guild_id][name].copy()
-                is_guild_embed = True
-        
-        # Check user embeds if not found in guild
-        if not embed_data:
-            if user_guild_key not in self.saved_embeds or name not in self.saved_embeds[user_guild_key]:
-                embed = discord.Embed(
-                    title="Embed Not Found",
-                    description=f"Embed '**{name}**' not found.\n\nUse `s.embedlist` to see your saved embeds.",
-                    color=EMBED_COLOR_ERROR
-                )
-                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            embed_data = self.saved_embeds[user_guild_key][name].copy()
-        
-        # Create editor instance with enhanced interface
-        editor = EmbedEditor(self.bot, embed_data, ctx.author.id)
-        
-        # Generate info and preview embeds
-        scope_text = "server-wide" if is_guild_embed else "personal"
-        info_embed = editor.generate_info_embed(ctx, f"Editing {scope_text} embed '**{name}**'. Use the organized dropdowns below to customize your embed.")
-        preview_embed = editor.generate_preview_embed(ctx)
-        
-        # Create enhanced view
-        view = editor.create_view()
-        
-        await ctx.reply(embeds=[info_embed, preview_embed], view=view, mention_author=False)
-    
-    @commands.command(name="embedlist", help="Display all your personal and server embeds with management options")
-    async def embed_list(self, ctx):
-        """List saved embeds
-        
-        Usage: `{ctx.prefix}embedlist`
-        Shows all personal embeds and server embeds (if Administrator)
-        
-        Examples:
-        - `{ctx.prefix}embedlist` - View all your saved embeds
-        - Shows personal embeds for your account
-        - Shows server embeds if you're Administrator
-        
-        Features:
+            await ctx.send(f"{SPROUTS_ERROR} An error occurred while starting the embed builder.")
 
-        """
-        user_id = str(ctx.author.id)
-        guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-        user_guild_key = f"{user_id}_{guild_id}"
-        user_embeds = self.saved_embeds.get(user_guild_key, {})
-        
-        # Check for guild embeds if user is admin
-        guild_embeds = {}
-        if (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-            ctx.author.guild_permissions.administrator):
-            guild_embeds = self.saved_embeds.get(guild_id, {})
-        
-        embed = discord.Embed(
-            title="Your Saved Embeds",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        if user_embeds:
-            embed_list = "\n".join([f"• `{name}`" for name in user_embeds.keys()])
-            embed.add_field(
-                name=f"Personal Embeds ({len(user_embeds)})",
-                value=embed_list,
-                inline=False
-            )
-        
-        if guild_embeds:
-            guild_embed_list = "\n".join([f"• `{name}` (Server)" for name in guild_embeds.keys()])
-            embed.add_field(
-                name=f"Server Embeds ({len(guild_embeds)})",
-                value=guild_embed_list,
-                inline=False
-            )
-        
-        if not user_embeds and not guild_embeds:
-            embed.description = "No saved embeds found.\n\nUse `s.embedcreate` to create your first embed!"
-        else:
-            embed.add_field(
-                name=f"{SPROUTS_CHECK} Commands",
-                value=f"{SPROUTS_CHECK} `{ctx.prefix}embedview <name>` - Preview an embed\n"
-                      f"{SPROUTS_CHECK} `{ctx.prefix}embededit <name>` - Edit an embed\n"
-                      f"{SPROUTS_ERROR} `{ctx.prefix}embeddelete <name>` - Delete an embed",
-                inline=False
-            )
-        
-        embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-        embed.timestamp = discord.utils.utcnow()
-        
-        await ctx.reply(embed=embed, mention_author=False)
-    
-    @commands.command(name="embedview", help="Preview a saved embed with processed variables and live formatting")
-    async def embed_view(self, ctx, *, name: str):
-        """View a saved embed
-        
-        Usage: `{ctx.prefix}embedview <name>`
-        Displays saved embed with all variables processed and formatted
-        
-        Examples:
-        - `{ctx.prefix}embedview welcome` - Preview welcome embed with current data
-        - `{ctx.prefix}embedview rules` - Show rules embed as it would appear
-        - `{ctx.prefix}embedview support_info` - View support information with variables
-        
-        Features:
-        - Processes all variables like `$(user.name)`, `$(server.name)`
-        - Shows exactly how embed appears to users
-        - Works with both personal and server embeds
-        """
-        user_id = str(ctx.author.id)
-        guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-        user_guild_key = f"{user_id}_{guild_id}"
-        
-        # Check for guild-level embeds if user is admin
-        embed_data = None
-        is_guild_embed = False
-        
-        if (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-            ctx.author.guild_permissions.administrator):
-            if (guild_id in self.saved_embeds and 
-                name in self.saved_embeds[guild_id]):
-                embed_data = self.saved_embeds[guild_id][name]
-                is_guild_embed = True
-        
-        # Check user embeds if not found in guild
-        if not embed_data:
-            if user_guild_key not in self.saved_embeds or name not in self.saved_embeds[user_guild_key]:
-                embed = discord.Embed(
-                    title="Embed Not Found",
-                    description=f"Embed '**{name}**' not found.\n\nUse `s.embedlist` to see your saved embeds.",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            embed_data = self.saved_embeds[user_guild_key][name]
-        
+    @commands.command(name="embedquick")
+    async def embed_quick(self, ctx):
+        """Quick embed creation modal"""
         try:
-            # Process variables in the embed data
-            processed_data = {}
-            for key, value in embed_data.items():
-                if isinstance(value, str):
-                    processed_data[key] = await self.variable_processor.process_variables(value, guild=ctx.guild, user=ctx.author, channel=ctx.channel, member=ctx.author)
-                elif key == 'fields' and isinstance(value, list):
-                    processed_fields = []
-                    for field in value:
-                        processed_field = {
-                            'name': await self.variable_processor.process_variables(field.get('name', ''), guild=ctx.guild, user=ctx.author, channel=ctx.channel, member=ctx.author),
-                            'value': await self.variable_processor.process_variables(field.get('value', ''), guild=ctx.guild, user=ctx.author, channel=ctx.channel, member=ctx.author),
-                            'inline': field.get('inline', False)
-                        }
-                        processed_fields.append(processed_field)
-                    processed_data[key] = processed_fields
-                else:
-                    processed_data[key] = value
-            
-            # Create the embed
+            modal = EmbedQuickModal()
             embed = discord.Embed(
-                title=processed_data.get('title') or None,
-                description=processed_data.get('description') or None,
-                color=processed_data.get('color', EMBED_COLOR_NORMAL)
-            )
-            
-            # Add author
-            if processed_data.get('author_name'):
-                embed.set_author(
-                    name=processed_data['author_name'],
-                    icon_url=processed_data.get('author_icon') or None
-                )
-            
-            # Add footer
-            if processed_data.get('footer_text'):
-                embed.set_footer(
-                    text=processed_data['footer_text'],
-                    icon_url=processed_data.get('footer_icon') or None
-                )
-            
-            # Add thumbnail and image
-            if processed_data.get('thumbnail'):
-                embed.set_thumbnail(url=processed_data['thumbnail'])
-            
-            if processed_data.get('image'):
-                embed.set_image(url=processed_data['image'])
-            
-            # Add fields
-            for field in processed_data.get('fields', []):
-                embed.add_field(
-                    name=field['name'],
-                    value=field['value'],
-                    inline=field.get('inline', False)
-                )
-            
-            # Send with additional info
-            info_embed = discord.Embed(
-                title="Embed Preview",
-                description=f"Showing {'server' if is_guild_embed else 'personal'} embed: **{name}**",
+                title=f"{SPROUTS_INFORMATION} Quick Embed Builder",
+                description="Use the main `s.embed` command and select **Quick Builder** for fast embed creation.",
                 color=EMBED_COLOR_NORMAL
             )
-            info_embed.set_footer(text="This is how your embed looks with variables processed")
-            
-            await ctx.reply(embeds=[info_embed, embed], mention_author=False)
-            
+            await ctx.send(embed=embed)
         except Exception as e:
-            logger.error(f"Error viewing embed: {e}")
-            await ctx.reply("An error occurred while viewing the embed.", mention_author=False)
+            logger.error(f"Error in embedquick command: {e}")
+            await ctx.send(f"{SPROUTS_ERROR} An error occurred.")
+
+class EmbedBuilderView(discord.ui.View):
+    """Main embed builder interface with professional buttons"""
     
-    @commands.command(name="embeddelete", help="Permanently delete a saved embed (cannot be undone)")
-    async def embed_delete(self, ctx, *, name: str):
-        """Delete a saved embed
-        
-        Usage: ``{ctx.prefix}embeddelete <name>`
-        Permanently removes an embed from your saved collection
-        
-        Examples:
-        - `{ctx.prefix}embeddelete old_welcome` - Delete outdated welcome embed
-        - `{ctx.prefix}embeddelete test_embed` - Remove test/experimental embed
-        - `{ctx.prefix}embeddelete unused_rules` - Clean up unused embed
-        
-        Warning:
-        - This action cannot be undone
-        - Export embed first if you want backup
-        - Server embeds require Administrator permission
-        """
-        user_id = str(ctx.author.id)
-        guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-        user_guild_key = f"{user_id}_{guild_id}"
-        
-        # Check for guild-level embeds if user is admin
-        is_guild_embed = False
-        embed_exists = False
-        
-        if (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-            ctx.author.guild_permissions.administrator):
-            if (guild_id in self.saved_embeds and 
-                name in self.saved_embeds[guild_id]):
-                del self.saved_embeds[guild_id][name]
-                is_guild_embed = True
-                embed_exists = True
-        
-        # Check user embeds if not found in guild
-        if not embed_exists:
-            if user_guild_key in self.saved_embeds and name in self.saved_embeds[user_guild_key]:
-                del self.saved_embeds[user_guild_key][name]
-                embed_exists = True
-        
-        if not embed_exists:
-            embed = discord.Embed(
-                title="Embed Not Found",
-                description=f"Embed '**{name}**' not found.\n\nUse `s.embedlist` to see your saved embeds.",
-                color=EMBED_COLOR_ERROR
+    def __init__(self, author):
+        super().__init__(timeout=300)
+        self.author = author
+        self.embed_data = {
+            "title": "",
+            "description": "",
+            "color": EMBED_COLOR_NORMAL,
+            "fields": [],
+            "footer": "",
+            "image": "",
+            "thumbnail": "",
+            "author": ""
+        }
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.author:
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Only the command user can use this embed builder!", 
+                ephemeral=True
             )
-            await ctx.reply(embed=embed, mention_author=False)
-            return
-        
-        # Save changes
-        self.save_embeds()
-        
-        scope_text = "server" if is_guild_embed else "personal"
-        embed = discord.Embed(
-            description=f"{scope_text.title()} embed '**{name}**' deleted successfully!",
-            color=EMBED_COLOR_NORMAL
-        )
-        await ctx.reply(embed=embed, mention_author=False)
+            return False
+        return True
     
-    @commands.command(name="embedcreateempty", help="Create blank embed template for later customization")
-    async def embed_create_empty(self, ctx, *, name: str = None):
-        """Create an empty embed to edit later
-        
-        Usage: `{ctx.prefix}embedcreateempty [name]`
-        Creates blank embed template saved for later editing
-        
-        Examples:
-        - `{ctx.prefix}embedcreateempt`y - Auto-generates name (empty_embed_1, etc.)
-        - `{ctx.prefix}embedcreateempty draft_rules` - Create named empty embed
-        - `{ctx.prefix}embedcreateempty template_info` - Blank template for future use
-        
-        Features:
-        - Saves empty embed structure immediately
-        - Use embededit later to add content
-        - Perfect for planning embed layouts
-        """
+    @discord.ui.button(label="Interactive Builder", style=discord.ButtonStyle.primary, emoji=SPROUTS_CHECK)
+    async def interactive_builder(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Open complete embed configuration modal"""
+        modal = EmbedCompleteModal(self.embed_data)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Quick Builder", style=discord.ButtonStyle.secondary, emoji=SPROUTS_INFORMATION)
+    async def quick_builder(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Open fast single-modal embed builder"""
+        modal = EmbedQuickModal(self.embed_data)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Templates", style=discord.ButtonStyle.success, emoji=SPROUTS_CHECK)
+    async def templates(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Show embed templates"""
         try:
-            user_id = str(ctx.author.id)
-            guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-            user_guild_key = f"{user_id}_{guild_id}"
-            is_admin = (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-                       ctx.author.guild_permissions.administrator)
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Professional Embed Templates",
+                description="Choose from carefully crafted professional templates:",
+                color=EMBED_COLOR_NORMAL
+            )
             
-            if not name:
-                if is_admin:
-                    embed_count = len(self.saved_embeds.get(guild_id, {}))
-                else:
-                    embed_count = len(self.saved_embeds.get(user_guild_key, {}))
-                name = f"empty_embed_{embed_count + 1}"
-            
-            name = name.strip()[:32]
-            
-            # Check if name already exists in guild embeds (for admins) or user embeds
-            name_exists = False
-            
-            if is_admin:
-                if guild_id in self.saved_embeds and name in self.saved_embeds[guild_id]:
-                    name_exists = True
-            
-            if not name_exists and user_guild_key in self.saved_embeds and name in self.saved_embeds[user_guild_key]:
-                name_exists = True
-            
-            if name_exists:
-                embed = discord.Embed(
-                    title="Name Already Exists",
-                    description=f"An embed named '**{name}**' already exists.\n\nUse `s.embededit {name}` to edit it or choose a different name.",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            # Create empty embed data
-            embed_data = {
-                'name': name,
-                'title': '',
-                'description': '',
-                'color': EMBED_COLOR_NORMAL,
-                'author_name': '',
-                'author_icon': '',
-                'footer_text': '',
-                'footer_icon': '',
-                'thumbnail': '',
-                'image': '',
-                'fields': []
+            templates = {
+                "announcement": f"{SPROUTS_CHECK} Server Announcement - Important updates and news",
+                "welcome": f"{SPROUTS_CHECK} Welcome Message - New member greetings", 
+                "rules": f"{SPROUTS_WARNING} Server Rules - Community guidelines",
+                "event": f"{SPROUTS_INFORMATION} Event Announcement - Community events",
+                "support": f"{SPROUTS_ERROR} Support Ticket - Help and assistance",
+                "info": f"{SPROUTS_INFORMATION} Information Display - General information"
             }
             
-            # Save the empty embed (to guild if admin, otherwise to user)
-            if is_admin:
-                if guild_id not in self.saved_embeds:
-                    self.saved_embeds[guild_id] = {}
-                self.saved_embeds[guild_id][name] = embed_data
-                scope_text = "server"
-            else:
-                if user_guild_key not in self.saved_embeds:
-                    self.saved_embeds[user_guild_key] = {}
-                self.saved_embeds[user_guild_key][name] = embed_data
-                scope_text = "personal"
+            template_list = "\n".join([f"• **{name.title()}** - {desc}" for name, desc in templates.items()])
+            embed.add_field(name="Available Templates", value=template_list, inline=False)
             
-            self.save_embeds()
-            
-            embed = discord.Embed(
-                title="Empty Embed Created",
-                description=f"Empty {scope_text} embed '**{name}**' created successfully!\n\nUse `s.embededit {name}` to start editing it.",
-                color=EMBED_COLOR_NORMAL
-            )
-            await ctx.reply(embed=embed, mention_author=False)
+            view = TemplateSelectView(self.author, self.embed_data)
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
         except Exception as e:
-            logger.error(f"Error creating empty embed: {e}")
-            await ctx.reply("An error occurred while creating the empty embed.", mention_author=False)
+            logger.error(f"Error showing templates: {e}")
+            await interaction.followup.send(f"{SPROUTS_ERROR} Error loading templates.", ephemeral=True)
     
-    @commands.command(name="embedexport", help="Export embed as YAML file for backup or sharing")
-    async def embed_export(self, ctx, *, name: str):
-        """Export embed as YAML template
+    @discord.ui.button(label="JSON Import", style=discord.ButtonStyle.danger, emoji=SPROUTS_WARNING)
+    async def json_import(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Import embed from JSON"""
+        embed = discord.Embed(
+            title=f"{SPROUTS_WARNING} JSON Import",
+            description="Import embed JSON from external builders:",
+            color=EMBED_COLOR_NORMAL
+        )
         
-        Usage: `{ctx.prefix}embedexport <name>`
-        Downloads embed as YAML file for backup, sharing, or migration
+        embed.add_field(
+            name="External Builder",
+            value="Use [Glitchii's Embed Builder](https://glitchii.github.io/embedbuilder/) to create your embed, then get the JSON and paste it below.",
+            inline=False
+        )
         
-        Examples:
-        - `{ctx.prefix}embedexport` welcome - Export welcome embed as YAML
-        - `{ctx.prefix}embedexport server_rules` - Backup rules embed to file
-        - `{ctx.prefix}embedexport support_template` - Share template with others
+        embed.add_field(
+            name="How to Import",
+            value="1. Create your embed on the external website\n2. Get the JSON output\n3. Click 'Import JSON' below and paste it",
+            inline=False
+        )
         
-        Features:
-        - Downloads .yaml file automatically
-        - Preserves all embed data and formatting
-        - Use with embedimport to restore or share
-        """
+        modal = JSONImportModal(self.embed_data)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary, emoji=SPROUTS_ERROR)
+    async def cancel_builder(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Cancel the embed builder"""
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Embed Builder Cancelled",
+            description="Embed builder session has been cancelled.",
+            color=EMBED_COLOR_NORMAL
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+class EmbedCompleteModal(discord.ui.Modal):
+    """Complete embed configuration modal with all options"""
+    
+    def __init__(self, embed_data: dict):
+        super().__init__(title="Complete Embed Builder")
+        self.embed_data = embed_data
+        
+        self.title_input = discord.ui.TextInput(
+            label="Embed Title",
+            placeholder="Enter the main title for your embed...",
+            max_length=256,
+            required=False
+        )
+        
+        self.description_input = discord.ui.TextInput(
+            label="Description",
+            placeholder="Enter the main content/description...",
+            style=discord.TextStyle.paragraph,
+            max_length=4000,
+            required=False
+        )
+        
+        self.author_input = discord.ui.TextInput(
+            label="Author Text",
+            placeholder="Author name (optional)...",
+            max_length=256,
+            required=False
+        )
+        
+        self.footer_input = discord.ui.TextInput(
+            label="Footer Text",
+            placeholder="Footer text (optional)...",
+            max_length=2048,
+            required=False
+        )
+        
+        self.config_input = discord.ui.TextInput(
+            label="Config (image=url,thumbnail=url,color=hex)",
+            placeholder="image=https://example.com/img.png,thumbnail=https://example.com/thumb.png,color=#5865F2",
+            style=discord.TextStyle.paragraph,
+            max_length=2000,
+            required=False
+        )
+        
+        self.add_item(self.title_input)
+        self.add_item(self.description_input)
+        self.add_item(self.author_input)
+        self.add_item(self.footer_input)
+        self.add_item(self.config_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
         try:
-            user_id = str(ctx.author.id)
-            guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-            user_guild_key = f"{user_id}_{guild_id}"
+            # Update embed data with all fields
+            if self.title_input.value:
+                self.embed_data["title"] = self.title_input.value
+            if self.description_input.value:
+                self.embed_data["description"] = self.description_input.value
+            if self.author_input.value:
+                self.embed_data["author"] = {"name": self.author_input.value}
+            if self.footer_input.value:
+                self.embed_data["footer"] = {"text": self.footer_input.value}
             
-            # Check for guild-level embeds if user is admin
-            embed_data = None
-            is_guild_embed = False
+            # Parse configuration
+            if self.config_input.value:
+                self.parse_configuration(self.config_input.value)
             
-            if (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-                ctx.author.guild_permissions.administrator):
-                if (guild_id in self.saved_embeds and 
-                    name in self.saved_embeds[guild_id]):
-                    embed_data = self.saved_embeds[guild_id][name]
-                    is_guild_embed = True
+            # Show preview with field management options
+            view = EmbedAdvancedPreviewView(interaction.user, self.embed_data)
+            embed = self.create_preview_embed()
             
-            # Check user embeds if not found in guild
-            if not embed_data:
-                if user_guild_key not in self.saved_embeds or name not in self.saved_embeds[user_guild_key]:
-                    embed = discord.Embed(
-                        title="Embed Not Found",
-                        description=f"Embed '**{name}**' not found.\n\nUse `s.embedlist` to see your saved embeds.",
-                        color=EMBED_COLOR_ERROR
+            await interaction.response.send_message(
+                content=f"{SPROUTS_CHECK} **Complete Embed Preview** - Add fields or send as-is:",
+                embed=embed, 
+                view=view,
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in complete embed modal: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} An error occurred while creating your embed.", 
+                ephemeral=True
+            )
+    
+    def parse_configuration(self, config_text: str):
+        """Parse configuration from comma-separated format"""
+        try:
+            for item in config_text.split(','):
+                if '=' in item:
+                    key, value = item.strip().split('=', 1)
+                    key = key.strip().lower()
+                    value = value.strip()
+                    
+                    if key == 'image' and value.startswith('http'):
+                        self.embed_data["image"] = {"url": value}
+                    elif key == 'thumbnail' and value.startswith('http'):
+                        self.embed_data["thumbnail"] = {"url": value}
+                    elif key == 'color':
+                        color = self.parse_color(value)
+                        if color is not None:
+                            self.embed_data["color"] = color
+        except Exception as e:
+            logger.error(f"Error parsing configuration: {e}")
+    
+    def parse_color(self, color_str: str):
+        """Parse color string to hex integer"""
+        color_str = color_str.strip().lower()
+        
+        # Color name mapping
+        color_names = {
+            "red": 0xED4245, "green": 0x57F287, "blue": 0x5865F2,
+            "yellow": 0xFEE75C, "purple": 0x9B59B6, "orange": 0xE67E22,
+            "pink": 0xEB459E, "cyan": 0x1ABC9C, "grey": 0x95A5A6,
+            "gray": 0x95A5A6, "black": 0x2C2F33, "white": 0xFFFFFF,
+            "discord": 0x5865F2, "success": 0x57F287, "warning": 0xFEE75C,
+            "error": 0xED4245, "info": 0x00D9FF, "sprouts": 0x2ecc71
+        }
+        
+        if color_str in color_names:
+            return color_names[color_str]
+        
+        # Parse hex color
+        if color_str.startswith('#'):
+            try:
+                return int(color_str[1:], 16)
+            except ValueError:
+                return None
+        
+        # Try as direct hex
+        try:
+            return int(color_str, 16) if len(color_str) <= 6 else None
+        except ValueError:
+            return None
+    
+    def create_preview_embed(self) -> discord.Embed:
+        """Create comprehensive embed preview"""
+        embed = discord.Embed(
+            title=self.embed_data.get("title") or None,
+            description=self.embed_data.get("description") or None,
+            color=self.embed_data.get("color", EMBED_COLOR_NORMAL)
+        )
+        
+        # Add author
+        if self.embed_data.get("author"):
+            author_data = self.embed_data["author"]
+            embed.set_author(name=author_data.get("name", ""))
+        
+        # Add footer
+        if self.embed_data.get("footer"):
+            footer_data = self.embed_data["footer"]
+            embed.set_footer(text=footer_data.get("text", ""))
+        
+        # Add image
+        if self.embed_data.get("image"):
+            embed.set_image(url=self.embed_data["image"]["url"])
+        
+        # Add thumbnail
+        if self.embed_data.get("thumbnail"):
+            embed.set_thumbnail(url=self.embed_data["thumbnail"]["url"])
+        
+        # Add fields
+        for field in self.embed_data.get("fields", []):
+            embed.add_field(
+                name=field.get("name", "Field"),
+                value=field.get("value", "Value"),
+                inline=field.get("inline", False)
+            )
+        
+        return embed
+
+class EmbedQuickModal(discord.ui.Modal):
+    """Quick all-in-one embed creation modal"""
+    
+    def __init__(self, embed_data: dict = None):
+        super().__init__(title="Quick Embed Builder")
+        self.embed_data = embed_data or {}
+        
+        self.content_input = discord.ui.TextInput(
+            label="Embed Content (JSON or simple text)",
+            placeholder='{"title": "My Title", "description": "My content"} OR just type your message...',
+            style=discord.TextStyle.paragraph,
+            max_length=2000,
+            required=True
+        )
+        
+        self.add_item(self.content_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            content = self.content_input.value.strip()
+            
+            # Try to parse as JSON first
+            try:
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    embed = discord.Embed.from_dict(data)
+                    await interaction.response.send_message(
+                        f"{SPROUTS_CHECK} **Quick Embed Created!**",
+                        embed=embed
                     )
-                    await ctx.reply(embed=embed, mention_author=False)
                     return
-                
-                embed_data = self.saved_embeds[user_guild_key][name]
+            except json.JSONDecodeError:
+                pass
             
-            # Convert to YAML
-            yaml_content = yaml.dump(embed_data, default_flow_style=False, sort_keys=False)
-            
-            # Create file buffer
-            buffer = io.StringIO(yaml_content)
-            file = discord.File(buffer, filename=f"{name}.yaml")
-            
-            scope_text = "server" if is_guild_embed else "personal"
+            # Create simple text embed
             embed = discord.Embed(
-                title="Embed Exported",
-                description=f"{scope_text.title()} embed '**{name}**' exported as YAML template.",
+                description=content,
                 color=EMBED_COLOR_NORMAL
             )
-            await ctx.reply(embed=embed, file=file, mention_author=False)
+            
+            await interaction.response.send_message(
+                f"{SPROUTS_CHECK} **Quick Embed Created!**",
+                embed=embed
+            )
             
         except Exception as e:
-            logger.error(f"Error exporting embed: {e}")
-            await ctx.reply("An error occurred while exporting the embed.", mention_author=False)
+            logger.error(f"Error in quick embed modal: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error creating embed: {str(e)}", 
+                ephemeral=True
+            )
+
+class EmbedAdvancedPreviewView(discord.ui.View):
+    """Advanced preview with field management and final actions"""
     
-    @commands.command(name="embedimport", help="Import embed from YAML file attachment")
-    async def embed_import(self, ctx, *, name: str = None):
-        """Import embed from YAML template
-        
-        Usage: `{ctx.prefix}embedimport [name] (attach YAML file)`
-        Imports embed from attached YAML file to your collection
-        
-        Examples:
-        - `{ctx.prefix}embedimport welcome` - Import with custom name
-        - `{ctx.prefix}embedimport` - Use filename as embed name
-        - Must attach .yaml file to message
-        
-        Common Errors:
-        - No file attached: Must attach YAML file to message
-        - Invalid YAML: File must be valid YAML format
-        - Name exists: Choose different name or delete existing
-        """
+    def __init__(self, author, embed_data: dict):
+        super().__init__(timeout=300)
+        self.author = author
+        self.embed_data = embed_data
+    
+    @discord.ui.button(label="Add Field", style=discord.ButtonStyle.primary, emoji=SPROUTS_CHECK)
+    async def add_field(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Add a field to the embed"""
+        modal = FieldAddModal(self.embed_data)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Send Embed", style=discord.ButtonStyle.success, emoji=SPROUTS_CHECK)
+    async def send_embed(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Send the embed to the channel"""
         try:
-            if not ctx.message.attachments:
-                embed = discord.Embed(
-                    title="No File Attached",
-                    description="Please attach a YAML file to import.\n\n**Usage:** `s.embedimport [name]` (with YAML file attached)",
-                    color=EMBED_COLOR_ERROR
+            embed = self.create_final_embed()
+            
+            # Get the original channel from the interaction
+            channel = interaction.channel
+            if channel and hasattr(channel, 'send'):
+                await channel.send(embed=embed)
+                await interaction.response.send_message(
+                    f"{SPROUTS_CHECK} Embed sent successfully!", ephemeral=True
                 )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            attachment = ctx.message.attachments[0]
-            
-            if not attachment.filename.endswith(('.yaml', '.yml')):
-                embed = discord.Embed(
-                    title=f"{SPROUTS_WARNING} Invalid File Type",
-                    description="Please attach a YAML file (.yaml or .yml).",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            # Read and parse YAML
-            content = await attachment.read()
-            yaml_data = yaml.safe_load(content.decode('utf-8'))
-            
-            # Use provided name or filename
-            embed_name = name or attachment.filename.replace('.yaml', '').replace('.yml', '')
-            embed_name = embed_name.strip()[:32]
-            
-            user_id = str(ctx.author.id)
-            guild_id = str(ctx.guild.id) if ctx.guild else "dm"
-            user_guild_key = f"{user_id}_{guild_id}"
-            
-            # Check if name already exists in guild embeds (for admins) or user embeds
-            name_exists = False
-            is_admin = (ctx.guild and hasattr(ctx.author, 'guild_permissions') and 
-                       ctx.author.guild_permissions.administrator)
-            
-            if is_admin:
-                if guild_id in self.saved_embeds and embed_name in self.saved_embeds[guild_id]:
-                    name_exists = True
-            
-            if not name_exists and user_guild_key in self.saved_embeds and embed_name in self.saved_embeds[user_guild_key]:
-                name_exists = True
-            
-            if name_exists:
-                embed = discord.Embed(
-                    title="Name Already Exists",
-                    description=f"An embed named '**{embed_name}**' already exists.\n\nUse a different name or delete the existing embed first.",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            # Validate YAML structure
-            required_fields = ['name', 'title', 'description', 'color']
-            if not all(field in yaml_data for field in required_fields):
-                embed = discord.Embed(
-                    title=f"{SPROUTS_WARNING} Invalid YAML Structure",
-                    description="The YAML file doesn't have the required embed structure.",
-                    color=EMBED_COLOR_ERROR
-                )
-                await ctx.reply(embed=embed, mention_author=False)
-                return
-            
-            # Save imported embed (to guild if admin, otherwise to user)
-            yaml_data['name'] = embed_name
-            
-            if is_admin:
-                if guild_id not in self.saved_embeds:
-                    self.saved_embeds[guild_id] = {}
-                self.saved_embeds[guild_id][embed_name] = yaml_data
-                scope_text = "server"
             else:
-                if user_guild_key not in self.saved_embeds:
-                    self.saved_embeds[user_guild_key] = {}
-                self.saved_embeds[user_guild_key][embed_name] = yaml_data
-                scope_text = "personal"
-            
-            self.save_embeds()
-            
-            embed = discord.Embed(
-                title="Embed Imported",
-                description=f"Embed '**{embed_name}**' imported successfully as {scope_text} embed from YAML!",
-                color=EMBED_COLOR_NORMAL
-            )
-            await ctx.reply(embed=embed, mention_author=False)
+                await interaction.response.send_message(
+                    f"{SPROUTS_ERROR} Could not send embed to this channel.", ephemeral=True
+                )
             
         except Exception as e:
-            logger.error(f"Error importing embed: {e}")
-            await ctx.reply("An error occurred while importing the embed. Please check the YAML format.", mention_author=False)
+            logger.error(f"Error sending embed: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error sending embed: {str(e)}", ephemeral=True
+            )
     
-    @commands.command(name="embedoldedit", help="Legacy text-based embed editor")
-    async def embed_old_edit(self, ctx, *, name: str):
-        """Legacy text-based embed editor
-        
-        Usage: `{ctx.prefix}embedoldedit <name>`
-        Opens text-based editor for quick embed editing
-        
-        Examples:
-        - `{ctx.prefix}embedoldedit welcome` - Edit with text interface
-        - Simple line-by-line editing approach
-        """
+    @discord.ui.button(label="Export JSON", style=discord.ButtonStyle.secondary, emoji=SPROUTS_INFORMATION)
+    async def export_json(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Export embed as JSON"""
         try:
-            guild_id = ctx.guild.id if ctx.guild else None
-            user_id = ctx.author.id
-            is_admin = ctx.author.guild_permissions.administrator if ctx.guild else False
+            # Create clean embed dict for export
+            export_data = {
+                "embeds": [self.embed_data]
+            }
+            json_str = json.dumps(export_data, indent=2)
             
-            # Check for existing embed
-            existing_embed = None
-            if guild_id and is_admin and guild_id in self.saved_embeds and name in self.saved_embeds[guild_id]:
-                existing_embed = self.saved_embeds[guild_id][name]
-            elif f"{user_id}_{guild_id}" in self.saved_embeds and name in self.saved_embeds[f"{user_id}_{guild_id}"]:
-                existing_embed = self.saved_embeds[f"{user_id}_{guild_id}"][name]
-            
-            if not existing_embed:
-                # Create new embed for editing
-                existing_embed = {
-                    'title': 'New Embed',
-                    'description': 'This is a new embed created with the legacy editor.',
-                    'color': EMBED_COLOR_NORMAL
-                }
-            
-            # Check if this is a new embed
-            is_new_embed = not existing_embed.get('title') or existing_embed.get('title') == 'New Embed'
-            status_text = "Creating new embed" if is_new_embed else "Editing existing embed"
-            
-            # Start enhanced legacy editing session
-            edit_embed = discord.Embed(
-                title=f"{SPROUTS_CHECK} Enhanced Text Editor",
-                description=f"{status_text}: **{name}**",
-                color=existing_embed.get('color', EMBED_COLOR_NORMAL)
+            await interaction.response.send_message(
+                f"{SPROUTS_CHECK} **Embed JSON Export:**\n```json\n{json_str[:1800]}{'...' if len(json_str) > 1800 else ''}\n```\n\n"
+                f"**Tip:** Use this JSON with [Glitchii's Embed Builder](https://glitchii.github.io/embedbuilder/) for advanced editing!",
+                ephemeral=True
             )
-            
-            # Show current values in fields for better organization
-            edit_embed.add_field(
-                name="Current Values",
-                value=f"**Title:** {existing_embed.get('title', 'None')}\n"
-                      f"**Description:** {existing_embed.get('description', 'None')[:80]}{'...' if existing_embed.get('description', '') and len(existing_embed.get('description', '')) > 80 else ''}\n"
-                      f"**Color:** #{format(existing_embed.get('color', EMBED_COLOR_NORMAL), '06x')}",
-                inline=False
-            )
-            
-            edit_embed.add_field(
-                name="Quick Commands",
-                value="`t <title>` - Set title\n"
-                      "`d <description>` - Set description\n"
-                      "`c <#hex>` - Set color\n"
-                      "`preview` - Show current embed\n"
-                      "`reset` - Reset to defaults",
-                inline=True
-            )
-            
-            edit_embed.add_field(
-                name="Session Control",
-                value="`save` - Save and finish\n"
-                      "`cancel` - Cancel changes\n"
-                      "`help` - Show all commands",
-                inline=True
-            )
-            
-            edit_embed.set_footer(text="Tip: Use short commands for faster editing! Session expires in 5 minutes.")
-            
-            await ctx.reply(embed=edit_embed, mention_author=False)
-            
-            # Create copy for editing
-            editing_embed = existing_embed.copy()
-            
-            def check(m):
-                return m.author == ctx.author and m.channel == ctx.channel
-            
-            while True:
-                try:
-                    msg = await self.bot.wait_for('message', timeout=300.0, check=check)
-                    content = msg.content.strip()
-                    
-                    if content.lower() == 'cancel':
-                        cancel_embed = discord.Embed(
-                            title=f"{SPROUTS_ERROR} Editing Cancelled",
-                            description="No changes were saved.",
-                            color=EMBED_COLOR_ERROR
-                        )
-                        await msg.reply(embed=cancel_embed, mention_author=False)
-                        break
-                    
-                    elif content.lower() == 'save':
-                        # Save the edited embed
-                        user_guild_key = f"{user_id}_{guild_id}"
-                        
-                        if is_admin:
-                            if guild_id not in self.saved_embeds:
-                                self.saved_embeds[guild_id] = {}
-                            self.saved_embeds[guild_id][name] = editing_embed
-                            scope_text = "server"
-                        else:
-                            if user_guild_key not in self.saved_embeds:
-                                self.saved_embeds[user_guild_key] = {}
-                            self.saved_embeds[user_guild_key][name] = editing_embed
-                            scope_text = "personal"
-                        
-                        self.save_embeds()
-                        
-                        save_embed = discord.Embed(
-                            title=f"{SPROUTS_CHECK} Embed Saved",
-                            description=f"Embed '**{name}**' saved as {scope_text} embed!",
-                            color=EMBED_COLOR_NORMAL
-                        )
-                        await msg.reply(embed=save_embed, mention_author=False)
-                        break
-                    
-                    # Enhanced command handling with short aliases
-                    elif content.lower().startswith(('title:', 't ')):
-                        prefix = 'title:' if content.startswith('title:') else 't '
-                        new_title = content[len(prefix):].strip()
-                        if len(new_title) > 256:
-                            await msg.reply(f"{SPROUTS_WARNING} Title too long! Maximum 256 characters.", mention_author=False)
-                            continue
-                        editing_embed['title'] = new_title
-                        await msg.reply(f"{SPROUTS_CHECK} Title updated to: **{new_title}**", mention_author=False)
-                    
-                    elif content.lower().startswith(('desc:', 'd ')):
-                        prefix = 'desc:' if content.startswith('desc:') else 'd '
-                        new_desc = content[len(prefix):].strip()
-                        if len(new_desc) > 4096:
-                            await msg.reply(f"{SPROUTS_WARNING} Description too long! Maximum 4096 characters.", mention_author=False)
-                            continue
-                        editing_embed['description'] = new_desc
-                        preview = new_desc[:80] + ('...' if len(new_desc) > 80 else '')
-                        await msg.reply(f"{SPROUTS_CHECK} Description updated: {preview}", mention_author=False)
-                    
-                    elif content.lower().startswith(('color:', 'c ')):
-                        prefix = 'color:' if content.startswith('color:') else 'c '
-                        new_color = content[len(prefix):].strip()
-                        if new_color.startswith('#'):
-                            new_color = new_color[1:]
-                        
-                        try:
-                            color_int = int(new_color, 16)
-                            editing_embed['color'] = color_int
-                            await msg.reply(f"{SPROUTS_CHECK} Color updated to: #{new_color}", mention_author=False)
-                        except ValueError:
-                            await msg.reply(f"{SPROUTS_WARNING} Invalid color! Use hex format like #ff0000 or ff0000", mention_author=False)
-                    
-                    elif content.lower() == 'preview':
-                        # Show live preview of current embed
-                        preview_embed = discord.Embed(
-                            title=editing_embed.get('title', 'No Title'),
-                            description=editing_embed.get('description', 'No Description'),
-                            color=editing_embed.get('color', EMBED_COLOR_NORMAL)
-                        )
-                        preview_embed.set_footer(text="Live Preview - This is how your embed will look")
-                        await msg.reply(embed=preview_embed, mention_author=False)
-                    
-                    elif content.lower() == 'reset':
-                        editing_embed = {
-                            'title': 'New Embed',
-                            'description': 'This is a new embed created with the enhanced text editor.',
-                            'color': EMBED_COLOR_NORMAL
-                        }
-                        await msg.reply(f"{SPROUTS_CHECK} Embed reset to defaults!", mention_author=False)
-                    
-                    elif content.lower() == 'help':
-                        help_embed = discord.Embed(
-                            title=f"{SPROUTS_CHECK} Enhanced Text Editor Commands",
-                            color=EMBED_COLOR_NORMAL
-                        )
-                        help_embed.add_field(
-                            name="Editing Commands",
-                            value="`t <title>` or `title: <title>` - Set title\n"
-                                  "`d <desc>` or `desc: <desc>` - Set description\n"
-                                  "`c <#hex>` or `color: <#hex>` - Set color",
-                            inline=False
-                        )
-                        help_embed.add_field(
-                            name="Utility Commands",
-                            value="`preview` - Show live preview\n"
-                                  "`reset` - Reset to defaults\n"
-                                  "`help` - Show this help",
-                            inline=False
-                        )
-                        help_embed.add_field(
-                            name="Session Commands",
-                            value="`save` - Save and finish\n"
-                                  "`cancel` - Cancel editing",
-                            inline=False
-                        )
-                        await msg.reply(embed=help_embed, mention_author=False)
-                    
-                    else:
-                        quick_help = discord.Embed(
-                            title=f"{SPROUTS_WARNING} Unknown Command",
-                            description=f"**`{content}`** is not recognized.\n\n"
-                                       "**Quick Commands:**\n"
-                                       "`t <title>` - Set title\n"
-                                       "`d <description>` - Set description\n"
-                                       "`c <#hex>` - Set color\n"
-                                       "`preview` - Show preview\n"
-                                       "`save` - Save embed\n"
-                                       "`help` - Full command list",
-                            color=EMBED_COLOR_ERROR
-                        )
-                        await msg.reply(embed=quick_help, mention_author=False)
-                
-                except asyncio.TimeoutError:
-                    timeout_embed = discord.Embed(
-                        title="Session Timeout",
-                        description="Editing session timed out. No changes saved.",
-                        color=EMBED_COLOR_ERROR
-                    )
-                    await ctx.send(embed=timeout_embed)
-                    break
             
         except Exception as e:
-            logger.error(f"Error in legacy editor: {e}")
-            await ctx.reply("An error occurred in the legacy editor.", mention_author=False)
+            logger.error(f"Error exporting JSON: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error exporting JSON.", ephemeral=True
+            )
+    
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary, emoji=SPROUTS_ERROR)
+    async def cancel_preview(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Cancel the embed preview"""
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Embed Builder Cancelled",
+            description="Embed preview session has been cancelled.",
+            color=EMBED_COLOR_NORMAL
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+    
+    def create_final_embed(self) -> discord.Embed:
+        """Create the final embed for sending"""
+        embed = discord.Embed(
+            title=self.embed_data.get("title"),
+            description=self.embed_data.get("description"),
+            color=self.embed_data.get("color", EMBED_COLOR_NORMAL)
+        )
+        
+        # Add author
+        if self.embed_data.get("author"):
+            author_data = self.embed_data["author"]
+            embed.set_author(name=author_data.get("name", ""))
+        
+        # Add footer
+        if self.embed_data.get("footer"):
+            footer_data = self.embed_data["footer"]
+            embed.set_footer(text=footer_data.get("text", ""))
+        
+        # Add image
+        if self.embed_data.get("image"):
+            embed.set_image(url=self.embed_data["image"]["url"])
+        
+        # Add thumbnail
+        if self.embed_data.get("thumbnail"):
+            embed.set_thumbnail(url=self.embed_data["thumbnail"]["url"])
+        
+        # Add fields
+        for field in self.embed_data.get("fields", []):
+            embed.add_field(
+                name=field.get("name", "Field"),
+                value=field.get("value", "Value"),
+                inline=field.get("inline", False)
+            )
+        
+        return embed
+
+class FieldAddModal(discord.ui.Modal):
+    """Modal for adding fields to embeds"""
+    
+    def __init__(self, embed_data: dict):
+        super().__init__(title="Add Embed Field")
+        self.embed_data = embed_data
+        
+        self.name_input = discord.ui.TextInput(
+            label="Field Name",
+            placeholder="Enter field title...",
+            max_length=256,
+            required=True
+        )
+        
+        self.value_input = discord.ui.TextInput(
+            label="Field Value",
+            placeholder="Enter field content...",
+            style=discord.TextStyle.paragraph,
+            max_length=1024,
+            required=True
+        )
+        
+        self.inline_input = discord.ui.TextInput(
+            label="Inline (yes/no)",
+            placeholder="Type 'yes' for inline, 'no' for full width",
+            max_length=3,
+            required=False
+        )
+        
+        self.add_item(self.name_input)
+        self.add_item(self.value_input)
+        self.add_item(self.inline_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            # Parse inline setting
+            inline = self.inline_input.value.lower().strip() in ['yes', 'y', 'true', '1']
+            
+            # Add field to embed data
+            if "fields" not in self.embed_data:
+                self.embed_data["fields"] = []
+            
+            self.embed_data["fields"].append({
+                "name": self.name_input.value,
+                "value": self.value_input.value,
+                "inline": inline
+            })
+            
+            # Create updated preview
+            embed = discord.Embed(
+                title=self.embed_data.get("title"),
+                description=self.embed_data.get("description"),
+                color=self.embed_data.get("color", EMBED_COLOR_NORMAL)
+            )
+            
+            # Add all components
+            if self.embed_data.get("author"):
+                embed.set_author(name=self.embed_data["author"]["name"])
+            if self.embed_data.get("footer"):
+                embed.set_footer(text=self.embed_data["footer"]["text"])
+            if self.embed_data.get("image"):
+                embed.set_image(url=self.embed_data["image"]["url"])
+            if self.embed_data.get("thumbnail"):
+                embed.set_thumbnail(url=self.embed_data["thumbnail"]["url"])
+            
+            for field in self.embed_data.get("fields", []):
+                embed.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field["inline"]
+                )
+            
+            view = EmbedAdvancedPreviewView(interaction.user, self.embed_data)
+            await interaction.response.send_message(
+                f"{SPROUTS_CHECK} **Field Added!** Updated embed preview:",
+                embed=embed,
+                view=view,
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Error adding field: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error adding field.", ephemeral=True
+            )
+
+class TemplateSelectView(discord.ui.View):
+    """Template selection interface"""
+    
+    def __init__(self, author, embed_data: dict):
+        super().__init__(timeout=300)
+        self.author = author
+        self.embed_data = embed_data
+    
+    @discord.ui.select(
+        placeholder="Choose a template...",
+        options=[
+            discord.SelectOption(label="Announcement", value="announcement", emoji=SPROUTS_CHECK),
+            discord.SelectOption(label="Welcome", value="welcome", emoji=SPROUTS_CHECK),
+            discord.SelectOption(label="Rules", value="rules", emoji=SPROUTS_WARNING),
+            discord.SelectOption(label="Event", value="event", emoji=SPROUTS_INFORMATION),
+            discord.SelectOption(label="Support", value="support", emoji=SPROUTS_ERROR),
+            discord.SelectOption(label="Info", value="info", emoji=SPROUTS_INFORMATION)
+        ]
+    )
+    async def template_select(self, interaction: discord.Interaction, select: discord.ui.Select):
+        try:
+            # Load template
+            with open("src/data/embed_templates.json", 'r') as f:
+                templates = json.load(f)
+            
+            template_name = select.values[0]
+            if template_name in templates:
+                template = templates[template_name]
+                
+                # Create embed from template
+                embed = discord.Embed(
+                    title=template.get("title", ""),
+                    description=template.get("description", ""),
+                    color=template.get("color", EMBED_COLOR_NORMAL)
+                )
+                
+                # Add fields
+                for field in template.get("fields", []):
+                    embed.add_field(
+                        name=field["name"],
+                        value=field["value"],
+                        inline=field.get("inline", False)
+                    )
+                
+                if template.get("footer"):
+                    embed.set_footer(text=template["footer"]["text"])
+                
+                # Show template preview with edit options
+                view = TemplateEditView(interaction.user, template, template_name)
+                
+                await interaction.response.send_message(
+                    f"{SPROUTS_CHECK} **Template Preview: {template_name.title()}**\n"
+                    "You can edit this template or send it as-is:",
+                    embed=embed,
+                    view=view,
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"{SPROUTS_ERROR} Template not found.", ephemeral=True
+                )
+                
+        except Exception as e:
+            logger.error(f"Error loading template: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error loading template.", ephemeral=True
+            )
+
+class TemplateEditView(discord.ui.View):
+    """Template editing and sending interface"""
+    
+    def __init__(self, author, template_data: dict, template_name: str):
+        super().__init__(timeout=300)
+        self.author = author
+        self.template_data = template_data
+        self.template_name = template_name
+    
+    @discord.ui.button(label="Send Template", style=discord.ButtonStyle.success, emoji=SPROUTS_CHECK)
+    async def send_template(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Send the template as-is"""
+        try:
+            embed = discord.Embed(
+                title=self.template_data.get("title", ""),
+                description=self.template_data.get("description", ""),
+                color=self.template_data.get("color", EMBED_COLOR_NORMAL)
+            )
+            
+            for field in self.template_data.get("fields", []):
+                embed.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field.get("inline", False)
+                )
+            
+            if self.template_data.get("footer"):
+                embed.set_footer(text=self.template_data["footer"]["text"])
+            
+            # Send to original channel
+            channel = interaction.channel
+            if channel and hasattr(channel, 'send'):
+                await channel.send(embed=embed)
+                await interaction.response.send_message(
+                    f"{SPROUTS_CHECK} Template sent successfully!", ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"{SPROUTS_ERROR} Could not send to channel.", ephemeral=True
+                )
+            
+        except Exception as e:
+            logger.error(f"Error sending template: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error sending template.", ephemeral=True
+            )
+    
+    @discord.ui.button(label="Edit Template", style=discord.ButtonStyle.primary, emoji=SPROUTS_WARNING)
+    async def edit_template(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Open template for editing"""
+        modal = TemplateEditModal(self.template_data)
+        await interaction.response.send_modal(modal)
+
+class TemplateEditModal(discord.ui.Modal):
+    """Modal for editing template content"""
+    
+    def __init__(self, template_data: dict):
+        super().__init__(title="Edit Template")
+        self.template_data = template_data
+        
+        self.title_input = discord.ui.TextInput(
+            label="Title",
+            default=template_data.get("title", ""),
+            max_length=256,
+            required=False
+        )
+        
+        self.description_input = discord.ui.TextInput(
+            label="Description",
+            default=template_data.get("description", ""),
+            style=discord.TextStyle.paragraph,
+            max_length=4000,
+            required=False
+        )
+        
+        footer_text = ""
+        if template_data.get("footer") and isinstance(template_data["footer"], dict):
+            footer_text = template_data["footer"].get("text", "")
+        
+        self.footer_input = discord.ui.TextInput(
+            label="Footer",
+            default=footer_text,
+            max_length=2048,
+            required=False
+        )
+        
+        self.add_item(self.title_input)
+        self.add_item(self.description_input)
+        self.add_item(self.footer_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            # Update template data
+            updated_template = self.template_data.copy()
+            updated_template["title"] = self.title_input.value
+            updated_template["description"] = self.description_input.value
+            updated_template["footer"] = {"text": self.footer_input.value}
+            
+            # Create updated embed
+            embed = discord.Embed(
+                title=updated_template["title"],
+                description=updated_template["description"],
+                color=updated_template.get("color", EMBED_COLOR_NORMAL)
+            )
+            
+            for field in updated_template.get("fields", []):
+                embed.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field.get("inline", False)
+                )
+            
+            if updated_template["footer"]["text"]:
+                embed.set_footer(text=updated_template["footer"]["text"])
+            
+            # Send updated embed
+            channel = interaction.channel
+            if channel and hasattr(channel, 'send'):
+                await channel.send(embed=embed)
+                await interaction.response.send_message(
+                    f"{SPROUTS_CHECK} **Updated Template Sent!**", ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"{SPROUTS_ERROR} Could not send to channel.", ephemeral=True
+                )
+            
+        except Exception as e:
+            logger.error(f"Error updating template: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error updating template.", ephemeral=True
+            )
+
+class JSONImportModal(discord.ui.Modal):
+    """Modal for importing embed from JSON"""
+    
+    def __init__(self, embed_data: dict):
+        super().__init__(title="JSON Import")
+        self.embed_data = embed_data
+        
+        self.json_input = discord.ui.TextInput(
+            label="Embed JSON",
+            placeholder='Get JSON from: https://glitchii.github.io/embedbuilder/ - Paste here...',
+            style=discord.TextStyle.paragraph,
+            max_length=4000,
+            required=True
+        )
+        
+        self.add_item(self.json_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            json_data = json.loads(self.json_input.value)
+            
+            # Handle different JSON formats
+            embed_dict = None
+            if "embeds" in json_data and isinstance(json_data["embeds"], list) and json_data["embeds"]:
+                embed_dict = json_data["embeds"][0]
+            elif "embed" in json_data:
+                embed_dict = json_data["embed"]
+            else:
+                embed_dict = json_data
+            
+            # Create embed from JSON
+            embed = discord.Embed.from_dict(embed_dict)
+            
+            view = EmbedAdvancedPreviewView(interaction.user, embed_dict)
+            
+            await interaction.response.send_message(
+                f"{SPROUTS_CHECK} **JSON Import Successful!** Here's your embed:",
+                embed=embed,
+                view=view,
+                ephemeral=True
+            )
+            
+        except json.JSONDecodeError as e:
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Invalid JSON format: {str(e)}", ephemeral=True
+            )
+        except Exception as e:
+            logger.error(f"Error importing JSON: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error importing embed: {str(e)}", ephemeral=True
+            )
 
 async def setup(bot):
     await bot.add_cog(EmbedBuilder(bot))
-    logger.info("Enhanced embed builder setup completed")

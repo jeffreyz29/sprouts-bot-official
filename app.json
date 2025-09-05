@@ -1,23 +1,12 @@
 {
   "name": "Sprouts Discord Bot",
-  "description": "A comprehensive Discord bot with web dashboard",
-  "keywords": ["discord", "bot", "python"],
+  "description": "Enterprise-grade Discord bot with ticket system, feature flags, embed builder, and deployment protection",
+  "keywords": ["discord", "bot", "python", "digital-ocean", "tickets", "moderation"],
   "website": "https://github.com/jeffreyz29/sprouts-bot-official",
   "repository": "https://github.com/jeffreyz29/sprouts-bot-official",
   "scripts": {
-    "postdeploy": "echo 'Bot deployed successfully'",
-    "start": "python bot_with_web.py"
-  },
-  "buildpacks": [
-    {
-      "url": "heroku/python"
-    }
-  ],
-  "formation": {
-    "web": {
-      "quantity": 1,
-      "size": "basic"
-    }
+    "postdeploy": "echo 'SPROUTS Bot deployed successfully on Digital Ocean'",
+    "start": "python main.py"
   },
   "env": {
     "DISCORD_BOT_TOKEN": {
@@ -48,8 +37,8 @@
       "required": false,
       "value": ""
     },
-    "MONGO_URI": {
-      "description": "MongoDB connection string for data storage",
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string for enterprise data storage",
       "required": true
     },
     "EMBED_COLOR_NORMAL": {

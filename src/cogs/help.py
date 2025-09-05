@@ -8,7 +8,8 @@ from discord.ext import commands
 import logging
 from typing import Optional
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
-from src.emojis import SPROUTS_ERROR
+from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_INFORMATION
+from src.feature_flags import feature_manager
 
 # Add success color if not in config
 EMBED_COLOR_SUCCESS = 0x77DD77
@@ -16,8 +17,60 @@ from src.cogs.guild_settings import guild_settings
 
 logger = logging.getLogger(__name__)
 
+class HelpPaginationView(discord.ui.View):
+    """Pagination view for help command with Previous, Next, Close buttons"""
+    
+    def __init__(self, pages, user_id, prefix):
+        super().__init__(timeout=300)
+        self.pages = pages
+        self.current_page = 0
+        self.user_id = user_id
+        self.prefix = prefix
+        
+        # Update button states
+        self.update_buttons()
+    
+    def update_buttons(self):
+        """Update button states based on current page"""
+        self.previous_button.disabled = (self.current_page == 0)
+        self.next_button.disabled = (self.current_page == len(self.pages) - 1)
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Only allow the user who ran the command to use buttons"""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("You cannot control someone else's help menu!", ephemeral=True)
+            return False
+        return True
+    
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to previous page"""
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            embed = self.pages[self.current_page]
+            await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to next page"""
+        if self.current_page < len(self.pages) - 1:
+            self.current_page += 1
+            self.update_buttons()
+            embed = self.pages[self.current_page]
+            await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red)
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Close the help menu"""
+        embed = discord.Embed(
+            description="Help menu closed.",
+            color=EMBED_COLOR_NORMAL
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
 class DetailedCommandHelpView(discord.ui.View):
-    """Interactive view for extremely detailed command help"""
+    """Modern interactive view for command help with sleek design"""
     
     def __init__(self, command, prefix, user):
         super().__init__(timeout=300)
@@ -893,6 +946,72 @@ class DetailedCommandHelpView(discord.ui.View):
                     "**No reminders:** `You have no reminders to delete.`"
                 ]
             },
+            
+            # Embed Builder - SPROUTS System
+            "embed": {
+                "category": "Embed Builder",
+                "description": "SPROUTS advanced Discord-native embed builder with interactive forms and live preview",
+                "usage": f"{self.prefix}embed",
+                "detailed_usage": [
+                    f"`{self.prefix}embed` - Open the main embed builder interface",
+                    f"`{self.prefix}createembed` - Alternative command name",
+                    f"`{self.prefix}embedcreate` - Alternative command name"
+                ],
+                "examples": [
+                    f"`{self.prefix}embed` - Start the interactive embed builder",
+                    "Choose from: Interactive Builder, Quick Builder, Templates, or JSON Import",
+                    "Create professional embeds with live preview before sending"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "features": [
+                    "🎨 **Interactive Builder** - Step-by-step creation with modal forms",
+                    "⚡ **Quick Builder** - Fast single-modal creation",
+                    "📋 **Professional Templates** - 6 pre-made designs (announcement, welcome, rules, event, support, info)",
+                    "📤 **JSON Import/Export** - Import from external builders & export for reuse",
+                    "🎨 **Live Preview** - See your embed before sending",
+                    "🎨 **Advanced Color System** - Named colors (red, blue, discord) + hex support"
+                ],
+                "error_scenarios": [
+                    "**No errors possible** - The builder handles all validation",
+                    "**JSON Import:** Invalid JSON format will be clearly reported",
+                    "**Modal Timeout:** Modals timeout after 5 minutes of inactivity"
+                ]
+            },
+            
+            "createembed": {
+                "category": "Embed Builder",
+                "description": "Alternative command name for SPROUTS embed builder",
+                "usage": f"{self.prefix}createembed",
+                "detailed_usage": [
+                    f"`{self.prefix}createembed` - Same as {self.prefix}embed command"
+                ],
+                "examples": [
+                    f"`{self.prefix}createembed` - Opens the interactive embed builder interface"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - Redirects to main embed builder"
+                ]
+            },
+            
+            "embedcreate": {
+                "category": "Embed Builder", 
+                "description": "Alternative command name for SPROUTS embed builder",
+                "usage": f"{self.prefix}embedcreate",
+                "detailed_usage": [
+                    f"`{self.prefix}embedcreate` - Same as {self.prefix}embed command"
+                ],
+                "examples": [
+                    f"`{self.prefix}embedcreate` - Opens the interactive embed builder interface"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user", 
+                "error_scenarios": [
+                    "**No errors possible** - Redirects to main embed builder"
+                ]
+            },
         }
         
         # Get command info or return generic info
@@ -1131,8 +1250,326 @@ class DetailedCommandHelpView(discord.ui.View):
         for item in self.children:
             item.disabled = True
 
+class HelpView(discord.ui.View):
+    """Simple help navigation with Previous, Next, and Close buttons"""
+    
+    def __init__(self, bot, user, prefix):
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.user = user
+        self.prefix = prefix
+        self.current_page = "main"
+        self.page_order = ["main", "utilities", "tickets", "embeds", "autoresponders", "sticky", "reminders", "serverstats"]
+        self.current_index = 0
+        
+        # Define all help pages with the same content structure
+        self.pages = {
+            "main": {
+                "title": "Sprouts Commands List",
+                "description": f"Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.\n\nUse `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@{self.bot.user.id}>",
+                "fields": [
+                    {
+                        "name": f"{SPROUTS_INFORMATION} Command Categories",
+                        "value": "Use the buttons below to browse different command categories:\n\n"
+                                f"{SPROUTS_INFORMATION} **Utilities** - Basic bot commands and server info\n"
+                                f"{SPROUTS_INFORMATION} **Tickets** - Support ticket system management\n"
+                                f"{SPROUTS_INFORMATION} **Embed Builder** - Create and edit custom embeds\n" 
+                                f"{SPROUTS_INFORMATION} **Auto Responders** - Automated message responses\n"
+                                f"{SPROUTS_INFORMATION} **Sticky Messages** - Persistent channel messages\n"
+                                f"{SPROUTS_INFORMATION} **Reminders** - Personal reminder system\n"
+                                f"{SPROUTS_INFORMATION} **Server Stats** - Server monitoring tools",
+                        "inline": False
+                    }
+                ]
+            },
+            "utilities": {
+                "title": f"{SPROUTS_INFORMATION} Utilities Commands",
+                "description": f"Basic utility commands and server information tools\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "Basic Info Commands",
+                        "value": "`about` - Show bot statistics, uptime, and system information\n"
+                                "`invite` - Get bot invite link and support server links\n"
+                                "`shards` - Display bot shard information and latency\n"
+                                "`vote` - Get voting links to support the bot",
+                        "inline": False
+                    },
+                    {
+                        "name": "User & Server Info",
+                        "value": "`avatar` - Get user's avatar (defaults to yourself)\n"
+                                "`channelinfo` - Get detailed channel information\n"
+                                "`inviteinfo` - Get information about Discord invite\n"
+                                "`ping` - Check bot response time and API latency\n"
+                                "`roleinfo` - Get detailed role information and permissions\n"
+                                "`serverinfo` - Get detailed server information and statistics\n"
+                                "`userinfo` - Get detailed user information (defaults to yourself)",
+                        "inline": False
+                    },
+                    {
+                        "name": "Configuration",
+                        "value": "`setprefix` - Set custom command prefix for this server\n"
+                                "`prefix` - Show current server prefix\n"
+                                "`variables` - Show all available variables for embeds and messages",
+                        "inline": False
+                    }
+                ]
+            },
+            "tickets": {
+                "title": f"{SPROUTS_INFORMATION} Ticket System Commands",
+                "description": f"Complete support ticket management system\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "User Ticket Commands",
+                        "value": "`new` / `open` - Create new support ticket\n"
+                                "`close` - Close current ticket with reason",
+                        "inline": False
+                    },
+                    {
+                        "name": "Staff Tools & Moderation",
+                        "value": "`blacklist` - Manage user blacklist system\n"
+                                "`viewstaff` - View all staff members\n"
+                                "`managetags add/delete/list` - Manage response tags\n"
+                                "`tickettag` - Send tag response\n"
+                                "`notes` - Create staff-only thread\n"
+                                "`on-call` - Toggle staff auto-assignment",
+                        "inline": False
+                    },
+                    {
+                        "name": "Configuration Commands",
+                        "value": "`setup auto` - Initial ticket system configuration\n"
+                                "`setup limit` - Set user ticket limit per server\n"
+                                "`setup transcripts` - Configure full conversation transcripts\n"
+                                "`setup use-threads` - Toggle threads vs channels\n"
+                                "`autoclose configure` - Configure automatic closure\n"
+                                "`autoclose exclude` - Exclude ticket from autoclose\n"
+                                "`addadmin` / `removeadmin` - Manage admin roles\n"
+                                "`addsupport` / `removesupport` - Manage staff roles",
+                        "inline": False
+                    },
+                    {
+                        "name": "Ticket Panels & Setup",
+                        "value": "`createpanel` - Create new ticket panel\n"
+                                "`listpanels` - List all ticket panels\n"
+                                "`delpanel` - Delete ticket panel\n"
+                                "`ticketsetup` - Interactive setup wizard\n"
+                                "`ticketlimit` - Set user ticket limit\n"
+                                "`ghostping` - Toggle ghost ping",
+                        "inline": False
+                    },
+                    {
+                        "name": "Staff Ticket Management",
+                        "value": "`claim` - Claim ownership of ticket\n"
+                                "`unclaim` - Release ticket ownership\n"
+                                "`add` - Add user to current ticket\n"
+                                "`remove` - Remove user from ticket\n"
+                                "`rename` - Rename ticket channel\n"
+                                "`tickettopic` - Set ticket description\n"
+                                "`move` - Move ticket to category\n"
+                                "`forceclose` - Force close any ticket\n"
+                                "`listtickets` - View all active tickets",
+                        "inline": False
+                    }
+                ]
+            },
+            "embeds": {
+                "title": f"{SPROUTS_INFORMATION} SPROUTS Style Embed System",
+                "description": f"Professional partnership-grade embed builder with advanced customization\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "Advanced Embed Creation",
+                        "value": "`embedcreate [name]` - Create professional embed with visual editor\n"
+                                "`embededit [name] [element] [value]` - Edit specific embed elements\n"
+                                "`embedcreateempty [name]` - Create blank embed template\n"
+                                "`embedtest [name]` - Preview embed before saving",
+                        "inline": False
+                    },
+                    {
+                        "name": "Embed Management & Variables", 
+                        "value": "`embedlist` - List all saved embeds with previews\n"
+                                "`embedview [name]` - View saved embed with full details\n"
+                                "`embeddelete [name]` - Remove saved embed\n"
+                                "`embedvariables` - Show all available variables",
+                        "inline": False
+                    },
+                    {
+                        "name": "Import, Export & Templates",
+                        "value": "`embedexport [name]` - Export as shareable YAML template\n"
+                                "`embedimport` - Import from YAML/JSON template\n"
+                                "`embedcopy [name] [newname]` - Copy existing embed\n"
+                                "`embedtemplate [type]` - Load partnership templates",
+                        "inline": False
+                    },
+                    {
+                        "name": "Quick Actions & Integration",
+                        "value": "`embedsend [name] [#channel]` - Send embed to channel\n"
+                                "`embedattach [name]` - Attach to autoresponder/panel\n"
+                                "`embedcolor [name] [hex]` - Quick color changes\n"
+                                "`embedpreview [name]` - Live preview with variables",
+                        "inline": False
+                    }
+                ]
+            },
+            "autoresponders": {
+                "title": f"{SPROUTS_INFORMATION} Auto Responders Commands",
+                "description": f"Simple trigger and reply system\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "Auto Responder Management",
+                        "value": "`autoresponder add` - Add simple auto responder\n"
+                                "`autoresponder editreply` - Edit responder reply\n"
+                                "`autoresponder remove` - Remove auto responder\n"
+                                "`autoresponder list` - List all auto responders\n"
+                                "`autoresponder toggle` - Enable/disable responder",
+                        "inline": False
+                    },
+                    {
+                        "name": "Format & Usage",
+                        "value": "**Format:** `trigger:<text> reply:<response>`\n"
+                                "Simple trigger and reply system without complex functions\n\n"
+                                "**Example:**\n"
+                                f"`{prefix}autoresponder add trigger:hello reply:Hello there!`",
+                        "inline": False
+                    }
+                ]
+            },
+            "sticky": {
+                "title": f"{SPROUTS_INFORMATION} Sticky Messages Commands", 
+                "description": f"Persistent channel messages that auto-repost\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "Sticky Message Controls",
+                        "value": "`stick` - Create sticky message\n"
+                                "`stickslow` - Create slow sticky message\n"
+                                "`stickstop` - Stop sticky in channel\n"
+                                "`stickstart` - Restart sticky in channel\n"
+                                "`stickremove` - Remove sticky completely",
+                        "inline": False
+                    },
+                    {
+                        "name": "Management",
+                        "value": "`getstickies` - List all server stickies\n"
+                                "`stickspeed` - View/change sticky speed",
+                        "inline": False
+                    }
+                ]
+            },
+            "reminders": {
+                "title": f"{SPROUTS_INFORMATION} Reminders Commands",
+                "description": f"Personal reminder system with flexible time formats\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "Reminder Management",
+                        "value": "`remind` - Set a personal reminder\n"
+                                "`reminders` - List your active reminders\n"
+                                "`delreminder` - Delete a specific reminder",
+                        "inline": False
+                    },
+                    {
+                        "name": "Time Format Examples",
+                        "value": f"`{prefix}remind 1h Take a break` - 1 hour reminder\n"
+                                f"`{prefix}remind 30m Check dinner` - 30 minute reminder\n"
+                                f"`{prefix}remind 1d2h Meeting` - 1 day 2 hours reminder\n"
+                                "Supports: s (seconds), m (minutes), h (hours), d (days), w (weeks)",
+                        "inline": False
+                    }
+                ]
+            },
+            "serverstats": {
+                "title": f"{SPROUTS_INFORMATION} Server Stats Commands",
+                "description": f"Real-time server monitoring and statistics\nPrefix: `{prefix}`",
+                "fields": [
+                    {
+                        "name": "Server Statistics",
+                        "value": "`serverstats` - View/manage server statistics monitoring\n"
+                                "Provides real-time member count tracking and server analytics\n"
+                                "Requires **Manage Guild** permission to enable/disable",
+                        "inline": False
+                    }
+                ]
+            }
+        }
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Only allow the user who ran the command to use buttons"""
+        return interaction.user.id == self.user.id
+    
+    async def create_embed(self, page_key):
+        """Create embed for specific page"""
+        page = self.pages[page_key]
+        
+        embed = discord.Embed(
+            title=page["title"],
+            description=page["description"],
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        for field in page["fields"]:
+            embed.add_field(
+                name=field["name"],
+                value=field["value"],
+                inline=field.get("inline", False)
+            )
+        
+        embed.set_footer(
+            text=f"Use {self.prefix}help <command> for detailed command info",
+            icon_url=self.user.display_avatar.url
+        )
+        embed.timestamp = discord.utils.utcnow()
+        
+        return embed
+    
+    @discord.ui.button(label='Previous', style=discord.ButtonStyle.primary)
+    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to previous page"""
+        await interaction.response.defer()
+        
+        if self.current_index > 0:
+            self.current_index -= 1
+        else:
+            self.current_index = len(self.page_order) - 1  # Wrap to last page
+            
+        self.current_page = self.page_order[self.current_index]
+        embed = await self.create_embed(self.current_page)
+        await interaction.edit_original_response(embed=embed, view=self)
+    
+    @discord.ui.button(label='Next', style=discord.ButtonStyle.primary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to next page"""
+        await interaction.response.defer()
+        
+        if self.current_index < len(self.page_order) - 1:
+            self.current_index += 1
+        else:
+            self.current_index = 0  # Wrap to first page
+            
+        self.current_page = self.page_order[self.current_index]
+        embed = await self.create_embed(self.current_page)
+        await interaction.edit_original_response(embed=embed, view=self)
+    
+    @discord.ui.button(label=f'{SPROUTS_ERROR} Close', style=discord.ButtonStyle.danger)
+    async def close_help(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Close the help menu"""
+        await interaction.response.defer()
+        
+        # Disable all buttons
+        for item in self.children:
+            item.disabled = True
+            
+        embed = discord.Embed(
+            title="Help Menu Closed",
+            description="Thanks for using the help system!",
+            color=EMBED_COLOR_SUCCESS
+        )
+        await interaction.edit_original_response(embed=embed, view=self)
+    
+    async def on_timeout(self):
+        """Disable view when timeout occurs"""
+        for item in self.children:
+            item.disabled = True
+
+
 class HelpCommand(commands.Cog):
-    """Simple help command with list layout"""
+    """Interactive help command with button navigation"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -1144,7 +1581,7 @@ class HelpCommand(commands.Cog):
     
     @commands.command(name="help", help="Show commands list")
     async def help_command(self, ctx, *, command_name: Optional[str] = None):
-        """Simple help command with list format"""
+        """Show help for bot commands with button pagination"""
         try:
             # Get prefix for this guild
             if ctx.guild:
@@ -1157,159 +1594,410 @@ class HelpCommand(commands.Cog):
                 await self.show_command_help(ctx, command_name, prefix)
                 return
             
-            # Show main help list
-            embed = discord.Embed(
-                title="Sprouts Commands List",
-                description=f"Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.\n\n"
-                           f"Use `{prefix}help <command>` for detailed info.\n"
-                           f"This server prefix: `{prefix}`, <@{self.bot.user.id}>",
-                color=EMBED_COLOR_NORMAL
-            )
-            
-            # Uncategorized commands
-            uncategorized_commands = [
-                "`about` - Show bot statistics, uptime, and system information",
-                "`invite` - Get bot invite link and support server links", 
-                "`shards` - Display bot shard information and latency",
-                "`vote` - Get voting links to support the bot"
-            ]
-            
-            embed.add_field(
-                name="Uncategorized",
-                value="\n".join(uncategorized_commands),
-                inline=False
-            )
-            
-            # Utilities commands
-            utilities_commands = [
-                "`avatar` - Get user's avatar (defaults to yourself)",
-                "`channelinfo` - Get detailed channel information",
-                "`inviteinfo` - Get information about Discord invite", 
-                "`ping` - Check bot response time and API latency",
-                "`roleinfo` - Get detailed role information and permissions",
-                "`serverinfo` - Get detailed server information and statistics",
-                "`userinfo` - Get detailed user information (defaults to yourself)",
-                "`setprefix` - Set custom command prefix for this server",
-                "`prefix` - Show current server prefix",
-                "`variables` - Show all available variables for embeds and messages"
-            ]
-            
-            embed.add_field(
-                name="Utilities", 
-                value="\n".join(utilities_commands),
-                inline=False
-            )
-            
-            
-            # Ticket commands
-            ticket_commands = [
-                "`new` - Create support ticket",
-                "`add` - Add member to ticket",
-                "`claim` - Claim ticket ownership", 
-                "`close` - Close ticket",
-                "`forceclose` - Force close ticket",
-                "`move` - Move to a new ticket category",
-                "`unclaim` - Release ticket ownership",
-                "`remove` - Remove member from ticket",
-                "`listtickets` - List active guild tickets",
-                "`topic` - Sets the topic of the ticket",
-                "`rename` - Rename a ticket channel",
-                "`createpanel` - Create a new ticket panel",
-                "`listpanels` - List the active ticket panels",
-                "`delpanel` - Delete an active ticket panel",
-                "`ticketsetup` - Setup system",
-                "`ticketlimit` - Sets the ticket limit, by default is 10",
-                "`ticketuseembed` - Uses an custom embed for the ticket message"
-            ]
-            
-            embed.add_field(
-                name="Ticket",
-                value="\n".join(ticket_commands),
-                inline=False
-            )
-            
-            # Embed Builder commands
-            embed_commands = [
-                "`embedcreate` - Create a new embed with visual editor",
-                "`embedcreateempty` - Create an empty embed to edit later",
-                "`embedlist` - List all saved embeds",
-                "`embedview` - View a saved embed",
-                "`embededit` - Edit an embed with visual interface",
-                "`embeddelete` - Delete a saved embed",
-                "`embedexport` - Export embed as YAML template",
-                "`embedimport` - Import embed from YAML template",
-                "`embedoldedit` - Legacy text-based embed editor"
-            ]
-            
-            embed.add_field(
-                name="Embed Builder",
-                value="\n".join(embed_commands),
-                inline=False
-            )
-            
-            # Auto Responders commands - SIMPLE SYSTEM
-            auto_responder_commands = [
-                "`autoresponder add` - Add simple auto responder",
-                "`autoresponder editreply` - Edit responder reply", 
-                "`autoresponder remove` - Remove auto responder",
-                "`autoresponder list` - List all auto responders",
-                "`autoresponder toggle` - Enable/disable responder",
-                "Format: `trigger:<text> reply:<response>`",
-                "Simple trigger and reply system without complex functions"
-            ]
-            
-            embed.add_field(
-                name="Auto Responders",
-                value="\n".join(auto_responder_commands),
-                inline=False
-            )
-            
-            # Sticky Messages commands
-            sticky_commands = [
-                "`stick` - Create sticky message",
-                "`stickslow` - Create slow sticky message",
-                "`stickstop` - Stop sticky in channel", 
-                "`stickstart` - Restart sticky in channel",
-                "`stickremove` - Remove sticky completely",
-                "`getstickies` - List all server stickies",
-                "`stickspeed` - View/change sticky speed"
-            ]
-            
-            embed.add_field(
-                name="Sticky Messages",
-                value="\n".join(sticky_commands),
-                inline=False
-            )
-            
-            # Reminders commands
-            reminder_commands = [
-                "`remind` - Set a personal reminder",
-                "`reminders` - List your active reminders", 
-                "`delreminder` - Delete a specific reminder"
-            ]
-            
-            embed.add_field(
-                name="Reminders",
-                value="\n".join(reminder_commands),
-                inline=False
-            )
-            
-            
-            
-            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            
-            await ctx.reply(embed=embed, mention_author=False)
+            # Create paginated help
+            pages = self.create_help_pages(prefix, ctx.author)
+            view = HelpPaginationView(pages, ctx.author.id, prefix)
+            await ctx.reply(embed=pages[0], view=view, mention_author=False)
             logger.info(f"Help command used by {ctx.author}")
             
         except Exception as e:
             logger.error(f"Error in help command: {e}")
             await ctx.reply("An error occurred while displaying help.", mention_author=False)
     
+    def create_help_pages(self, prefix, author):
+        """Create dynamic help pages based on enabled features"""
+        pages = []
+        
+        # Get enabled commands (automatically excludes dev-only commands)
+        enabled_commands = list(feature_manager.get_enabled_commands(self.bot))
+        
+        # Define command categories and their commands
+        command_categories = {
+            "Core Commands": {
+                "commands": ["help", "ping", "avatar", "userinfo", "serverinfo"],
+                "descriptions": {
+                    "help": "Show commands list and get detailed help",
+                    "ping": "Check bot response time and API latency",
+                    "avatar": "Display user's avatar in full resolution",
+                    "userinfo": "Get detailed user information",
+                    "serverinfo": "Get comprehensive server statistics"
+                }
+            },
+            "Utility Commands": {
+                "commands": ["channelinfo", "roleinfo", "variables", "setprefix"],
+                "descriptions": {
+                    "channelinfo": "Get detailed channel information",
+                    "roleinfo": "Get detailed role information",
+                    "variables": "Show available embed variables",
+                    "setprefix": "Set custom command prefix"
+                }
+            },
+            "User Ticket Commands": {
+                "commands": ["new", "open", "close", "tickettopic"],
+                "descriptions": {
+                    "new": "Create new support ticket",
+                    "open": "Create new support ticket (alias for new)",
+                    "close": "Close current ticket with reason",
+                    "tickettopic": "Set ticket description"
+                }
+            },
+            "Staff Ticket Management": {
+                "commands": ["claim", "unclaim", "add", "remove", "rename", "transcript", "forceclose"],
+                "descriptions": {
+                    "claim": "Claim ownership of ticket",
+                    "unclaim": "Release ticket ownership", 
+                    "add": "Add user to current ticket",
+                    "remove": "Remove user from ticket",
+                    "rename": "Rename ticket channel",
+                    "transcript": "Generate ticket transcript",
+                    "forceclose": "Force close any ticket"
+                }
+            },
+            "Ticket System Setup": {
+                "commands": ["ticketsetup", "ticketpanel", "addadmin", "removeadmin", "addsupport", "removesupport"],
+                "descriptions": {
+                    "ticketsetup": "Interactive ticket system setup",
+                    "ticketpanel": "Create new ticket panel",
+                    "addadmin": "Add admin role to ticket system",
+                    "removeadmin": "Remove admin role from ticket system",
+                    "addsupport": "Add support role to ticket system", 
+                    "removesupport": "Remove support role from ticket system"
+                }
+            },
+            "Ticket Moderation": {
+                "commands": ["blacklist", "unblacklist", "blacklistcheck"],
+                "descriptions": {
+                    "blacklist": "Add user to ticket blacklist",
+                    "unblacklist": "Remove user from ticket blacklist",
+                    "blacklistcheck": "Check if user is blacklisted"
+                }
+            },
+            "Embed Builder": {
+                "commands": ["embed", "createembed", "embedcreate"],
+                "descriptions": {
+                    "embed": "SPROUTS advanced Discord-native embed builder",
+                    "createembed": "Create professional embeds with interactive forms",
+                    "embedcreate": "Advanced embed creation with live preview"
+                }
+            },
+            "Auto Systems": {
+                "commands": ["autoresponder", "autoresponderlist", "autoresponderdelete"],
+                "descriptions": {
+                    "autoresponder": "Create auto responder with modern UI",
+                    "autoresponderlist": "List all server auto responders",
+                    "autoresponderdelete": "Delete an auto responder"
+                }
+            },
+            "Sticky Messages": {
+                "commands": ["stick", "stickslow", "stickstop", "stickstart", "stickremove", "getstickies", "stickspeed"],
+                "descriptions": {
+                    "stick": "Create sticky message",
+                    "stickslow": "Create slow sticky message", 
+                    "stickstop": "Stop sticky in channel",
+                    "stickstart": "Restart sticky in channel",
+                    "stickremove": "Remove sticky completely",
+                    "getstickies": "List all server stickies",
+                    "stickspeed": "View/change sticky speed"
+                }
+            },
+            "Reminders": {
+                "commands": ["remind", "reminders", "delreminder"],
+                "descriptions": {
+                    "remind": "Set a personal reminder",
+                    "reminders": "List your active reminders",
+                    "delreminder": "Delete a specific reminder"
+                }
+            },
+            "Server Statistics": {
+                "commands": ["serverstats", "statssetup"],
+                "descriptions": {
+                    "serverstats": "View real-time server statistics",
+                    "statssetup": "Configure server stats display"
+                }
+            },
+            "Event Logging": {
+                "commands": ["eventlogging", "loggingsetup"],
+                "descriptions": {
+                    "eventlogging": "Configure guild event logging",
+                    "loggingsetup": "Setup logging channels"
+                }
+            },
+            "Command Logging": {
+                "commands": ["cmdlogging"],
+                "descriptions": {
+                    "cmdlogging": "Configure command usage logging"
+                }
+            },
+            "DM Logging": {
+                "commands": ["dmlogging"],
+                "descriptions": {
+                    "dmlogging": "Configure DM logging system"
+                }
+            }
+        }
+        
+        # Build pages dynamically
+        current_page = None
+        current_fields = 0
+        page_number = 1
+        
+        for category_name, category_data in command_categories.items():
+            # Filter commands that are enabled
+            available_commands = []
+            for cmd in category_data["commands"]:
+                if cmd in enabled_commands:
+                    desc = category_data["descriptions"].get(cmd, "No description available")
+                    if cmd in ["new", "open"]:
+                        available_commands.append("`new` / `open` - Create new support ticket")
+                    elif cmd != "open":  # Skip open since it's combined with new
+                        available_commands.append(f"`{cmd}` - {desc}")
+            
+            # Skip empty categories
+            if not available_commands:
+                continue
+            
+            # Create new page if needed
+            if current_page is None or current_fields >= 3:
+                if current_page is not None:
+                    pages.append(current_page)
+                
+                current_page = discord.Embed(
+                    title="Sprouts Commands",
+                    description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
+                    color=EMBED_COLOR_NORMAL
+                )
+                
+                # Set bot thumbnail
+                if self.bot.user and self.bot.user.display_avatar:
+                    current_page.set_thumbnail(url=self.bot.user.display_avatar.url)
+                
+                current_fields = 0
+                page_number += 1
+            
+            # Add category to current page
+            current_page.add_field(
+                name=category_name,
+                value="\n".join(available_commands),
+                inline=False
+            )
+            current_fields += 1
+        
+        # Add the last page if it has content
+        if current_page is not None and current_fields > 0:
+            pages.append(current_page)
+        
+        # Add page numbers to footers
+        total_pages = len(pages)
+        for i, page in enumerate(pages):
+            page.set_footer(
+                text=f"Page {i+1}/{total_pages} • Requested by {author.display_name}",
+                icon_url=author.display_avatar.url
+            )
+        
+        # If no enabled commands, show a minimal page
+        if not pages:
+            minimal_page = discord.Embed(
+                title="Sprouts Commands",
+                description=f"No commands are currently available.\nContact the bot developer for assistance.",
+                color=EMBED_COLOR_ERROR
+            )
+            minimal_page.set_footer(text=f"Requested by {author.display_name}", icon_url=author.display_avatar.url)
+            pages.append(minimal_page)
+        
+        return pages
+    
+    async def show_command_help(self, ctx, command_name, prefix):
+        page2 = discord.Embed(
+            title="Sprouts Commands",
+            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Set bot thumbnail
+        if self.bot.user and self.bot.user.display_avatar:
+            page2.set_thumbnail(url=self.bot.user.display_avatar.url)
+        
+        # User Ticket Commands
+        page2.add_field(
+            name="User Ticket Commands",
+            value=(
+                "`new` / `open` - Create new support ticket\n"
+                "`close` - Close current ticket with reason"
+            ),
+            inline=False
+        )
+        
+        # Staff Ticket Management
+        page2.add_field(
+            name="Staff Ticket Management",
+            value=(
+                "`claim` - Claim ownership of ticket\n"
+                "`unclaim` - Release ticket ownership\n"
+                "`add` - Add user to current ticket\n"
+                "`remove` - Remove user from ticket\n"
+                "`rename` - Rename ticket channel\n"
+                "`tickettopic` - Set ticket description\n"
+                "`move` - Move ticket to category\n"
+                "`forceclose` - Force close any ticket\n"
+                "`listtickets` - View all active tickets"
+            ),
+            inline=False
+        )
+        
+        # Ticket Panels & Setup
+        page2.add_field(
+            name="Ticket Panels & Setup",
+            value=(
+                "`createpanel` - Create new ticket panel\n"
+                "`listpanels` - List all ticket panels\n"
+                "`delpanel` - Delete ticket panel\n"
+                "`ticketsetup` - Interactive setup wizard\n"
+                "`ticketlimit` - Set user ticket limit\n"
+                "`ghostping` - Toggle ghost ping"
+            ),
+            inline=False
+        )
+        
+        page2.set_footer(text=f"Page 2/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
+        pages.append(page2)
+        
+        # Page 3: Configuration Commands & Advanced Features
+        page3 = discord.Embed(
+            title="Sprouts Commands",
+            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Set bot thumbnail
+        if self.bot.user and self.bot.user.display_avatar:
+            page3.set_thumbnail(url=self.bot.user.display_avatar.url)
+        
+        # Configuration Commands
+        page3.add_field(
+            name="Configuration Commands",
+            value=(
+                "`setup auto` - Initial ticket system configuration\n"
+                "`setup limit` - Set user ticket limit per server\n"
+                "`setup transcripts` - Configure full conversation transcripts\n"
+                "`setup use-threads` - Toggle threads vs channels\n"
+                "`autoclose configure` - Configure automatic closure\n"
+                "`autoclose exclude` - Exclude ticket from autoclose\n"
+                "`addadmin` / `removeadmin` - Manage admin roles\n"
+                "`addsupport` / `removesupport` - Manage staff roles"
+            ),
+            inline=False
+        )
+        
+        # Advanced Features
+        page3.add_field(
+            name="Advanced Features",
+            value=(
+                "`blacklist` - Manage user blacklist system\n"
+                "`viewstaff` - View all staff members\n"
+                "`managetags add/delete/list` - Manage response tags\n"
+                "`tickettag` - Send tag response\n"
+                "`notes` - Create staff-only thread\n"
+                "`on-call` - Toggle staff auto-assignment"
+            ),
+            inline=False
+        )
+        
+        page3.set_footer(text=f"Page 3/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
+        pages.append(page3)
+        
+        # Page 4: Modern Embed Builder & Auto Responder System
+        page4 = discord.Embed(
+            title="Sprouts Commands",
+            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Set bot thumbnail
+        if self.bot.user and self.bot.user.display_avatar:
+            page4.set_thumbnail(url=self.bot.user.display_avatar.url)
+        
+        # Embed Builder & Management
+        page4.add_field(
+            name="Embed Builder & Management",
+            value=(
+                "`embed` - Access comprehensive embed creation tools\n"
+                "`embedquick` - Quick embed creation with modal\n"
+                "`embedlist` - List all your saved embeds"
+            ),
+            inline=False
+        )
+        
+        # Auto Responder System
+        page4.add_field(
+            name="Auto Responder System",
+            value=(
+                "`autoresponder` - Create auto responder with embed support\n"
+                "`autoresponderlist` - List all server auto responders\n"
+                "`autoresponderdelete` - Delete an auto responder"
+            ),
+            inline=False
+        )
+        
+        page4.set_footer(text=f"Page 4/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
+        pages.append(page4)
+        
+        # Page 5: Sticky Messages & Reminders
+        page5 = discord.Embed(
+            title="Sprouts Commands",
+            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Set bot thumbnail
+        if self.bot.user and self.bot.user.display_avatar:
+            page5.set_thumbnail(url=self.bot.user.display_avatar.url)
+        
+        # Sticky Messages
+        page5.add_field(
+            name="Sticky Messages",
+            value=(
+                "`stick` - Create sticky message\n"
+                "`stickslow` - Create slow sticky message\n"
+                "`stickstop` - Stop sticky in channel\n"
+                "`stickstart` - Restart sticky in channel\n"
+                "`stickremove` - Remove sticky completely\n"
+                "`getstickies` - List all server stickies\n"
+                "`stickspeed` - View/change sticky speed"
+            ),
+            inline=False
+        )
+        
+        # Reminders
+        page5.add_field(
+            name="Reminders",
+            value=(
+                "`remind` - Set a personal reminder\n"
+                "`reminders` - List your active reminders\n"
+                "`delreminder` - Delete a specific reminder"
+            ),
+            inline=False
+        )
+        
+        page5.set_footer(text=f"Page 5/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
+        pages.append(page5)
+        
+        return pages
+    
     async def show_command_help(self, ctx, command_name: str, prefix: str):
         """Show extremely detailed help for a specific command with interactive buttons"""
         try:
+            # Check if command is enabled via feature flags first
+            if not feature_manager.is_command_enabled(command_name.lower()):
+                # Silently ignore disabled commands - don't show "not found" to prevent discovery
+                embed = discord.Embed(
+                    title="Command Not Found", 
+                    description=f"No command named `{command_name}` was found.\n"
+                               f"Use `{prefix}help` to see all available commands.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
             # Handle subcommands properly (e.g., "autoresponder add")
             if ' ' in command_name:
                 parts = command_name.split(' ', 1)
@@ -1330,7 +2018,7 @@ class HelpCommand(commands.Cog):
                 embed = discord.Embed(
                     title="Command Not Found",
                     description=f"No command named `{command_name}` was found.\n"
-                               f"Use `{self.prefix}help` to see all available commands.",
+                               f"Use `{prefix}help` to see all available commands.",
                     color=EMBED_COLOR_ERROR
                 )
                 await ctx.reply(embed=embed, mention_author=False)
@@ -1354,6 +2042,169 @@ class HelpCommand(commands.Cog):
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
+
+class DetailedCommandHelpView(discord.ui.View):
+    """Interactive view for detailed command help with buttons"""
+    
+    def __init__(self, command, prefix: str, author: discord.Member):
+        super().__init__(timeout=300)
+        self.command = command
+        self.prefix = prefix
+        self.author = author
+        self.current_page = "main"
+    
+    def create_main_embed(self):
+        """Create the main command help embed"""
+        embed = discord.Embed(
+            title=f"Command: {self.prefix}{self.command.name}",
+            description=self.command.help or "Creates a new support ticket",
+            color=0xCCFFD1
+        )
+        
+        # Add usage information
+        if hasattr(self.command, 'signature') and self.command.signature:
+            usage = f"{self.prefix}{self.command.name} {self.command.signature}"
+        else:
+            usage = f"{self.prefix}{self.command.name} [reason=No reason provided]"
+        
+        embed.add_field(
+            name="Usage",
+            value=f"```\n{usage}\n```",
+            inline=False
+        )
+        
+        # Add category
+        if hasattr(self.command, 'cog') and self.command.cog:
+            category = self.command.cog.qualified_name
+        else:
+            category = "TicketSystem"
+            
+        embed.add_field(
+            name="📁 Category",
+            value=category,
+            inline=False
+        )
+        
+        # Add footer
+        embed.set_footer(
+            text=f"Requested by {self.author.display_name} • Use {self.prefix}help for all commands • Today at {datetime.now().strftime('%I:%M %p')}",
+            icon_url=self.author.display_avatar.url
+        )
+        
+        return embed
+    
+    def create_detailed_usage_embed(self):
+        """Create detailed usage embed"""
+        embed = discord.Embed(
+            title=f"Detailed Usage - {self.prefix}{self.command.name}",
+            description="Comprehensive usage examples and parameters",
+            color=0xCCFFD1
+        )
+        
+        # Command-specific examples
+        if self.command.name == "new":
+            embed.add_field(
+                name="Basic Usage",
+                value=f"```\n{self.prefix}new I need help with my account\n{self.prefix}new Bug report - login issues\n{self.prefix}new\n```",
+                inline=False
+            )
+            embed.add_field(
+                name="Parameters",
+                value="**[reason]** - Optional reason for creating the ticket\n• If no reason provided, defaults to 'No reason provided'\n• Can include detailed descriptions and emojis\n• Maximum 2000 characters",
+                inline=False
+            )
+        elif self.command.name == "close":
+            embed.add_field(
+                name="Basic Usage",
+                value=f"```\n{self.prefix}close Issue resolved\n{self.prefix}close User helped successfully\n{self.prefix}close\n```",
+                inline=False
+            )
+            embed.add_field(
+                name="Parameters",
+                value="**[reason]** - Optional reason for closing\n• Defaults to 'No reason provided'\n• Appears in transcript and logs\n• Helps staff track resolution types",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Usage Examples",
+                value=f"```\n{self.prefix}{self.command.name}\n```",
+                inline=False
+            )
+        
+        embed.set_footer(text=f"Detailed usage for {self.command.name}")
+        return embed
+    
+    def create_common_errors_embed(self):
+        """Create common errors embed"""
+        embed = discord.Embed(
+            title=f"Common Errors - {self.prefix}{self.command.name}",
+            description="Common issues and how to resolve them",
+            color=0xFFE682
+        )
+        
+        if self.command.name == "new":
+            embed.add_field(
+                name="Blacklisted User",
+                value="**Error:** `You are currently blacklisted from creating tickets.`\n**Solution:** Contact a server administrator for assistance.",
+                inline=False
+            )
+            embed.add_field(
+                name="Ticket Limit Reached",
+                value="**Error:** `You have reached the maximum number of open tickets.`\n**Solution:** Close an existing ticket before creating a new one.",
+                inline=False
+            )
+            embed.add_field(
+                name="No Ticket Category",
+                value="**Error:** `No ticket category configured.`\n**Solution:** Ask administrators to set up the ticket system first.",
+                inline=False
+            )
+        elif self.command.name == "close":
+            embed.add_field(
+                name="Not a Ticket Channel",
+                value="**Error:** `This command can only be used in ticket channels.`\n**Solution:** Use this command only in active ticket channels.",
+                inline=False
+            )
+            embed.add_field(
+                name="No Permission",
+                value="**Error:** `Only staff members or the ticket creator can close tickets.`\n**Solution:** Ask a staff member to close the ticket for you.",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="Permission Denied",
+                value="**Error:** Missing required permissions\n**Solution:** Contact an administrator",
+                inline=False
+            )
+        
+        embed.set_footer(text=f"Common errors for {self.command.name}")
+        return embed
+    
+    @discord.ui.button(label="Detailed Usage", style=discord.ButtonStyle.primary)
+    async def detailed_usage(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("Only the command user can use these buttons.", ephemeral=True)
+            return
+        
+        embed = self.create_detailed_usage_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label="Common Errors", style=discord.ButtonStyle.secondary)
+    async def common_errors(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("Only the command user can use these buttons.", ephemeral=True)
+            return
+        
+        embed = self.create_common_errors_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.danger)
+    async def close_help(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("Only the command user can use these buttons.", ephemeral=True)
+            return
+        
+        await interaction.response.edit_message(view=None)
+        self.stop()
 
 async def setup_help(bot):
     """Setup help command for the bot"""

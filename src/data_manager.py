@@ -10,6 +10,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Any
 import asyncio
+from src.database.cloud_backup import cloud_security
 
 logger = logging.getLogger(__name__)
 
@@ -257,11 +258,17 @@ class DataManager:
             
             if has_data:
                 backup_path = self.create_backup("startup_backup")
+                cloud_backup = cloud_security.create_secure_backup("startup_secure_backup")
+                
                 if backup_path:
                     logger.info("Created startup backup for data safety")
                     
+                if cloud_backup.get("success"):
+                    logger.info(f"Created secure cloud backup: {cloud_backup['backup_name']}")
+                    
                     # Clean up old startup backups (keep only 5 most recent)
                     await self.cleanup_old_backups(backup_prefix="startup_backup", keep_count=5)
+                    cloud_security.cleanup_old_backups()
             
             # If fresh deployment and we have a GitHub backup, restore it
             if is_fresh_deployment:
@@ -300,7 +307,7 @@ class DataManager:
             github_backup_file = "github_restore_backup.json"
             
             if os.path.exists(github_backup_file):
-                logger.info("📥 Found GitHub restore backup file")
+                logger.info("Found GitHub restore backup file")
                 
                 with open(github_backup_file, 'r') as f:
                     restore_data = json.load(f)
@@ -322,7 +329,7 @@ class DataManager:
                 else:
                     logger.warning(f"GitHub backup '{backup_name}' not found")
             else:
-                logger.info("ℹ️ No GitHub restore backup file found - fresh start")
+                logger.info("No GitHub restore backup file found - fresh start")
                 
         except Exception as e:
             logger.error(f"Error restoring from GitHub: {e}")

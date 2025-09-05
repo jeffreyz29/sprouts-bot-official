@@ -1,6 +1,6 @@
 """
-Auto Responders System
-Simple autoresponder system with trigger: and reply: syntax
+Auto Responders System - Simplified with Only 3 Commands
+Modern UI auto responder system with trigger and reply functionality
 """
 
 import discord
@@ -14,8 +14,112 @@ from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
 
 logger = logging.getLogger(__name__)
 
+class AutoResponderCreateModal(discord.ui.Modal):
+    """Modern UI modal for creating auto responders"""
+    
+    def __init__(self, cog):
+        self.cog = cog
+        super().__init__(title="Create Auto Responder", timeout=300)
+        
+        self.trigger_input = discord.ui.TextInput(
+            label="Trigger Word/Phrase",
+            placeholder="Enter the word or phrase that will trigger the response...",
+            style=discord.TextStyle.short,
+            max_length=100,
+            required=True
+        )
+        self.add_item(self.trigger_input)
+        
+        self.response_input = discord.ui.TextInput(
+            label="Response Message",
+            placeholder="Enter the message to send when triggered...\nSupports variables like $(user.name), $(server.name)",
+            style=discord.TextStyle.paragraph,
+            max_length=2000,
+            required=True
+        )
+        self.add_item(self.response_input)
+        
+        self.notes_input = discord.ui.TextInput(
+            label="Additional Notes (Optional)",
+            placeholder="Internal notes about this auto responder (not shown to users)",
+            style=discord.TextStyle.short,
+            max_length=200,
+            required=False
+        )
+        self.add_item(self.notes_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Handle form submission"""
+        try:
+            trigger = self.trigger_input.value.strip()
+            response = self.response_input.value.strip()
+            notes = self.notes_input.value.strip()
+            
+            if not trigger or not response:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Missing Information",
+                    description="Both trigger and response are required!",
+                    color=EMBED_COLOR_ERROR
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            
+            guild_id = str(interaction.guild_id)
+            if guild_id not in self.cog.autoresponders:
+                self.cog.autoresponders[guild_id] = {}
+            
+            # Check if trigger already exists
+            if trigger in self.cog.autoresponders[guild_id]:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Auto Responder Already Exists",
+                    description=f"An auto responder for trigger `{trigger}` already exists!\n\n"
+                               f"Use `autoresponderlist` to view existing responders or try a different trigger.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            
+            # Add the responder
+            self.cog.autoresponders[guild_id][trigger] = {
+                'response': response,
+                'enabled': True,
+                'created_by': str(interaction.user.id),
+                'created_at': datetime.utcnow().isoformat(),
+                'notes': notes
+            }
+            
+            self.cog.save_autoresponders()
+            
+            # Create success embed with preview
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Auto Responder Created",
+                description=f"Successfully created auto responder!",
+                color=0x2ecc71  # SPROUTS_CHECK color - success
+            )
+            embed.add_field(name="Trigger", value=f"`{trigger}`", inline=True)
+            embed.add_field(name="Status", value=f"{SPROUTS_CHECK} Enabled", inline=True)
+            embed.add_field(name="Response Preview", 
+                           value=response[:100] + "..." if len(response) > 100 else response, 
+                           inline=False)
+            
+            if notes:
+                embed.add_field(name="Notes", value=notes, inline=False)
+            
+            embed.set_footer(text="The auto responder is now active and will respond when the trigger is detected.")
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error creating auto responder: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to create auto responder. Please try again.",
+                color=EMBED_COLOR_ERROR
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
 class AutoResponders(commands.Cog):
-    """Auto responders system with basic trigger and reply functionality"""
+    """Auto responders system with only 3 commands and modern UI"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -67,509 +171,421 @@ class AutoResponders(commands.Cog):
             # Check if message matches trigger (case-insensitive contains)
             if trigger.lower() in message.content.lower():
                 response = responder_data['response']
-                await message.channel.send(response)
+                
+                # Process variables in the response
+                try:
+                    from src.utils.variables import VariableProcessor
+                    var_processor = VariableProcessor(self.bot)
+                    processed_response = await var_processor.process_variables(
+                        response,
+                        user=message.author,
+                        guild=message.guild,
+                        channel=message.channel
+                    )
+                    # Ensure we got a string, not a coroutine
+                    if isinstance(processed_response, str):
+                        response = processed_response
+                    else:
+                        logger.warning(f"Variable processor returned non-string: {type(processed_response)}")
+                        # Keep original response if processing failed
+                except Exception as e:
+                    logger.error(f"Error processing variables in autoresponder: {e}")
+                    # Fall back to original response if variable processing fails
+                
+                # Check for embed references {embed: embed_name}
+                embed_to_send = None
+                if "{embed:" in response:
+                    try:
+                        import re
+                        embed_pattern = r'\{embed:\s*([^}]+)\}'
+                        embed_match = re.search(embed_pattern, response)
+                        if embed_match:
+                            embed_name = embed_match.group(1).strip()
+                            
+                            # Load saved embeds
+                            saved_embeds_file = "src/data/saved_embeds.json"
+                            try:
+                                with open(saved_embeds_file, 'r') as f:
+                                    saved_embeds = json.load(f)
+                                
+                                if embed_name in saved_embeds:
+                                    embed_data = saved_embeds[embed_name]
+                                    
+                                    # Create embed from saved data
+                                    embed_to_send = discord.Embed(
+                                        title=embed_data.get("title"),
+                                        description=embed_data.get("description"),
+                                        color=embed_data.get("color", 0xCCFFD1)
+                                    )
+                                    
+                                    # Add footer if present
+                                    if "footer" in embed_data and embed_data["footer"].get("text"):
+                                        embed_to_send.set_footer(text=embed_data["footer"]["text"])
+                                    
+                                    # Add image if present
+                                    if "image" in embed_data and embed_data["image"].get("url"):
+                                        embed_to_send.set_image(url=embed_data["image"]["url"])
+                                    
+                                    # Add thumbnail if present
+                                    if "thumbnail" in embed_data and embed_data["thumbnail"].get("url"):
+                                        embed_to_send.set_thumbnail(url=embed_data["thumbnail"]["url"])
+                                    
+                                    # Add fields if present
+                                    if "fields" in embed_data:
+                                        for field in embed_data["fields"]:
+                                            embed_to_send.add_field(
+                                                name=field.get("name", "Field"),
+                                                value=field.get("value", "Value"),
+                                                inline=field.get("inline", False)
+                                            )
+                                    
+                                    # Remove embed reference from response
+                                    response = re.sub(embed_pattern, "", response).strip()
+                                
+                            except FileNotFoundError:
+                                logger.warning("No saved embeds file found")
+                    except Exception as e:
+                        logger.error(f"Error processing embed reference: {e}")
+                
+                # Send response and embed
+                if embed_to_send and response:
+                    # Send both text and embed
+                    await message.channel.send(content=response, embed=embed_to_send)
+                elif embed_to_send:
+                    # Send only embed
+                    await message.channel.send(embed=embed_to_send)
+                elif response:
+                    # Send only text
+                    await message.channel.send(response)
+                
                 break  # Only trigger the first matching responder
     
-    @commands.group(name="autoresponder", aliases=["ar"], invoke_without_command=True, help="Auto responder management commands")
+    @commands.command(name="autoresponder", help="Create new auto responder with modern UI")
     @commands.has_permissions(administrator=True)
-    async def autoresponder(self, ctx):
-        """Auto responder management commands
-
-        Simple autoresponder system with trigger and reply functionality.
-        Use subcommands to add, edit, remove, list, or toggle auto responders.
-
-        Usage: `s.autoresponder <subcommand>`
-        Base command that shows available subcommands and examples
-
-        Available subcommands:
-        - add: Create new auto responder
-        - editreply: Modify existing response
-        - remove: Delete auto responder
-        - list: Show all responders
-        - toggle: Enable/disable responder
+    async def autoresponder_create(self, ctx):
+        """Create new auto responder with modern interactive UI
+        
+        Usage: `s.autoresponder`
+        Opens modern interactive interface for creating auto responders
+        
+        Features:
+        - Interactive modal forms for easy input
+        - Real-time preview of trigger and response
+        - Variable support with live examples
+        - Built-in validation and error checking
+        - Modern Discord UI components
+        
+        This is the recommended way to create auto responders.
         """
-        if ctx.invoked_subcommand is None:
-            embed = discord.Embed(
-                title=" Simple Auto Responder System",
-                description="Basic autoresponder system with trigger and reply functionality",
-                color=EMBED_COLOR_NORMAL
-            )
-            
-            embed.add_field(
-                name="Commands",
-                value=f"`{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>` - Add responder\n"
-                      f"`{ctx.prefix}autoresponder editreply trigger:<trigger> reply:<new response>` - Edit responder\n"
-                      f"`{ctx.prefix}autoresponder remove <trigger>` - Remove responder\n"
-                      f"`{ctx.prefix}autoresponder list` - List all responders\n"
-                      f"`{ctx.prefix}autoresponder toggle <trigger>` - Enable/disable responder",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="Example",
-                value=f"`{ctx.prefix}autoresponder add trigger:hello reply:Hello there! Welcome to our server!`",
-                inline=False
-            )
-            
-            await ctx.send(embed=embed)
+        # Create button view to open modal
+        view = AutoResponderButtonView(self)
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Auto Responder Creator",
+            description="Click the button below to create a new auto responder!",
+            color=0xCCFFD1
+        )
+        await ctx.send(embed=embed, view=view, mention_author=False)
     
-    @autoresponder.command(name="add", help="Add simple auto responder")
+    @commands.command(name="autoresponderlist", help="List all server auto responders")
     @commands.has_permissions(administrator=True)
-    async def autoresponder_add(self, ctx, *, args):
-        """Add simple auto responder
-
-        Usage: `s.autoresponder add trigger:<trigger> reply:<response>`
-        Creates auto responder that replies when trigger word/phrase is detected
-
-        Examples:
-        - `s.autoresponder add trigger:hello reply:Hello there! Welcome!`
-        - `s.autoresponder add trigger:rules reply:Please check #rules channel`
-        - `s.autoresponder add trigger:support reply:Create a ticket for assistance`
-
-        Format: trigger:<text> reply:<response>
-        Simple trigger and reply system without complex functions
-
-        Common Errors:
-        - Missing format: Must use trigger:<text> reply:<text> format
-        - Empty values: Both trigger and reply must have content
-        - Administrator only: Requires Administrator permission
+    async def autoresponderlist(self, ctx):
+        """List all auto responders
+        
+        Usage: `s.autoresponderlist`
+        Shows all configured auto responders with triggers, responses, and status
+        
+        Features:
+        - Shows enabled/disabled status for each
+        - Displays first 50 characters of each response
+        - Shows up to 10 responders per page
+        - Perfect for managing large collections
         """
         try:
-            # Parse trigger: and reply: format
-            if 'trigger:' not in args or 'reply:' not in args:
-                embed = discord.Embed(
-                    title=f"{SPROUTS_ERROR} Invalid Format",
-                    description=f"**Correct format:** `{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>`\n\n"
-                               f"**Example:** `{ctx.prefix}autoresponder add trigger:hello reply:Hello there! Welcome!`",
-                    color=EMBED_COLOR_ERROR
-                )
-                embed.add_field(
-                    name="What you provided:",
-                    value=f"`{args}`",
-                    inline=False
-                )
-                await ctx.send(embed=embed)
-                return
-            
-            # Extract trigger and reply
-            trigger_start = args.find('trigger:') + 8
-            reply_start = args.find('reply:') + 6
-            
-            if reply_start < trigger_start:
-                # reply: comes before trigger:
-                trigger = args[trigger_start:].strip()
-                reply = args[reply_start:args.find('trigger:')].strip()
-            else:
-                # trigger: comes before reply:
-                trigger = args[trigger_start:args.find('reply:')].strip()
-                reply = args[reply_start:].strip()
-            
-            if not trigger or not reply:
-                embed = discord.Embed(
-                    title=f"{SPROUTS_ERROR} Missing Information",
-                    description=f"**Both trigger and reply are required!**\n\n"
-                               f"**Correct format:** `{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>`\n\n"
-                               f"**Example:** `{ctx.prefix}autoresponder add trigger:hello reply:Welcome to our server!`",
-                    color=EMBED_COLOR_ERROR
-                )
-                embed.add_field(
-                    name="What you provided:",
-                    value=f"`{args}`",
-                    inline=False
-                )
-                await ctx.send(embed=embed)
-                return
-            
             guild_id = str(ctx.guild.id)
-            if guild_id not in self.autoresponders:
-                self.autoresponders[guild_id] = {}
             
-            # Check if trigger already exists
-            if trigger in self.autoresponders[guild_id]:
-                current_response = self.autoresponders[guild_id][trigger]['response']
+            if guild_id not in self.autoresponders or not self.autoresponders[guild_id]:
                 embed = discord.Embed(
-                    title=f"{SPROUTS_ERROR} Auto Responder Already Exists",
-                    description=f"**An auto responder for trigger `{trigger}` already exists!**\n\n"
-                               f"**Available options:**\n"
-                               f"`{ctx.prefix}autoresponder editreply trigger:{trigger} reply:<new response>` - Edit existing responder\n"
-                               f"`{ctx.prefix}autoresponder remove {trigger}` - Remove existing responder\n"
-                               f"`{ctx.prefix}autoresponder toggle {trigger}` - Enable/disable responder",
-                    color=EMBED_COLOR_ERROR
+                    title="No Auto Responders",
+                    description=f"This server has no auto responders configured.\n\n"
+                               f"**Get started:**\n"
+                               f"`{ctx.prefix}autoresponder` - Create your first auto responder",
+                    color=0xCCFFD1  # Bot's original embed color
                 )
                 embed.add_field(
-                    name="Current response:",
-                    value=f"`{current_response[:100]}{'...' if len(current_response) > 100 else ''}`",
+                    name="Example Usage",
+                    value=f"1. Run `{ctx.prefix}autoresponder`\n"
+                          f"2. Fill in trigger: `hello`\n"
+                          f"3. Fill in response: `Hello there! Welcome!`\n"
+                          f"4. Submit the form",
                     inline=False
                 )
-                await ctx.send(embed=embed)
+                await ctx.send(embed=embed, mention_author=False)
                 return
             
-            # Add the responder
-            self.autoresponders[guild_id][trigger] = {
-                'response': reply,
-                'enabled': True,
-                'created_by': str(ctx.author.id),
-                'created_at': datetime.utcnow().isoformat()
-            }
+            responders = self.autoresponders[guild_id]
             
-            self.save_autoresponders()
-            
+            # Create paginated embed
             embed = discord.Embed(
-                title=f"{SPROUTS_CHECK} Auto Responder Added",
-                description=f"Successfully added auto responder for trigger: `{trigger}`",
-                color=EMBED_COLOR_NORMAL
+                title=f"Auto Responders ({len(responders)} total)",
+                description=f"All configured auto responders for **{ctx.guild.name}**",
+                color=0xCCFFD1  # Bot's original embed color
             )
-            embed.add_field(name="Trigger", value=trigger, inline=True)
-            embed.add_field(name="Response", value=reply[:100] + "..." if len(reply) > 100 else reply, inline=True)
             
-            await ctx.send(embed=embed)
+            for i, (trigger, data) in enumerate(responders.items(), 1):
+                status = f"{SPROUTS_CHECK} Enabled" if data.get('enabled', True) else f"Disabled"
+                response_preview = data['response'][:50] + "..." if len(data['response']) > 50 else data['response']
+                
+                embed.add_field(
+                    name=f"{i}. `{trigger}`",
+                    value=f"**Status:** {status}\n**Response:** {response_preview}",
+                    inline=False
+                )
+                
+                # Limit to 10 responders per page
+                if i >= 10:
+                    embed.add_field(
+                        name="More responders...",
+                        value=f"Only showing first 10 responders. Total: {len(responders)}",
+                        inline=False
+                    )
+                    break
+            
+            embed.set_footer(text=f"Use {ctx.prefix}autoresponderdelete <trigger> to remove a responder")
+            await ctx.send(embed=embed, mention_author=False)
             
         except Exception as e:
-            logger.error(f"Error adding auto responder: {e}")
+            logger.error(f"Error listing auto responders: {e}")
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Error",
-                description="Failed to add auto responder. Please check your syntax.",
+                description="Failed to list auto responders.",
                 color=EMBED_COLOR_ERROR
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, mention_author=False)
     
-    @autoresponder.command(name="editreply", help="Edit responder reply")
+    @commands.command(name="autoresponderdelete", help="Delete an auto responder by trigger")
     @commands.has_permissions(administrator=True)
-    async def autoresponder_editreply(self, ctx, *, args):
-        """Edit responder reply
-
-        Usage: `s.autoresponder editreply trigger:<trigger> reply:<new_response>`
-        Changes the response message for existing trigger
-
+    async def autoresponderdelete(self, ctx, *, responder_id: str):
+        """Delete an auto responder
+        
+        Usage: `s.autoresponderdelete <trigger>`
+        Permanently removes an auto responder by its trigger word/phrase
+        
         Examples:
-        - `s.autoresponder editreply trigger:hello reply:Hi! Welcome to our server!`
-        - `s.autoresponder editreply trigger:rules reply:Check out our updated rules`
-
-        Common Errors:
-        - Trigger not found: Auto responder with that trigger doesn't exist
-        - Missing format: Must use trigger:<text> reply:<text> format
-        - Administrator only: Requires Administrator permission
+        - `s.autoresponderdelete hello`
+        - `s.autoresponderdelete welcome message`
+        
+        Features:
+        - Permanent deletion with confirmation
+        - Shows what was deleted for verification
+        - Case-sensitive trigger matching
         """
         try:
-            # Parse trigger: and reply: format
-            if 'trigger:' not in args or 'reply:' not in args:
-                embed = discord.Embed(
-                    title=f"{SPROUTS_ERROR} Invalid Format",
-                    description=f"**Correct format:** `{ctx.prefix}autoresponder editreply trigger:<trigger> reply:<new response>`\n\n"
-                               f"**Example:** `{ctx.prefix}autoresponder editreply trigger:hello reply:Hi there! Updated message!`",
-                    color=EMBED_COLOR_ERROR
-                )
-                embed.add_field(
-                    name="What you provided:",
-                    value=f"`{args}`",
-                    inline=False
-                )
-                await ctx.send(embed=embed)
-                return
-            
-            # Extract trigger and reply
-            trigger_start = args.find('trigger:') + 8
-            reply_start = args.find('reply:') + 6
-            
-            if reply_start < trigger_start:
-                # reply: comes before trigger:
-                trigger = args[trigger_start:].strip()
-                reply = args[reply_start:args.find('trigger:')].strip()
-            else:
-                # trigger: comes before reply:
-                trigger = args[trigger_start:args.find('reply:')].strip()
-                reply = args[reply_start:].strip()
-            
             guild_id = str(ctx.guild.id)
-            if guild_id not in self.autoresponders or trigger not in self.autoresponders[guild_id]:
+            
+            if guild_id not in self.autoresponders or responder_id not in self.autoresponders[guild_id]:
                 embed = discord.Embed(
                     title=f"{SPROUTS_ERROR} Auto Responder Not Found",
-                    description=f"**No auto responder found for trigger:** `{trigger}`\n\n"
+                    description=f"**No auto responder found for trigger:** `{responder_id}`\n\n"
                                f"**Available commands:**\n"
-                               f"`{ctx.prefix}autoresponder list` - View all auto responders\n"
-                               f"`{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>` - Create new responder",
+                               f"`{ctx.prefix}autoresponderlist` - View all auto responders\n"
+                               f"`{ctx.prefix}autoresponder` - Create new responder",
                     color=EMBED_COLOR_ERROR
                 )
                 embed.add_field(
                     name="What you searched for:",
-                    value=f"`{trigger}`",
+                    value=f"`{responder_id}`",
                     inline=False
                 )
-                await ctx.send(embed=embed)
+                await ctx.send(embed=embed, mention_author=False)
                 return
             
-            # Update the response
-            old_response = self.autoresponders[guild_id][trigger]['response']
-            self.autoresponders[guild_id][trigger]['response'] = reply
-            self.autoresponders[guild_id][trigger]['modified_at'] = datetime.utcnow().isoformat()
-            self.autoresponders[guild_id][trigger]['modified_by'] = str(ctx.author.id)
-            
+            # Remove the responder
+            removed_responder = self.autoresponders[guild_id].pop(responder_id)
             self.save_autoresponders()
             
             embed = discord.Embed(
-                title=f"{SPROUTS_CHECK} Auto Responder Updated",
-                description=f"Successfully updated auto responder for trigger: `{trigger}`",
-                color=EMBED_COLOR_NORMAL
+                title=f"{SPROUTS_CHECK} Auto Responder Deleted",
+                description=f"Successfully deleted auto responder for trigger: `{responder_id}`",
+                color=0x2ecc71  # SPROUTS_CHECK color - success
             )
-            embed.add_field(name="Old Response", value=old_response[:100] + "..." if len(old_response) > 100 else old_response, inline=False)
-            embed.add_field(name="New Response", value=reply[:100] + "..." if len(reply) > 100 else reply, inline=False)
+            embed.add_field(name="Response", value=removed_responder['response'][:100] + "..." if len(removed_responder['response']) > 100 else removed_responder['response'], inline=False)
             
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, mention_author=False)
             
         except Exception as e:
-            logger.error(f"Error editing auto responder: {e}")
+            logger.error(f"Error deleting auto responder: {e}")
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Error",
-                description="Failed to edit auto responder. Please check your syntax.",
+                description="Failed to delete auto responder.",
                 color=EMBED_COLOR_ERROR
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, mention_author=False)
+
+# Discord-based Auto Responder Creation System
+
+class AutoResponderBuilderView(discord.ui.View):
+    """Advanced Discord UI for auto responder creation"""
     
-    @autoresponder.command(name="remove", aliases=["delete"], help="Remove auto responder permanently by trigger word")
-    @commands.has_permissions(administrator=True)
-    async def autoresponder_remove(self, ctx, *, trigger):
-        """Remove an auto responder
-        
-        Usage: `{ctx.prefix}autoresponder remove <trigger>`
-        Permanently deletes auto responder (cannot be undone)
-        
-        Examples:
-        - `{ctx.prefix}autoresponder remove hello` - Delete 'hello' trigger
-        - `{ctx.prefix}autoresponder remove rules` - Remove 'rules' auto responder
-        - `{ctx.prefix}autoresponder remove old_command` - Clean up unused triggers
-        
-        Common Errors:
-        - Trigger not found: Use autoresponder list to see available triggers
-        - Case sensitive: Trigger must match exactly
-        - Cannot undo: Deletion is permanent
-        """
-        guild_id = str(ctx.guild.id)
-        
-        if guild_id not in self.autoresponders or trigger not in self.autoresponders[guild_id]:
+    def __init__(self, author, guild_id):
+        super().__init__(timeout=600)
+        self.author = author
+        self.guild_id = guild_id
+        self.responder_data = {
+            "trigger": None,
+            "response": None,
+            "enabled": True
+        }
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user == self.author
+    
+    @discord.ui.button(label="Set Trigger", style=discord.ButtonStyle.primary)
+    async def set_trigger(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Set auto responder trigger"""
+        modal = AutoResponderTriggerModal(self)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Set Response", style=discord.ButtonStyle.primary)
+    async def set_response(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Set auto responder response"""
+        modal = AutoResponderResponseModal(self)
+        await interaction.response.send_modal(modal)
+    
+    @discord.ui.button(label="Preview", style=discord.ButtonStyle.secondary)
+    async def preview_responder(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Preview the auto responder"""
+        if not self.responder_data["trigger"] or not self.responder_data["response"]:
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Auto Responder Not Found",
-                description=f"**No auto responder found for trigger:** `{trigger}`\n\n"
-                           f"**Available commands:**\n"
-                           f"`{ctx.prefix}autoresponder list` - View all auto responders\n"
-                           f"`{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>` - Create new responder",
-                color=EMBED_COLOR_ERROR
+                title=f"{SPROUTS_WARNING} Incomplete Auto Responder",
+                description="Please set both trigger and response first.",
+                color=0xffea69
             )
-            embed.add_field(
-                name="What you searched for:",
-                value=f"`{trigger}`",
-                inline=False
-            )
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
-        # Remove the responder
-        removed_responder = self.autoresponders[guild_id].pop(trigger)
-        self.save_autoresponders()
-        
         embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Auto Responder Removed",
-            description=f"Successfully removed auto responder for trigger: `{trigger}`",
-            color=EMBED_COLOR_NORMAL
+            title="Auto Responder Preview",
+            color=0xCCFFD1
         )
-        embed.add_field(name="Response", value=removed_responder['response'][:100] + "..." if len(removed_responder['response']) > 100 else removed_responder['response'], inline=False)
-        
-        await ctx.send(embed=embed)
+        embed.add_field(
+            name="Trigger",
+            value=f"`{self.responder_data['trigger']}`",
+            inline=False
+        )
+        embed.add_field(
+            name="Response",
+            value=self.responder_data["response"],
+            inline=False
+        )
+        embed.add_field(
+            name="Status",
+            value="✅ Enabled" if self.responder_data["enabled"] else "❌ Disabled",
+            inline=True
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
     
-    @autoresponder.command(name="list", help="Display all auto responders with triggers and status")
-    @commands.has_permissions(administrator=True)
-    async def autoresponder_list(self, ctx):
-        """List all auto responders
-        
-        Usage: `{ctx.prefix}autoresponder list`
-        Shows all configured auto responders with triggers, responses, and status
-        
-        Examples:
-        - `{ctx.prefix}autoresponder list` - View all server auto responders
-        - Shows enabled/disabled status for each
-        - Displays first 50 characters of each response
-        
-        Features:
-        - Shows up to 10 responders per page
-        - Indicates enabled/disabled status
-        - Truncates long responses for readability
-        - Perfect for managing large collections
-        """
-        guild_id = str(ctx.guild.id)
-        
-        if guild_id not in self.autoresponders or not self.autoresponders[guild_id]:
+    @discord.ui.button(label="Save Auto Responder", style=discord.ButtonStyle.success)
+    async def save_responder(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Save the auto responder"""
+        if not self.responder_data["trigger"] or not self.responder_data["response"]:
             embed = discord.Embed(
-                title=" Auto Responders",
-                description="No auto responders configured for this server.",
-                color=EMBED_COLOR_NORMAL
+                title=f"{SPROUTS_ERROR} Cannot Save",
+                description="Please set both trigger and response first.",
+                color=0xe74c3c
             )
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
-        responders = self.autoresponders[guild_id]
-        
-        embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Auto Responders",
-            description=f"Found {len(responders)} auto responder(s)",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        for trigger, data in list(responders.items())[:10]:  # Show first 10
-            status = f"{SPROUTS_CHECK} Enabled" if data.get('enabled', True) else f"{SPROUTS_ERROR} Disabled"
-            response = data['response'][:50] + "..." if len(data['response']) > 50 else data['response']
-            embed.add_field(
-                name=f"{trigger} ({status})",
-                value=response,
-                inline=False
-            )
-        
-        if len(responders) > 10:
-            embed.set_footer(text=f"Showing 10 of {len(responders)} auto responders")
-        
-        await ctx.send(embed=embed)
-    
-    @autoresponder.command(name="toggle", help="Enable or disable an existing auto responder by providing its trigger word")
-    @commands.has_permissions(administrator=True)
-    async def autoresponder_toggle(self, ctx, *, trigger):
-        """Toggle an auto responder on/off without deleting it
-        
-        Usage: `{ctx.prefix}autoresponder toggle <trigger>`
-        
-        How to use:
-        1. First, check existing responders with 'autoresponder list'
-        2. Find the trigger word of the responder you want to toggle
-        3. Use 'autoresponder toggle <trigger>' to enable/disable it
-        4. The responder will switch between enabled and disabled states
-        
-        Examples:
-        - `{ctx.prefix}autoresponder toggle hello` - Enable/disable the 'hello' responder
-        - `{ctx.prefix}autoresponder toggle maintenance` - Toggle maintenance message on/off
-        - `{ctx.prefix}autoresponder toggle rules` - Temporarily disable rules reminder
-        
-        What this does:
-        - Disables the responder: It will stop responding to messages but keep all settings
-        - Enables the responder: It will start responding to messages again
-        - Preserves all data: No need to recreate the responder later
-        - Better than delete/add: Quick way to temporarily turn off responders
-        
-        Note: You must use the exact trigger word that was used when creating the responder
-        """
-        guild_id = str(ctx.guild.id)
-        
-        if guild_id not in self.autoresponders or trigger not in self.autoresponders[guild_id]:
+        # Get the auto responder cog
+        auto_cog = interaction.client.get_cog('AutoResponders')
+        if not auto_cog:
             embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Auto Responder Not Found",
-                description=f"**No auto responder found for trigger:** `{trigger}`\n\n"
-                           f"**Available commands:**\n"
-                           f"`{ctx.prefix}autoresponder list` - View all auto responders\n"
-                           f"`{ctx.prefix}autoresponder add trigger:<trigger> reply:<response>` - Create new responder",
-                color=EMBED_COLOR_ERROR
+                title=f"{SPROUTS_ERROR} System Error",
+                description="Auto responder system not available.",
+                color=0xe74c3c
             )
-            embed.add_field(
-                name="What you searched for:",
-                value=f"`{trigger}`",
-                inline=False
-            )
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
-        # Toggle the responder
-        current_status = self.autoresponders[guild_id][trigger].get('enabled', True)
-        new_status = not current_status
-        self.autoresponders[guild_id][trigger]['enabled'] = new_status
-        self.save_autoresponders()
+        # Save the auto responder
+        guild_id = str(self.guild_id)
+        if guild_id not in auto_cog.autoresponders:
+            auto_cog.autoresponders[guild_id] = {}
         
-        status_text = "enabled" if new_status else "disabled"
+        auto_cog.autoresponders[guild_id][self.responder_data["trigger"]] = {
+            "response": self.responder_data["response"],
+            "enabled": self.responder_data["enabled"]
+        }
+        auto_cog.save_autoresponders()
+        
         embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Auto Responder Toggled",
-            description=f"Auto responder for trigger `{trigger}` has been **{status_text}**",
-            color=EMBED_COLOR_NORMAL
+            title=f"{SPROUTS_CHECK} Auto Responder Saved",
+            description=f"Auto responder for `{self.responder_data['trigger']}` has been saved successfully!",
+            color=0xCCFFD1
         )
+        await interaction.response.send_message(embed=embed)
+        self.stop()
+
+
+class AutoResponderTriggerModal(discord.ui.Modal, title="Set Auto Responder Trigger"):
+    def __init__(self, builder):
+        super().__init__()
+        self.builder = builder
+    
+    trigger_input = discord.ui.TextInput(
+        label="Trigger Word/Phrase",
+        placeholder="hello",
+        max_length=100
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        self.builder.responder_data["trigger"] = self.trigger_input.value.lower()
         
-        await ctx.send(embed=embed)
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Trigger Set",
+            description=f"Trigger set to: `{self.trigger_input.value}`",
+            color=0xCCFFD1
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-    @autoresponder_add.error
-    async def autoresponder_add_error(self, ctx, error):
-        """Handle autoresponder add command errors"""
-        if isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Command Error: Add",
-                description="Please provide the trigger and reply.\n\n**Usage:** `s.autoresponder add trigger:<trigger> reply:<response>`\n**Example:** `s.autoresponder add trigger:hello reply:Hello there!`",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        elif isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Access Denied",
-                description="You need **Administrator** permission to add auto responders.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
+class AutoResponderResponseModal(discord.ui.Modal, title="Set Auto Responder Response"):
+    def __init__(self, builder):
+        super().__init__()
+        self.builder = builder
+    
+    response_input = discord.ui.TextInput(
+        label="Response Message",
+        style=discord.TextStyle.paragraph,
+        placeholder="Hello! How can I help you today?",
+        max_length=2000
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        self.builder.responder_data["response"] = self.response_input.value
+        
+        preview = self.response_input.value[:100] + "..." if len(self.response_input.value) > 100 else self.response_input.value
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Response Set",
+            description=f"Response set to:\n```{preview}```",
+            color=0xCCFFD1
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @autoresponder_editreply.error
-    async def autoresponder_editreply_error(self, ctx, error):
-        """Handle autoresponder editreply command errors"""
-        if isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Command Error: EditReply",
-                description="Please provide the trigger and new reply.\n\n**Usage:** `s.autoresponder editreply trigger:<trigger> reply:<new response>`\n**Example:** `s.autoresponder editreply trigger:hello reply:Updated message!`",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        elif isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Access Denied",
-                description="You need **Administrator** permission to edit auto responders.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
 
-    @autoresponder_remove.error
-    async def autoresponder_remove_error(self, ctx, error):
-        """Handle autoresponder remove command errors"""
-        if isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Command Error: Remove",
-                description="Please specify which auto responder to remove.\n\n**Usage:** `s.autoresponder remove <trigger>`\n**Example:** `s.autoresponder remove hello`",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        elif isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Access Denied",
-                description="You need **Administrator** permission to remove auto responders.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-
-    @autoresponder_toggle.error
-    async def autoresponder_toggle_error(self, ctx, error):
-        """Handle autoresponder toggle command errors"""
-        if isinstance(error, commands.MissingRequiredArgument):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Command Error: Toggle",
-                description="Please specify which auto responder to toggle.\n\n**Usage:** `s.autoresponder toggle <trigger>`\n**Example:** `s.autoresponder toggle hello`",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
-        elif isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(
-                title=f"{SPROUTS_ERROR} Access Denied",
-                description="You need **Administrator** permission to toggle auto responders.",
-                color=EMBED_COLOR_ERROR)
-            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=embed, mention_author=False)
+class AutoResponderButtonView(discord.ui.View):
+    """Simple button view to open autoresponder modal"""
+    
+    def __init__(self, cog):
+        super().__init__(timeout=300)
+        self.cog = cog
+    
+    @discord.ui.button(label="Create Auto Responder", style=discord.ButtonStyle.primary)
+    async def create_autoresponder(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Open the autoresponder creation modal"""
+        modal = AutoResponderCreateModal(self.cog)
+        await interaction.response.send_modal(modal)
 
 
 async def setup(bot):
-    """Setup function for the cog"""
     await bot.add_cog(AutoResponders(bot))
-    logger.info("Auto responders setup completed")

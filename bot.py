@@ -35,14 +35,15 @@ class DiscordBot(commands.AutoShardedBot):
         # Return prefixes + bot mentions
         return commands.when_mentioned_or(*base_prefixes)(self, message)
     
-    def __init__(self, cluster_id=None, shard_ids=None, shard_count=None):
+    def __init__(self, cluster_id=None, shard_ids=None, shard_count=None, total_clusters=None):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.guilds = True
         intents.members = True
         
-        # Store cluster info
-        self.cluster_id = cluster_id
+        # Store cluster info for multi-instance deployment
+        self.cluster_id = cluster_id or 0
+        self.total_clusters = total_clusters or 1
         
         super().__init__(
             command_prefix=self.get_prefix,
@@ -65,6 +66,10 @@ class DiscordBot(commands.AutoShardedBot):
         from src.data_manager import data_manager
         await data_manager.auto_backup_on_startup()
         
+        # Initialize Replit persistence system for deployment protection
+        from src.database.replit_persistence import replit_persistence
+        await replit_persistence.initialize_persistence_system()
+        
         # Verify data integrity and create defaults if needed
         integrity = data_manager.verify_data_integrity()
         missing_files = [name for name, valid in integrity.items() if not valid]
@@ -82,12 +87,15 @@ class DiscordBot(commands.AutoShardedBot):
         from src.cogs.logger import setup_logger
         from src.cogs.embed_builder import setup as setup_embed_builder
         from src.cogs.dev_only import setup_devonly
-        from src.cogs.autoresponders import setup
+        from src.cogs.autoresponders import setup as setup_autoresponders
         from src.cogs.reminders import setup_reminders
         from src.cogs.sticky_messages import setup_stickymessages
         from src.cogs.server_stats import setup_server_stats
         from src.cogs.dm_logging import setup_dm_logging
         from src.cogs.cmd_logging import setup_cmd_logging
+        from src.cogs.feature_management import setup as setup_feature_management
+        from src.cogs.persistence_commands import setup as setup_persistence_commands
+        from src.cogs.cluster import setup as setup_cluster
         
         await setup_uncategorized(self)
         await setup_events(self)
@@ -97,12 +105,15 @@ class DiscordBot(commands.AutoShardedBot):
         await setup_logger(self)
         await setup_embed_builder(self)
         await setup_devonly(self)
-        await setup(self)
+        await setup_autoresponders(self)
         await setup_reminders(self)
         await setup_stickymessages(self)
         await setup_server_stats(self)
         await setup_dm_logging(self)
         await setup_cmd_logging(self)
+        await setup_feature_management(self)
+        await setup_persistence_commands(self)
+        await setup_cluster(self)
         
         # Add persistent views for ticket buttons after ticket system is loaded
         try:
@@ -121,6 +132,16 @@ class DiscordBot(commands.AutoShardedBot):
     async def global_check(self, ctx):
         """Global check that runs before every command"""
         logger.info(f"GLOBAL CHECK: Command '{ctx.command.name if ctx.command else 'unknown'}' from user {ctx.author} (ID: {ctx.author.id})")
+        
+        # Check feature flags for command availability
+        if ctx.command:
+            from src.feature_flags import feature_manager
+            
+            # Always allow developer commands for bot owner
+            if ctx.author.id != self.owner_id:
+                if not feature_manager.is_command_enabled(ctx.command.name):
+                    # Silently ignore disabled commands
+                    return False
         
         # Check maintenance mode first - only allow bot owner during maintenance
         devonly_cog = self.get_cog('DevOnly')
@@ -182,7 +203,7 @@ class DiscordBot(commands.AutoShardedBot):
                         await message.add_reaction(SPROUTS_ERROR)
                     except discord.HTTPException:
                         try:
-                            await message.add_reaction('❌')
+                            pass
                         except discord.HTTPException:
                             pass
                     return

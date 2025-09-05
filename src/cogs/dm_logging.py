@@ -186,7 +186,7 @@ class DMLoggingCog(commands.Cog):
                 
             if not channel:
                 embed = discord.Embed(
-                    title="Invalid Channel",
+                    title=f"{SPROUTS_ERROR} Invalid Channel",
                     description="Could not find the specified channel. Please provide a valid channel mention, channel ID, or channel name.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -203,7 +203,7 @@ class DMLoggingCog(commands.Cog):
             # Make sure it's a text channel in this guild
             if not isinstance(channel, discord.TextChannel) or channel.guild.id != ctx.guild.id:
                 embed = discord.Embed(
-                    title="Invalid Channel",
+                    title=f"{SPROUTS_ERROR} Invalid Channel",
                     description="Please specify a text channel from this server.",
                     color=EMBED_COLOR_ERROR
                 )
@@ -224,7 +224,7 @@ class DMLoggingCog(commands.Cog):
             dm_logging.set_dm_log_channel(ctx.guild.id, channel.id)
             
             embed = discord.Embed(
-                title="DM Logging Configured",
+                title=f"{SPROUTS_CHECK} DM Logging Configured",
                 description=f"DM logging has been set to {channel.mention}",
                 color=EMBED_COLOR_NORMAL
             )

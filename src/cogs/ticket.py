@@ -5,6 +5,7 @@ A comprehensive ticket system with text commands for staff management
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 import logging
 import json
 import os
@@ -15,7 +16,7 @@ from typing import Optional, List
 import random
 import string
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
-from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
+from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_INFORMATION
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,216 @@ TICKETS_FILE = "config/tickets_data.json"
 PANELS_FILE = "data/panels_data.json"
 
 
+class JumpToTopView(discord.ui.View):
+    """View for jump to top button in tickets"""
+    
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Jump to Top", style=discord.ButtonStyle.secondary, custom_id="jump_to_top")
+    async def jump_to_top(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Jump to top of the ticket"""
+        try:
+            # Get the first message in the channel (which should be the ticket creation message)
+            async for message in interaction.channel.history(limit=1, oldest_first=True):
+                jump_embed = discord.Embed(
+                    title="Ticket Start",
+                    description=f"**Jump to the beginning of this ticket**\n\n[Click here to go to the first message]({message.jump_url})",
+                    color=EMBED_COLOR_NORMAL
+                )
+                jump_embed.set_footer(text="This message will auto-delete in 10 seconds")
+                await interaction.response.send_message(embed=jump_embed, ephemeral=False, delete_after=10)
+                return
+            
+            # Fallback if no message found
+            await interaction.response.send_message("Could not find the start of this ticket.", ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Error in jump to top: {e}")
+            await interaction.response.send_message("Error jumping to top.", ephemeral=True)
+
+
+class CloseRequestView(discord.ui.View):
+    """View for close request confirmation"""
+    
+    def __init__(self, staff_member, ticket_cog, reason="No reason provided"):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.staff_member = staff_member
+        self.ticket_cog = ticket_cog
+        self.reason = reason
+        self.responded = False
+        
+    @discord.ui.button(label=f"{SPROUTS_CHECK} Approve Close", style=discord.ButtonStyle.success)
+    async def approve_close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Approve ticket closure"""
+        if self.responded:
+            await interaction.response.send_message("This request has already been handled.", ephemeral=True)
+            return
+            
+        # Check if user is ticket owner or staff
+        ticket_id = interaction.channel.id
+        ticket_data = self.ticket_cog.tickets_data.get(str(ticket_id))
+        
+        is_owner = ticket_data and ticket_data.get('creator_id') == interaction.user.id
+        is_staff = self.ticket_cog.is_staff(interaction.user)
+        
+        if not (is_owner or is_staff):
+            await interaction.response.send_message("Only the ticket owner or staff can approve this.", ephemeral=True)
+            return
+            
+        self.responded = True
+        
+        # Create a fake context for the close process
+        ctx = await interaction.client.get_context(interaction.message)
+        ctx.author = self.staff_member
+        ctx.channel = interaction.channel
+        
+        embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Close Request Approved", 
+            description=f"Ticket closure approved by {interaction.user.mention}",
+            color=EMBED_COLOR_NORMAL
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+        
+        # Close the ticket
+        await self.ticket_cog._process_ticket_close(ctx, self.reason)
+        
+    @discord.ui.button(label=f"{SPROUTS_ERROR} Deny Close", style=discord.ButtonStyle.danger) 
+    async def deny_close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Deny ticket closure"""
+        if self.responded:
+            await interaction.response.send_message("This request has already been handled.", ephemeral=True)
+            return
+            
+        # Check if user is ticket owner or staff
+        ticket_id = interaction.channel.id
+        ticket_data = self.ticket_cog.tickets_data.get(str(ticket_id))
+        
+        is_owner = ticket_data and ticket_data.get('creator_id') == interaction.user.id
+        is_staff = self.ticket_cog.is_staff(interaction.user)
+        
+        if not (is_owner or is_staff):
+            await interaction.response.send_message("Only the ticket owner or staff can deny this.", ephemeral=True)
+            return
+            
+        self.responded = True
+        
+        embed = discord.Embed(
+            title=f"{SPROUTS_ERROR} Close Request Denied",
+            description=f"Ticket closure denied by {interaction.user.mention}. The ticket will remain open.",
+            color=EMBED_COLOR_ERROR
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+        
+    async def on_timeout(self):
+        """Handle timeout"""
+        if not self.responded:
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Close Request Timed Out",
+                description="The close request timed out. The ticket remains open.",
+                color=EMBED_COLOR_ERROR
+            )
+            try:
+                await self.message.edit(embed=embed, view=None)
+            except:
+                pass
+
+
+class CloseReasonModal(discord.ui.Modal):
+    """Modal for getting close reason"""
+    
+    def __init__(self, ticket_cog):
+        super().__init__(title="Close Ticket with Reason")
+        self.ticket_cog = ticket_cog
+        
+    reason_input = discord.ui.TextInput(
+        label="Reason for closing",
+        placeholder="Enter the reason for closing this ticket...",
+        style=discord.TextStyle.paragraph,
+        max_length=500,
+        required=True
+    )
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        """Handle modal submission"""
+        try:
+            reason = self.reason_input.value.strip()
+            if not reason:
+                reason = "No reason provided"
+            
+            # Show confirmation dialog with the reason
+            embed = discord.Embed(
+                title="Close Ticket Confirmation",
+                description=f"Are you sure you want to close this ticket?\n\n**Reason:** {reason}\n**Channel:** {interaction.channel.mention}\n\n**WARNING: This action cannot be undone!**\n**This confirmation will timeout in 30 seconds**",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            # Create context for the confirmation
+            ctx = await interaction.client.get_context(interaction.message)
+            ctx.author = interaction.user
+            ctx.channel = interaction.channel
+            
+            view = CloseConfirmation(self.ticket_cog, ctx, reason)
+            await interaction.response.send_message(embed=embed, view=view)
+            
+        except Exception as e:
+            logger.error(f"Error in close reason modal: {e}")
+            await interaction.response.send_message(
+                f"{SPROUTS_ERROR} Error processing close request. Please try again.",
+                ephemeral=True
+            )
+
+
 class TicketButtons(discord.ui.View):
     """Persistent view for ticket channel buttons"""
 
-    def __init__(self):
+    def __init__(self, ticket_claimed=False):
         super().__init__(timeout=None)
+        self.ticket_claimed = ticket_claimed
+
+    @discord.ui.button(label="Close with Reason",
+                       style=discord.ButtonStyle.danger,
+                       custom_id="close_with_reason_btn")
+    async def close_with_reason_btn(self, interaction: discord.Interaction,
+                                   button: discord.ui.Button):
+        """Close with reason button handler"""
+        try:
+            # Get the ticket cog
+            ticket_cog = interaction.client.get_cog('TicketSystem')
+            if not ticket_cog:
+                await interaction.response.send_message(
+                    "Ticket system not available", ephemeral=True)
+                return
+
+            # Check if user is staff or ticket owner
+            if not ticket_cog.is_staff(interaction.user):
+                # Check if they're the ticket owner
+                ticket_id = interaction.channel.id
+                ticket_data = ticket_cog.tickets_data.get(str(ticket_id))
+                if not ticket_data or ticket_data.get(
+                        'creator_id') != interaction.user.id:
+                    await interaction.response.send_message(
+                        "Only staff or the ticket owner can close this ticket",
+                        ephemeral=True)
+                    return
+
+            # Show modal to get reason
+            modal = CloseReasonModal(ticket_cog)
+            await interaction.response.send_modal(modal)
+
+        except Exception as e:
+            logger.error(f"Error in close with reason button: {e}")
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(
+                        f"{SPROUTS_ERROR} Error closing ticket. Please try again.",
+                        ephemeral=True)
+                else:
+                    await interaction.followup.send(
+                        f"{SPROUTS_ERROR} Error closing ticket. Please try again.",
+                        ephemeral=True)
+            except Exception as followup_error:
+                logger.error(f"Error sending error message: {followup_error}")
 
     @discord.ui.button(label="Close Ticket",
                        style=discord.ButtonStyle.danger,
@@ -111,9 +317,15 @@ class TicketButtons(discord.ui.View):
             ctx.channel = interaction.channel
 
             await ticket_cog.claim_ticket(ctx)
+            
+            # Remove the claim button after claiming and update the view
+            self.remove_item(self.claim_ticket)
+            await interaction.edit_original_response(view=self)
+            
             try:
-                await interaction.response.defer()
-            except discord.InteractionAlreadyAcknowledged:
+                if not interaction.response.is_done():
+                    await interaction.response.defer()
+            except discord.errors.InteractionResponded:
                 pass  # Already handled by claim_ticket
 
         except Exception as e:
@@ -199,11 +411,11 @@ class CloseConfirmation(discord.ui.View):
                 color=EMBED_COLOR_ERROR)
             try:
                 # Try to edit the original message if we have access to it
-                if hasattr(self, 'message') and self.message:
-                    await self.message.edit(embed=embed, view=None)
-                else:
-                    # Send a new message if we can't edit the original
+                # Try to access message through interaction if available
+                try:
                     await self.ctx.send(embed=embed)
+                except Exception:
+                    pass  # Ignore timeout message errors
             except Exception as e:
                 logger.error(f"Error handling close confirmation timeout: {e}")
 
@@ -819,54 +1031,47 @@ class NamingSelectView(discord.ui.View):
                                                     ephemeral=True)
 
 
+# Import database classes
+try:
+    from src.database.connection import TicketDatabase, PanelDatabase, SettingsDatabase, db_manager
+except ImportError:
+    # Fallback for development
+    TicketDatabase = None
+    PanelDatabase = None
+    SettingsDatabase = None
+    db_manager = None
+    logger.warning("Database modules not available, using JSON fallback")
+
 class TicketData:
-    """Simple file-based data storage for tickets"""
+    """Database-backed data storage for tickets with JSON fallback"""
 
     @staticmethod
     def load_tickets():
-        """Load tickets from file"""
-        try:
-            if os.path.exists(TICKETS_FILE):
-                with open(TICKETS_FILE, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading tickets: {e}")
+        """Load tickets - now returns empty dict as data comes from database"""
+        # This method is kept for compatibility but data now comes from database
         return {}
 
     @staticmethod
     def save_tickets(tickets_data):
-        """Save tickets to file"""
-        try:
-            os.makedirs(os.path.dirname(TICKETS_FILE), exist_ok=True)
-            with open(TICKETS_FILE, 'w') as f:
-                json.dump(tickets_data, f, indent=2, default=str)
-        except Exception as e:
-            logger.error(f"Error saving tickets: {e}")
+        """Save tickets - now a no-op as data is saved directly to database"""
+        # This method is kept for compatibility but database handles persistence
+        pass
 
 
 class PanelData:
-    """Simple file-based data storage for ticket panels"""
+    """Database-backed data storage for ticket panels with JSON fallback"""
 
     @staticmethod
     def load_panels():
-        """Load panels from file"""
-        try:
-            if os.path.exists(PANELS_FILE):
-                with open(PANELS_FILE, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading panels: {e}")
+        """Load panels - now returns empty dict as data comes from database"""
+        # This method is kept for compatibility but data now comes from database
         return {}
 
     @staticmethod
     def save_panels(panels_data):
-        """Save panels to file"""
-        try:
-            os.makedirs("data", exist_ok=True)
-            with open(PANELS_FILE, 'w') as f:
-                json.dump(panels_data, f, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving panels: {e}")
+        """Save panels - now a no-op as data is saved directly to database"""
+        # This method is kept for compatibility but database handles persistence
+        pass
 
 
 class TicketSystem(commands.Cog):
@@ -874,13 +1079,15 @@ class TicketSystem(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        # Legacy data loading for backward compatibility - now database-backed
         self.tickets_data = TicketData.load_tickets()
         self.panels_data = PanelData.load_panels()
         self.ticket_category_id = None
         self.staff_role_ids = []
         self.ticket_settings = self.load_ticket_settings()
-        self.transcript_channels = {
-        }  # guild_id: channel_id for transcript logging
+        self.transcript_channels = {}
+        self.db_initialized = False
+        # Initialize database connection asynchronously
 
     async def auto_delete_message(self, message, delay: int = 30):
         """Auto-delete a message after specified delay (in seconds)"""
@@ -1664,13 +1871,7 @@ class TicketSystem(commands.Cog):
             ticket_number = len(guild_tickets) + 1
             return f"ticket-{ticket_number:03d}"
 
-    @commands.command(
-        name="new",
-        help=
-        "Create a new support ticket with automated setup and staff notification"
-    )
-    @commands.cooldown(1, 30, commands.BucketType.user)
-    async def new_ticket(self, ctx, *, reason: str = "No reason provided"):
+    async def new_ticket_old(self, ctx, *, reason: str = "No reason provided"):
         """Create a new ticket command
         
         Usage: `{ctx.prefix}new [reason]`
@@ -1819,20 +2020,28 @@ class TicketSystem(commands.Cog):
 
             # Send embed and buttons to ticket channel
             ticket_buttons = TicketButtons()
-            staff_panel = StaffPanel()
+            # Staff panel removed
 
-            # Send user ping first (outside embed for notification)
-            await ticket_channel.send(f"{user.mention}")
+            # Get guild settings for ghost ping option
+            guild_settings = self.get_guild_settings(guild.id)
+            ghost_ping = guild_settings.get('ghost_ping', False)
+            
+            if ghost_ping:
+                # Send and immediately edit to remove ping (ghost ping)
+                ping_msg = await ticket_channel.send(f"{user.mention}")
+                await ping_msg.edit(content="\u200b")  # Zero-width space
+            else:
+                # Normal ping that stays visible
+                await ticket_channel.send(f"{user.mention}")
 
+            # Check if ticket is claimed to show appropriate buttons
+            is_claimed = ticket_data.get('claimed_by') is not None
+            ticket_buttons = TicketButtons(ticket_claimed=is_claimed)
+            
             # Send the main ticket embed with buttons
             await ticket_channel.send(embed=embed, view=ticket_buttons)
 
-            # Send staff panel separately
-            staff_embed = discord.Embed(
-                description=
-                "**Staff Panel** - Click the button below for advanced ticket management",
-                color=EMBED_COLOR_NORMAL)
-            await ticket_channel.send(embed=staff_embed, view=staff_panel)
+            # Staff panel removed - modern ticket system doesn't need separate panel
 
             # Confirmation message
             embed = discord.Embed(
@@ -1852,6 +2061,11 @@ class TicketSystem(commands.Cog):
 
             logger.info(
                 f"Ticket created by {user} in {guild.name}: {ticket_channel.name}"
+            )
+            
+            # Enhanced event logging for ticket creation
+            await self._log_ticket_event(
+                'open', guild, ticket_id, user, user, None, reason
             )
 
         except Exception as e:
@@ -2211,92 +2425,151 @@ class TicketSystem(commands.Cog):
                 pass
 
     async def _process_ticket_close(self, ctx, reason: str):
-        """Process the actual ticket closing with full transcript logging to channel"""
+        """Process the actual ticket closing with HTML transcript generation"""
         try:
-            # Find ticket by current channel
+            # Find ticket by current channel - check database first
             ticket_data = None
             ticket_id = None
-            for tid, tdata in self.tickets_data.items():
-                if tdata.get('channel_id') == ctx.channel.id:
-                    ticket_id = tid
-                    ticket_data = tdata
-                    break
+            
+            # Get ticket from database
+            from src.database.all_data_access import get_ticket_by_channel
+            db_ticket = await get_ticket_by_channel(ctx.channel.id)
+            
+            if db_ticket:
+                ticket_id = db_ticket['ticket_id']
+                ticket_data = db_ticket
+            else:
+                # Fallback to legacy data
+                for tid, tdata in self.tickets_data.items():
+                    if tdata.get('channel_id') == ctx.channel.id:
+                        ticket_id = tid
+                        ticket_data = tdata
+                        break
 
             if not ticket_data:
                 return
 
             # Get the ticket creator FIRST before any async operations
-            ticket_creator = self.bot.get_user(ticket_data.get('creator_id'))
+            creator_id = ticket_data.get('creator_id')
+            ticket_creator = self.bot.get_user(creator_id)
             if not ticket_creator:
                 try:
-                    ticket_creator = await self.bot.fetch_user(
-                        ticket_data.get('creator_id'))
+                    ticket_creator = await self.bot.fetch_user(creator_id)
                 except:
-                    logger.error(
-                        f"Could not find ticket creator with ID {ticket_data.get('creator_id')}"
-                    )
+                    logger.error(f"Could not find ticket creator with ID {creator_id}")
 
-            # Generate transcript for both file storage AND logging channel
-            transcript_content = None
+            # Get claimed staff member
+            staff_member = None
+            claimed_by_id = ticket_data.get('claimed_by')
+            if claimed_by_id:
+                staff_member = self.bot.get_user(claimed_by_id)
+                if not staff_member:
+                    try:
+                        staff_member = await self.bot.fetch_user(claimed_by_id)
+                    except:
+                        pass
+
+            # Generate HTML transcript using new transcript system
+            transcript_url = None
             transcript_file_path = None
             try:
-                # Create transcripts directory if it doesn't exist
-                transcript_dir = "src/data/transcripts"
-                if not os.path.exists(transcript_dir):
-                    os.makedirs(transcript_dir)
-
-                # Generate transcript filename
-                timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-                transcript_file_path = f"{transcript_dir}/ticket_{ticket_id}_{timestamp}.txt"
-
-                # Collect messages from the channel
-                messages = []
-                async for message in ctx.channel.history(limit=500,
-                                                         oldest_first=True):
-                    # Skip bot messages except embeds and important ones
-                    if message.author.bot and not message.embeds and not message.attachments:
-                        continue
-
-                    timestamp_str = message.created_at.strftime(
-                        "%Y-%m-%d %H:%M:%S UTC")
-                    content = message.content if message.content else "[No text content]"
-
-                    # Add embeds info
-                    if message.embeds:
-                        content += f" [Contains {len(message.embeds)} embed(s)]"
-
-                    # Add attachments info
-                    if message.attachments:
-                        content += f" [Contains {len(message.attachments)} attachment(s): {', '.join([att.filename for att in message.attachments])}]"
-
-                    messages.append(
-                        f"[{timestamp_str}] {message.author.display_name}: {content}"
-                    )
-
-                # Create transcript header and content
-                transcript_header = f"=== TICKET TRANSCRIPT ===\n"
-                transcript_header += f"Ticket ID: {ticket_id}\n"
-                transcript_header += f"Creator: {ticket_data.get('creator_name', 'Unknown')}\n"
-                transcript_header += f"Created: {ticket_data.get('created_at', 'Unknown')}\n"
-                transcript_header += f"Closed: {datetime.utcnow().isoformat()}\n"
-                transcript_header += f"Closed by: {ctx.author.display_name}\n"
-                transcript_header += f"Reason: {reason}\n"
-                transcript_header += f"Guild: {ctx.guild.name} ({ctx.guild.id})\n"
-                transcript_header += f"Channel: {ctx.channel.name} ({ctx.channel.id})\n"
-                transcript_header += f"{'=' * 50}\n\n"
-
-                transcript_content = transcript_header + "\n".join(messages)
-
-                # Save transcript to file (for DMs and local backup)
-                with open(transcript_file_path, 'w', encoding='utf-8') as f:
-                    f.write(transcript_content)
-
-                logger.info(
-                    f"Generated and saved transcript to {transcript_file_path}"
+                from src.utils.transcript_generator import transcript_generator
+                
+                # Generate beautiful HTML transcript
+                transcript_url, transcript_file_path = await transcript_generator.generate_transcript(
+                    channel=ctx.channel,
+                    ticket_id=ticket_id,
+                    creator=ticket_creator,
+                    staff=staff_member,
+                    reason=ticket_data.get('reason', 'No reason provided'),
+                    close_reason=reason
                 )
+                
+                logger.info(f"Generated HTML transcript for ticket {ticket_id}: {transcript_file_path}")
 
             except Exception as e:
-                logger.error(f"Error generating transcript: {e}")
+                logger.error(f"Error generating HTML transcript: {e}")
+                transcript_url = None
+                transcript_file_path = None
+
+            # Send transcript to creator via DM with modern HTML viewer
+            dm_success = False
+            if ticket_creator and transcript_url:
+                try:
+                    dm_embed = discord.Embed(
+                        title=f"{SPROUTS_INFORMATION} Ticket #{ticket_id} Closed",
+                        description=f"Your support ticket has been closed.",
+                        color=EMBED_COLOR_NORMAL
+                    )
+                    
+                    dm_embed.add_field(
+                        name=f"{SPROUTS_INFORMATION} Details",
+                        value=f"**Server:** {ctx.guild.name}\n"
+                              f"**Closed by:** {ctx.author.display_name}\n"
+                              f"**Reason:** {reason}\n"
+                              f"**Closed:** <t:{int(datetime.utcnow().timestamp())}:F>",
+                        inline=False
+                    )
+                    
+                    dm_embed.add_field(
+                        name=f"{SPROUTS_INFORMATION} Transcript",
+                        value=f"[View Full Conversation Log]({transcript_url})\n"
+                              f"Complete HTML transcript of your ticket conversation",
+                        inline=False
+                    )
+                    
+                    dm_embed.set_footer(text=f"Ticket ID: {ticket_id}")
+                    dm_embed.timestamp = discord.utils.utcnow()
+
+                    await ticket_creator.send(embed=dm_embed)
+                    dm_success = True
+                    logger.info(f"Sent transcript DM to {ticket_creator}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to send DM to ticket creator: {e}")
+
+            # Enhanced event logging for ticket closure
+            await self._log_ticket_event(
+                'close', ctx.guild, ticket_id, ctx.author, 
+                ticket_creator, staff_member, reason, transcript_url
+            )
+            
+            # Log to transcript channel if configured
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            transcript_channel_id = guild_settings.get('transcript_channel_id')
+            
+            if transcript_channel_id and transcript_url:
+                try:
+                    transcript_channel = self.bot.get_channel(int(transcript_channel_id))
+                    if transcript_channel:
+                        log_embed = discord.Embed(
+                            title=f"{SPROUTS_INFORMATION} Ticket #{ticket_id} Transcript",
+                            description=f"Complete conversation log from closed ticket",
+                            color=EMBED_COLOR_NORMAL
+                        )
+                        
+                        log_embed.add_field(
+                            name=f"{SPROUTS_INFORMATION} Ticket Information",
+                            value=f"**Creator:** {ticket_creator.display_name if ticket_creator else 'Unknown'}\n"
+                                  f"**Staff:** {staff_member.display_name if staff_member else 'Unassigned'}\n"
+                                  f"**Closed by:** {ctx.author.display_name}\n"
+                                  f"**Close reason:** {reason}",
+                            inline=False
+                        )
+                        
+                        log_embed.add_field(
+                            name=f"{SPROUTS_INFORMATION} Transcript",
+                            value=f"[View HTML Transcript]({transcript_url})",
+                            inline=False
+                        )
+                        
+                        log_embed.timestamp = discord.utils.utcnow()
+                        
+                        await transcript_channel.send(embed=log_embed)
+                        logger.info(f"Sent transcript to log channel {transcript_channel.name}")
+                        
+                except Exception as e:
+                    logger.error(f"Error sending to transcript channel: {e}")
 
             # Update ticket status
             ticket_data['status'] = 'closed'
@@ -3484,7 +3757,8 @@ class TicketSystem(commands.Cog):
                 text=f"Requested by {ctx.author.display_name}",
                 icon_url=ctx.author.display_avatar.url)
             confirm_embed.timestamp = discord.utils.utcnow()
-            await ctx.reply(embed=confirm_embed, mention_author=False)
+            # Send ephemeral confirmation that deletes after 10 seconds
+            await ctx.reply(embed=confirm_embed, mention_author=False, delete_after=10)
 
         except Exception as e:
             logger.error(f"Error creating panel: {e}")
@@ -3773,8 +4047,1152 @@ class TicketSystem(commands.Cog):
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
 
+    @commands.command(name="ghostping", help="Toggle ghost ping for new tickets - enables/disables ping visibility")
+    @commands.has_permissions(administrator=True)
+    async def toggle_ghost_ping(self, ctx):
+        """Toggle ghost ping for new tickets"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            current_setting = guild_settings.get('ghost_ping', False)
+            new_setting = not current_setting
+            
+            guild_settings['ghost_ping'] = new_setting
+            self.save_ticket_settings()
+            
+            status = "enabled" if new_setting else "disabled"
+            description = ("Ghost ping **enabled** - User pings will appear briefly then disappear" 
+                         if new_setting else 
+                         "Ghost ping **disabled** - User pings will remain visible")
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Ghost Ping {status.title()}",
+                description=description,
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error in ghost ping toggle: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="An error occurred while toggling ghost ping.",
+                color=EMBED_COLOR_ERROR)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
+                           icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    # SPROUTS-style close request feature
+    @commands.hybrid_command(name="closerequest", help="Request ticket closure with user approval")
+    async def close_request(self, ctx, *, reason: str = "No reason provided"):
+        """Request to close ticket with user confirmation"""
+        try:
+            # Check if this is a ticket channel
+            if TicketDatabase:
+                ticket_data = TicketDatabase.get_ticket_by_channel(ctx.channel.id)
+                if not ticket_data:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} Invalid Channel",
+                        description="This command can only be used in ticket channels.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.reply(embed=embed, mention_author=False)
+                    return
+            else:
+                # Fallback check using legacy data
+                ticket_found = False
+                for tid, tdata in self.tickets_data.items():
+                    if tdata.get('channel_id') == ctx.channel.id:
+                        ticket_found = True
+                        break
+                if not ticket_found:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} Invalid Channel", 
+                        description="This command can only be used in ticket channels.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.reply(embed=embed, mention_author=False)
+                    return
+            
+            # Check if user is staff
+            if not isinstance(ctx.author, discord.Member) or not self.is_staff(ctx.author):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only staff members can request ticket closure.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Create close request embed
+            embed = discord.Embed(
+                title="Close Request",
+                description=f"**Staff member {ctx.author.mention} has requested to close this ticket.**\n\n**Reason:** {reason}\n\nThe ticket owner or another staff member can approve or deny this request.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text="This request will expire in 5 minutes")
+            embed.timestamp = discord.utils.utcnow()
+            
+            # Send with approval buttons
+            view = CloseRequestView(ctx.author, self, reason)
+            message = await ctx.reply(embed=embed, view=view, mention_author=False)
+            view.message = message  # Store message for timeout handling
+            
+        except Exception as e:
+            logger.error(f"Error in close request: {e}")
+            await ctx.reply("An error occurred while creating the close request.", mention_author=False)
+
+    # SPROUTS-style jump to top command 
+    @commands.hybrid_command(name="jumptotop", help="Show a button to jump to the top of the ticket")
+    async def jump_to_top(self, ctx):
+        """Display a button to jump to the top of the ticket"""
+        try:
+            # Check if this is a ticket channel
+            if TicketDatabase:
+                ticket_data = TicketDatabase.get_ticket_by_channel(ctx.channel.id)
+                if not ticket_data:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} Invalid Channel",
+                        description="This command can only be used in ticket channels.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.reply(embed=embed, mention_author=False)
+                    return
+            else:
+                # Fallback check using legacy data
+                ticket_found = False
+                for tid, tdata in self.tickets_data.items():
+                    if tdata.get('channel_id') == ctx.channel.id:
+                        ticket_found = True
+                        break
+                if not ticket_found:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} Invalid Channel",
+                        description="This command can only be used in ticket channels.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.reply(embed=embed, mention_author=False)
+                    return
+            
+            # Get the first message in the channel
+            async for message in ctx.channel.history(limit=1, oldest_first=True):
+                jump_embed = discord.Embed(
+                    title="Jump to Ticket Start",
+                    description=f"[Click here to go to the beginning of this ticket]({message.jump_url})",
+                    color=EMBED_COLOR_NORMAL
+                )
+                jump_embed.set_footer(text="Click the link above to jump to the first message")
+                await ctx.reply(embed=jump_embed, mention_author=False)
+                return
+            
+            await ctx.reply("Could not find the start of this ticket.", mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error in jump to top: {e}")
+            await ctx.reply("An error occurred while creating the jump link.", mention_author=False)
+
+    # Add unclaim command
+    @commands.command(name="unclaim", help="Release ticket ownership")
+    async def unclaim_ticket(self, ctx):
+        """Unclaim ticket command - release ticket ownership"""
+        try:
+            if not isinstance(ctx.author, discord.Member) or not self.is_staff(ctx.author):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only staff members can unclaim tickets.",
+                    color=EMBED_COLOR_ERROR)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Find ticket by current channel
+            ticket_data = None
+            ticket_id = None
+            for tid, tdata in self.tickets_data.items():
+                if tdata.get('channel_id') == ctx.channel.id:
+                    ticket_id = tid
+                    ticket_data = tdata
+                    break
+
+            if not ticket_data:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Invalid Channel",
+                    description="This is not a ticket channel.",
+                    color=EMBED_COLOR_ERROR)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            if not ticket_data.get('claimed_by'):
+                embed = discord.Embed(
+                    description="This ticket is not currently claimed.",
+                    color=EMBED_COLOR_ERROR)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Check if user is the one who claimed it or has admin perms
+            if ticket_data.get('claimed_by') != ctx.author.id and not ctx.author.guild_permissions.administrator:
+                claimer = self.bot.get_user(ticket_data.get('claimed_by'))
+                claimer_name = claimer.name if claimer else "Unknown"
+                embed = discord.Embed(
+                    description=f"This ticket is claimed by **{claimer_name}**. Only they or an admin can unclaim it.",
+                    color=EMBED_COLOR_ERROR)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Unclaim the ticket
+            ticket_data['claimed_by'] = None
+            TicketData.save_tickets(self.tickets_data)
+
+            embed = discord.Embed(
+                description=f"**{ctx.author.display_name}** has unclaimed this ticket.",
+                color=EMBED_COLOR_NORMAL)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}",
+                             icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            logger.error(f"Error in unclaim command: {e}")
+            await ctx.reply("An error occurred while unclaiming the ticket.", mention_author=False)
+
+    # Add transfer command
+    @commands.command(name="transfer", help="Transfer ticket ownership to another staff member")
+    async def transfer_ticket(self, ctx, member: discord.Member):
+        """Transfer ticket to another staff member"""
+        try:
+            if not isinstance(ctx.author, discord.Member) or not self.is_staff(ctx.author):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only staff members can transfer tickets.",
+                    color=EMBED_COLOR_ERROR)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Check if target member is staff
+            if not self.is_staff(member):
+                embed = discord.Embed(
+                    description=f"**{member.display_name}** is not a staff member.",
+                    color=EMBED_COLOR_ERROR)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Find ticket by current channel
+            ticket_data = None
+            ticket_id = None
+            for tid, tdata in self.tickets_data.items():
+                if tdata.get('channel_id') == ctx.channel.id:
+                    ticket_id = tid
+                    ticket_data = tdata
+                    break
+
+            if not ticket_data:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Invalid Channel",
+                    description="This command can only be used inside a ticket channel. Transfer tickets between staff members from within the ticket.",
+                    color=EMBED_COLOR_ERROR)
+                embed.set_footer(
+                    text=f"Requested by {ctx.author.display_name}",
+                    icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Transfer the ticket
+            old_claimer = None
+            if ticket_data.get('claimed_by'):
+                old_claimer = self.bot.get_user(ticket_data.get('claimed_by'))
+            
+            ticket_data['claimed_by'] = member.id
+            TicketData.save_tickets(self.tickets_data)
+
+            if old_claimer:
+                description = f"Ticket transferred from **{old_claimer.display_name}** to **{member.display_name}**"
+            else:
+                description = f"Ticket assigned to **{member.display_name}**"
+
+            embed = discord.Embed(
+                description=description,
+                color=EMBED_COLOR_NORMAL)
+            embed.set_footer(text=f"Transferred by {ctx.author.display_name}",
+                             icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            logger.error(f"Error in transfer command: {e}")
+            await ctx.reply("An error occurred while transferring the ticket.", mention_author=False)
+
+    async def _log_ticket_event(self, event_type: str, guild: discord.Guild, 
+                                ticket_id: str, action_user: discord.Member, 
+                                ticket_creator: discord.Member = None, 
+                                staff_member: discord.Member = None, 
+                                reason: str = None, transcript_url: str = None):
+        """Enhanced ticket event logging system"""
+        try:
+            # Check if event logging is configured for this guild
+            from src.cogs.cmd_logging import cmd_logging
+            log_channel_id = cmd_logging.get_cmd_log_channel(guild.id)
+            
+            if not log_channel_id:
+                return  # No logging configured for this guild
+                
+            log_channel = guild.get_channel(log_channel_id)
+            if not log_channel:
+                return
+                
+            # Create appropriate embed based on event type
+            if event_type == 'open':
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Ticket #{ticket_id} Created",
+                    description=f"New support ticket opened",
+                    color=0x2ecc71,  # Green for creation
+                    timestamp=discord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="Ticket Details",
+                    value=f"**Creator:** {ticket_creator.mention if ticket_creator else 'Unknown'}\n"
+                          f"**Reason:** {reason or 'No reason provided'}",
+                    inline=False
+                )
+                
+            elif event_type == 'close':
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Ticket #{ticket_id} Closed",
+                    description=f"Support ticket has been closed",
+                    color=0xe74c3c,  # Red for closure
+                    timestamp=discord.utils.utcnow()
+                )
+                
+                embed.add_field(
+                    name="Closure Details",
+                    value=f"**Creator:** {ticket_creator.mention if ticket_creator else 'Unknown'}\n"
+                          f"**Staff:** {staff_member.mention if staff_member else 'Unassigned'}\n"
+                          f"**Closed by:** {action_user.mention}\n"
+                          f"**Reason:** {reason or 'No reason provided'}",
+                    inline=False
+                )
+                
+                if transcript_url:
+                    embed.add_field(
+                        name="Transcript",
+                        value=f"[View Conversation Log]({transcript_url})",
+                        inline=False
+                    )
+            
+            embed.set_footer(text=f"Ticket ID: {ticket_id}")
+            await log_channel.send(embed=embed)
+            logger.info(f"Logged ticket {event_type} event for ticket {ticket_id}")
+            
+        except Exception as e:
+            logger.error(f"Error logging ticket event: {e}")
+
+    @commands.command(name="ticketmessage", help="Configure default ticket creation message")
+    @commands.has_permissions(administrator=True)
+    async def configure_ticket_message(self, ctx, *, new_message: str = None):
+        """Configure the default message shown when tickets are created"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            
+            if not new_message:
+                # Show current message
+                current_message = guild_settings.get('embed_description', 
+                    'Thank you for creating a ticket! Please describe your issue and a staff member will assist you shortly.')
+                
+                embed = discord.Embed(
+                    title=f"{SPROUTS_INFORMATION} Current Ticket Message",
+                    description=f"**Current message:**\n{current_message}",
+                    color=EMBED_COLOR_NORMAL
+                )
+                embed.add_field(
+                    name="To Change",
+                    value=f"Use `{ctx.prefix}ticketmessage <new message>` to update",
+                    inline=False
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+                
+            # Update the message
+            guild_settings['embed_description'] = new_message
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Ticket Message Updated",
+                description=f"Successfully updated the default ticket creation message",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="New Message",
+                value=new_message[:1000] + "..." if len(new_message) > 1000 else new_message,
+                inline=False
+            )
+            embed.add_field(
+                name="Note",
+                value="This message supports variables like `$(user.name)` and `$(server.name)`",
+                inline=False
+            )
+            embed.set_footer(text=f"Updated by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Ticket message updated by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error configuring ticket message: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Configuration Error",
+                description="Failed to configure ticket message.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="addadmin", help="Add admin role to ticket system")
+    @commands.has_permissions(administrator=True)
+    async def add_admin_role(self, ctx, role: discord.Role):
+        """Add an admin role to the ticket system"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            admin_roles = guild_settings.get('admin_role_ids', [])
+            
+            if role.id in admin_roles:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Role Already Added",
+                    description=f"{role.mention} is already an admin role for the ticket system.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+                
+            admin_roles.append(role.id)
+            guild_settings['admin_role_ids'] = admin_roles
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Admin Role Added",
+                description=f"Successfully added {role.mention} as an admin role.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Permissions Granted",
+                value="• Full ticket system management\n• Configure all ticket settings\n• Force close any ticket\n• Manage staff roles",
+                inline=False
+            )
+            embed.set_footer(text=f"Added by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Admin role {role.name} added by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error adding admin role: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to add admin role.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="removeadmin", help="Remove admin role from ticket system")
+    @commands.has_permissions(administrator=True)
+    async def remove_admin_role(self, ctx, role: discord.Role):
+        """Remove an admin role from the ticket system"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            admin_roles = guild_settings.get('admin_role_ids', [])
+            
+            if role.id not in admin_roles:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Role Not Found",
+                    description=f"{role.mention} is not an admin role for the ticket system.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+                
+            admin_roles.remove(role.id)
+            guild_settings['admin_role_ids'] = admin_roles
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Admin Role Removed",
+                description=f"Successfully removed {role.mention} from admin roles.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Removed by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Admin role {role.name} removed by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error removing admin role: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to remove admin role.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="addsupport", help="Add support staff role to ticket system")
+    @commands.has_permissions(administrator=True)
+    async def add_support_role(self, ctx, role: discord.Role):
+        """Add a support staff role to the ticket system"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            staff_roles = guild_settings.get('staff_role_ids', [])
+            
+            if role.id in staff_roles:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Role Already Added",
+                    description=f"{role.mention} is already a support staff role for the ticket system.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+                
+            staff_roles.append(role.id)
+            guild_settings['staff_role_ids'] = staff_roles
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Support Role Added",
+                description=f"Successfully added {role.mention} as a support staff role.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Permissions Granted",
+                value="• View and manage tickets\n• Claim and unclaim tickets\n• Add/remove users from tickets\n• Close tickets and generate transcripts",
+                inline=False
+            )
+            embed.set_footer(text=f"Added by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Support role {role.name} added by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error adding support role: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to add support role.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="removesupport", help="Remove support staff role from ticket system")
+    @commands.has_permissions(administrator=True)
+    async def remove_support_role(self, ctx, role: discord.Role):
+        """Remove a support staff role from the ticket system"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            staff_roles = guild_settings.get('staff_role_ids', [])
+            
+            if role.id not in staff_roles:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Role Not Found",
+                    description=f"{role.mention} is not a support staff role for the ticket system.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+                
+            staff_roles.remove(role.id)
+            guild_settings['staff_role_ids'] = staff_roles
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Support Role Removed",
+                description=f"Successfully removed {role.mention} from support staff roles.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Removed by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Support role {role.name} removed by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error removing support role: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to remove support role.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="viewstaff", help="View all staff members")
+    async def view_staff(self, ctx):
+        """Display all staff members in the ticket system"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            admin_role_ids = guild_settings.get('admin_role_ids', [])
+            staff_role_ids = guild_settings.get('staff_role_ids', [])
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_INFORMATION} Ticket System Staff",
+                description="All roles and members with ticket system access",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            # Admin roles section
+            admin_roles_text = ""
+            admin_members = set()
+            for role_id in admin_role_ids:
+                role = ctx.guild.get_role(role_id)
+                if role:
+                    admin_roles_text += f"• {role.mention}\n"
+                    admin_members.update(role.members)
+            
+            if admin_roles_text:
+                embed.add_field(
+                    name=f"{SPROUTS_CHECK} Admin Roles ({len(admin_role_ids)})",
+                    value=admin_roles_text,
+                    inline=False
+                )
+            
+            # Support roles section
+            staff_roles_text = ""
+            staff_members = set()
+            for role_id in staff_role_ids:
+                role = ctx.guild.get_role(role_id)
+                if role:
+                    staff_roles_text += f"• {role.mention}\n"
+                    staff_members.update(role.members)
+            
+            if staff_roles_text:
+                embed.add_field(
+                    name=f"{SPROUTS_INFORMATION} Support Roles ({len(staff_role_ids)})",
+                    value=staff_roles_text,
+                    inline=False
+                )
+            
+            # Summary
+            total_staff = len(admin_members.union(staff_members))
+            embed.add_field(
+                name="Summary",
+                value=f"**Total Staff Members:** {total_staff}\n**Admin Members:** {len(admin_members)}\n**Support Members:** {len(staff_members)}",
+                inline=False
+            )
+            
+            if not admin_roles_text and not staff_roles_text:
+                embed.description = "No staff roles configured. Use `addadmin` and `addsupport` to add staff roles."
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error viewing staff: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to retrieve staff information.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.group(name="blacklist", help="Manage user blacklist system", invoke_without_command=True)
+    @commands.has_permissions(manage_guild=True)
+    async def blacklist(self, ctx):
+        """Show blacklist help or current blacklisted users"""
+        if ctx.invoked_subcommand is None:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            blacklist = guild_settings.get('blacklisted_users', [])
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_INFORMATION} Ticket System Blacklist",
+                description="Users blocked from creating tickets",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            if blacklist:
+                blacklist_text = ""
+                for user_id in blacklist[:10]:  # Show first 10
+                    user = self.bot.get_user(user_id)
+                    if user:
+                        blacklist_text += f"• {user.mention} (`{user.id}`)\n"
+                    else:
+                        blacklist_text += f"• Unknown User (`{user_id}`)\n"
+                
+                embed.add_field(
+                    name=f"Blacklisted Users ({len(blacklist)})",
+                    value=blacklist_text + (f"\n*And {len(blacklist) - 10} more...*" if len(blacklist) > 10 else ""),
+                    inline=False
+                )
+            else:
+                embed.description = "No users are currently blacklisted."
+            
+            embed.add_field(
+                name="Commands",
+                value=f"`{ctx.prefix}blacklist add <user>` - Add user to blacklist\n"
+                      f"`{ctx.prefix}blacklist remove <user>` - Remove from blacklist\n"
+                      f"`{ctx.prefix}blacklist clear` - Clear all blacklisted users",
+                inline=False
+            )
+            
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @blacklist.command(name="add")
+    async def blacklist_add(self, ctx, user: discord.Member):
+        """Add a user to the ticket blacklist"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            blacklist = guild_settings.get('blacklisted_users', [])
+            
+            if user.id in blacklist:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Already Blacklisted",
+                    description=f"{user.mention} is already blacklisted from creating tickets.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            blacklist.append(user.id)
+            guild_settings['blacklisted_users'] = blacklist
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} User Blacklisted",
+                description=f"{user.mention} has been blacklisted from creating tickets.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Blacklisted by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"User {user} blacklisted by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error blacklisting user: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to blacklist user.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @blacklist.command(name="remove")
+    async def blacklist_remove(self, ctx, user: discord.Member):
+        """Remove a user from the ticket blacklist"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            blacklist = guild_settings.get('blacklisted_users', [])
+            
+            if user.id not in blacklist:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Not Blacklisted",
+                    description=f"{user.mention} is not currently blacklisted.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            blacklist.remove(user.id)
+            guild_settings['blacklisted_users'] = blacklist
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} User Unblacklisted",
+                description=f"{user.mention} can now create tickets again.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Unblacklisted by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"User {user} unblacklisted by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error unblacklisting user: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to unblacklist user.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.group(name="setup", help="Ticket system setup commands", invoke_without_command=True)
+    @commands.has_permissions(administrator=True)
+    async def setup(self, ctx):
+        """Show setup help"""
+        embed = discord.Embed(
+            title=f"{SPROUTS_INFORMATION} Ticket System Setup",
+            description="Configure your ticket system",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        embed.add_field(
+            name="Setup Commands",
+            value=f"`{ctx.prefix}setup auto` - Automatic system configuration\n"
+                  f"`{ctx.prefix}setup limit <number>` - Set user ticket limit\n"
+                  f"`{ctx.prefix}setup transcripts <channel>` - Set transcript channel\n"
+                  f"`{ctx.prefix}setup use-threads <true/false>` - Toggle thread mode",
+            inline=False
+        )
+        
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @setup.command(name="auto")
+    async def setup_auto(self, ctx):
+        """Automatic ticket system configuration"""
+        try:
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Auto Setup Complete",
+                description="Ticket system has been automatically configured with recommended settings.",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            
+            # Set default configurations
+            guild_settings.update({
+                'max_tickets_per_user': 3,
+                'use_threads': False,
+                'ghost_ping': True,
+                'auto_close_enabled': False,
+                'transcript_channel_id': None
+            })
+            
+            self.save_ticket_settings()
+            
+            embed.add_field(
+                name="Configured Settings",
+                value="• **Ticket Limit:** 3 tickets per user\n"
+                      "• **Mode:** Channel-based tickets\n"
+                      "• **Ghost Ping:** Enabled\n"
+                      "• **Auto Close:** Disabled\n"
+                      "• **Transcripts:** Not configured",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Next Steps",
+                value=f"1. Add staff roles with `{ctx.prefix}addsupport @role`\n"
+                      f"2. Create ticket panels with `{ctx.prefix}createpanel`\n"
+                      f"3. Configure transcript channel with `{ctx.prefix}setup transcripts #channel`",
+                inline=False
+            )
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.info(f"Auto setup completed by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error in auto setup: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Setup Error",
+                description="Failed to complete auto setup.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @setup.command(name="limit")
+    async def setup_limit(self, ctx, limit: int):
+        """Set user ticket limit per server"""
+        try:
+            if limit < 1 or limit > 50:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Invalid Limit",
+                    description="Ticket limit must be between 1 and 50.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            guild_settings['max_tickets_per_user'] = limit
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Limit Updated",
+                description=f"Users can now create up to **{limit}** tickets at once.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Updated by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Ticket limit set to {limit} by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error setting limit: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to set ticket limit.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @setup.command(name="transcripts")
+    async def setup_transcripts(self, ctx, channel: discord.TextChannel):
+        """Configure transcript log channel"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            guild_settings['transcript_channel_id'] = channel.id
+            self.save_ticket_settings()
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Transcripts Configured",
+                description=f"Ticket transcripts will now be sent to {channel.mention}.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="What happens now?",
+                value="• HTML transcripts sent to this channel when tickets close\n"
+                      "• Includes full conversation history and ticket details\n"
+                      "• Provides clickable links to view conversations",
+                inline=False
+            )
+            embed.set_footer(text=f"Configured by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Transcript channel set to {channel.name} by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error setting transcript channel: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to set transcript channel.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="tickettopic", help="Set ticket description/topic")
+    async def set_ticket_topic(self, ctx, *, topic: str):
+        """Set the topic/description for the current ticket"""
+        try:
+            # Check if this is a ticket channel
+            ticket_id = None
+            ticket_data = None
+            
+            for tid, tdata in self.tickets_data.items():
+                if tdata.get('channel_id') == ctx.channel.id:
+                    ticket_id = tid
+                    ticket_data = tdata
+                    break
+            
+            if not ticket_data:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Not a Ticket",
+                    description="This command can only be used in ticket channels.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Check if user has permission (staff or ticket creator)
+            if not self.is_staff_member(ctx.author, ctx.guild.id) and ctx.author.id != ticket_data.get('creator_id'):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} No Permission",
+                    description="Only staff members or the ticket creator can set the ticket topic.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Update the channel topic
+            await ctx.channel.edit(topic=topic)
+            
+            # Update ticket data
+            ticket_data['topic'] = topic
+            TicketData.save_tickets(self.tickets_data)
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Topic Updated",
+                description=f"Ticket topic has been updated.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="New Topic",
+                value=topic[:1000] + "..." if len(topic) > 1000 else topic,
+                inline=False
+            )
+            embed.set_footer(text=f"Updated by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Ticket {ticket_id} topic updated by {ctx.author}")
+            
+        except Exception as e:
+            logger.error(f"Error setting ticket topic: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to update ticket topic.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="move", help="Move ticket to different category")
+    async def move_ticket(self, ctx, category: discord.CategoryChannel):
+        """Move the current ticket to a different category"""
+        try:
+            # Check if this is a ticket channel
+            ticket_id = None
+            ticket_data = None
+            
+            for tid, tdata in self.tickets_data.items():
+                if tdata.get('channel_id') == ctx.channel.id:
+                    ticket_id = tid
+                    ticket_data = tdata
+                    break
+            
+            if not ticket_data:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Not a Ticket",
+                    description="This command can only be used in ticket channels.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Check if user has staff permission
+            if not self.is_staff_member(ctx.author, ctx.guild.id):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} No Permission",
+                    description="Only staff members can move tickets.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            old_category = ctx.channel.category
+            old_category_name = old_category.name if old_category else "No Category"
+            
+            # Move the channel
+            await ctx.channel.edit(category=category)
+            
+            # Update ticket data
+            ticket_data['category_id'] = category.id
+            TicketData.save_tickets(self.tickets_data)
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Ticket Moved",
+                description=f"Ticket has been moved to **{category.name}**.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Movement Details",
+                value=f"**From:** {old_category_name}\n**To:** {category.name}",
+                inline=False
+            )
+            embed.set_footer(text=f"Moved by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Ticket {ticket_id} moved to {category.name} by {ctx.author}")
+            
+        except Exception as e:
+            logger.error(f"Error moving ticket: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to move ticket.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="ghostping", help="Toggle ghost ping feature")
+    @commands.has_permissions(administrator=True)
+    async def toggle_ghost_ping(self, ctx):
+        """Toggle the ghost ping feature for tickets"""
+        try:
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            current_setting = guild_settings.get('ghost_ping', True)
+            new_setting = not current_setting
+            
+            guild_settings['ghost_ping'] = new_setting
+            self.save_ticket_settings()
+            
+            status = "enabled" if new_setting else "disabled"
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Ghost Ping {status.title()}",
+                description=f"Ghost ping has been **{status}** for new tickets.",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            if new_setting:
+                embed.add_field(
+                    name="What happens now?",
+                    value="• Staff roles will be pinged when tickets are created\n• The ping will be immediately deleted\n• Staff can still see the notification",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="What happens now?",
+                    value="• No staff roles will be pinged for new tickets\n• Staff must check ticket channels manually",
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"Changed by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+            logger.info(f"Ghost ping {status} by {ctx.author} in {ctx.guild.name}")
+            
+        except Exception as e:
+            logger.error(f"Error toggling ghost ping: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to toggle ghost ping.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="new", aliases=["open"], help="Create a new support ticket")
+    async def create_new_ticket(self, ctx, *, reason: str = "No reason provided"):
+        """Create a new support ticket"""
+        try:
+            # Check if user is blacklisted
+            guild_settings = self.get_guild_settings(ctx.guild.id)
+            blacklist = guild_settings.get('blacklisted_users', [])
+            
+            if ctx.author.id in blacklist:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Blacklisted",
+                    description="You are currently blacklisted from creating tickets.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Check ticket limit
+            max_tickets = guild_settings.get('max_tickets_per_user', 10)
+            user_ticket_count = self.count_user_tickets(ctx.guild.id, ctx.author.id)
+            
+            if user_ticket_count >= max_tickets:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Ticket Limit Reached",
+                    description=f"You have reached the maximum number of open tickets ({max_tickets}). Please close an existing ticket before creating a new one.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Create the ticket
+            await self.create_ticket_command(ctx, ctx.author, reason)
+            
+        except Exception as e:
+            logger.error(f"Error creating new ticket: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Error",
+                description="Failed to create ticket. Please try again.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
 
 async def setup_ticket_system(bot):
     """Setup ticket system for the bot"""
+    # Initialize database first
+    if db_manager:
+        success = await db_manager.initialize()
+        if success:
+            logger.info("Database initialized for ticket system")
+            # Run data migration if needed
+            try:
+                from src.database.migrate_data import DataMigrator
+                migrator = DataMigrator()
+                
+                # Check if migration is needed (if JSON files exist but database is empty)
+                existing_tickets = TicketDatabase.get_tickets_by_guild(0) if TicketDatabase else []
+                
+                if len(existing_tickets) == 0:
+                    logger.info("Running data migration from JSON to database...")
+                    await migrator.migrate_all_data()
+                    
+            except Exception as e:
+                logger.warning(f"Data migration skipped: {e}")
+        else:
+            logger.warning("Database initialization failed, using JSON fallback")
+    
     await bot.add_cog(TicketSystem(bot))
-    logger.info("Ticket system setup completed")
+    logger.info("Ticket system setup completed with database persistence")

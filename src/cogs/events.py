@@ -45,6 +45,9 @@ class BotEvents(commands.Cog):
         # Update guild count for web dashboard
         if bot_stats:
             bot_stats.update_guild_count(len(self.bot.guilds))
+        
+        # Update bot activity with new guild count
+        await self._update_bot_activity()
     
     async def _send_guild_join_log(self, guild):
         """Send guild join log to global logging channel"""
@@ -174,6 +177,9 @@ class BotEvents(commands.Cog):
         # Update guild count for web dashboard
         if bot_stats:
             bot_stats.update_guild_count(len(self.bot.guilds))
+        
+        # Update bot activity with new guild count
+        await self._update_bot_activity()
     
     async def _send_guild_leave_log(self, guild):
         """Send guild leave log to global logging channel"""
@@ -571,6 +577,40 @@ class BotEvents(commands.Cog):
     async def on_error(self, event, *args, **kwargs):
         """Handle general errors"""
         logger.error(f"An error occurred in event {event}", exc_info=True)
+    
+    async def _update_bot_activity(self):
+        """Update bot activity status with current guild count"""
+        try:
+            # Get the current activity template
+            from src.cogs.dev_only import DevCommands
+            dev_cog = self.bot.get_cog('DevCommands')
+            
+            if dev_cog and hasattr(dev_cog, 'current_activity_template'):
+                template = dev_cog.current_activity_template
+                
+                # Process variables in the template
+                processed_activity = template.replace('$(server.count)', str(len(self.bot.guilds)))
+                processed_activity = processed_activity.replace('$(shard.id)', str(self.bot.shard_id or 0))
+                
+                # Update activity
+                activity_parts = processed_activity.split(' ', 1) if ' ' in processed_activity else ['watching', processed_activity]
+                activity_type = activity_parts[0].lower()
+                activity_name = activity_parts[1] if len(activity_parts) > 1 else processed_activity
+                
+                if activity_type == 'watching':
+                    activity = discord.Activity(type=discord.ActivityType.watching, name=activity_name)
+                elif activity_type == 'playing':
+                    activity = discord.Activity(type=discord.ActivityType.playing, name=activity_name)
+                elif activity_type == 'listening':
+                    activity = discord.Activity(type=discord.ActivityType.listening, name=activity_name)
+                else:
+                    activity = discord.Activity(type=discord.ActivityType.watching, name=processed_activity)
+                
+                await self.bot.change_presence(activity=activity)
+                logger.info(f"Updated bot activity with guild count: {len(self.bot.guilds)}")
+            
+        except Exception as e:
+            logger.error(f"Error updating bot activity: {e}")
 
 async def setup_events(bot):
     """Setup all event handlers for the bot"""

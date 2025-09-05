@@ -1660,13 +1660,24 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="Data Management",
+            name="Legacy Data Management (File-based)",
             value=(
                 "`s.backup [name]` - Create backup of all bot configurations\n"
                 "`s.restore <name>` - Restore data from backup (use with caution!)\n"
                 "`s.listbackups` - Show all available backups\n"
                 "`s.integrity` - Check data file integrity and health\n"
                 "`s.prepgithub [backup]` - Prepare backup for GitHub deployment auto-restore"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="New Deployment Protection (Database + Cloud)",
+            value=(
+                "`s.persiststatus` - Check deployment persistence system status\n"
+                "`s.forcebackup` - Force immediate backup to database\n"
+                "`s.forcerestore` - Force restore data from database\n"
+                "**Note:** Automatic deployment protection with zero data loss guarantee"
             ),
             inline=False
         )
@@ -1687,7 +1698,20 @@ class DevOnly(commands.Cog):
         )
         
         embed.add_field(
-            name="Data Management",
+            name="Feature Management System",
+            value=(
+                "`s.features` - View all feature flags and their status\n"
+                "`s.enablefeature <name>` - Enable specific features for gradual rollout\n"
+                "`s.disablefeature <name>` - Disable features for maintenance\n"
+                "`s.featureinfo <name>` - Get detailed info about any feature\n"
+                "`s.enableall` - Enable all features at once (use with caution)\n"
+                "**Controls command visibility and availability for users**"
+            ),
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Advanced Data Management",
             value=(
                 "`s.listdata user` - List saved embeds, tickets, reminders for user\n"
                 "`s.listdata guild` - List auto responders, sticky messages, settings for guild\n"
@@ -2180,7 +2204,7 @@ class DevOnly(commands.Cog):
                             file_path = os.path.join(root, file)
                             rel_path = os.path.relpath(file_path, guild_path)
                             file_size = os.path.getsize(file_path)
-                            guild_files.append(f"📄 {rel_path} ({file_size} bytes)")
+                            guild_files.append(f"{SPROUTS_INFORMATION} {rel_path} ({file_size} bytes)")
                 
                 # Check other data files for guild data
                 data_files = [
@@ -2214,7 +2238,7 @@ class DevOnly(commands.Cog):
                     )
                     embed.add_field(
                         name="Summary",
-                        value=f"**Total Files:** {len([f for f in guild_files if f.startswith('📄')])}\n"
+                        value=f"**Total Files:** {len([f for f in guild_files if f.startswith(SPROUTS_INFORMATION)])}\n"
                               f"**Guild Directory:** `{guild_path}`",
                         inline=False
                     )
@@ -2602,7 +2626,7 @@ class DevOnly(commands.Cog):
                 inline=False
             )
             embed.add_field(
-                name="🔒 Security",
+                name="Security",
                 value=f"Restore authorized by bot owner: {ctx.author.mention}",
                 inline=False
             )
@@ -2797,7 +2821,7 @@ class DevOnly(commands.Cog):
                     color=EMBED_COLOR_SUCCESS
                 )
                 embed.add_field(
-                    name="📋 Next Steps",
+                    name=f"{SPROUTS_INFORMATION} Next Steps",
                     value=(
                         "1. Commit `github_restore_backup.json` to your GitHub repository\n"
                         "2. Commit the `backups/` folder with your backup\n"
@@ -2807,7 +2831,7 @@ class DevOnly(commands.Cog):
                     inline=False
                 )
                 embed.add_field(
-                    name="🔒 Security Note",
+                    name=f"{SPROUTS_INFORMATION} Security Note",
                     value="Only you can create/use GitHub restore files. The restoration is automatic but secure.",
                     inline=False
                 )

@@ -8,9 +8,147 @@ from discord.ext import commands
 import logging
 import asyncio
 from datetime import datetime
-from config import EMBED_COLOR_NORMAL, EMBED_COLOR_SUCCESS, EMBED_COLOR_ERROR, EMBED_COLOR_WARNING, SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING
+from config import EMBED_COLOR_NORMAL, EMBED_COLOR_SUCCESS, EMBED_COLOR_ERROR, EMBED_COLOR_WARNING, SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_INFORMATION
 
 logger = logging.getLogger(__name__)
+
+
+class VariablesView(discord.ui.View):
+    """Paginated view for displaying all variable categories"""
+    
+    def __init__(self, user):
+        super().__init__(timeout=300)
+        self.user = user
+        self.current_page = 0
+        self.message = None
+        
+        self.pages = [
+            {
+                'title': f'{SPROUTS_INFORMATION} User Variables',
+                'description': 'Variables related to users and members',
+                'content': '`$(user.name)` - User\'s username\n`$(user.mention)` - Mentions the user\n`$(user.id)` - User\'s Discord ID\n`$(user.nick)` - User\'s server nickname\n`$(user.tag)` - Full username with discriminator\n`$(user.avatar)` - User\'s avatar image URL\n`$(user.joined)` - Date user joined the server\n`$(user.created)` - Date user account was created'
+            },
+            {
+                'title': f'{SPROUTS_INFORMATION} Server Variables', 
+                'description': 'Variables related to the current server/guild',
+                'content': '`$(server.name)` - Server name\n`$(server.membercount)` - Total member count\n`$(server.owner)` - Server owner\'s name\n`$(server.id)` - Server\'s Discord ID\n`$(server.icon)` - Server icon image URL\n`$(server.created)` - Date server was created\n`$(server.boosts)` - Number of server boosts\n`$(server.channels)` - Total channel count'
+            },
+            {
+                'title': f'{SPROUTS_INFORMATION} Channel Variables',
+                'description': 'Variables related to the current channel', 
+                'content': '`$(channel.name)` - Current channel name\n`$(channel.id)` - Channel\'s Discord ID\n`$(channel.mention)` - Mentions the current channel\n`$(channel.topic)` - Channel\'s topic description\n`$(channel.category)` - Channel\'s category name\n`$(channel.position)` - Channel\'s position in list\n`$(channel.created)` - Date channel was created\n`$(channel.nsfw)` - Whether channel is NSFW\n`$(channel.slowmode)` - Channel slowmode delay'
+            },
+            {
+                'title': f'{SPROUTS_INFORMATION} Time Variables',
+                'description': 'Variables for current date and time information',
+                'content': '`$(time)` - Current time\n`$(date)` - Current date\n`$(datetime)` - Current date and time\n`$(year)` - Current year\n`$(month)` - Current month name\n`$(day)` - Current day of month\n`$(weekday)` - Current day of week\n`$(timestamp)` - Unix timestamp'
+            },
+            {
+                'title': f'{SPROUTS_INFORMATION} Math & Logic Variables',
+                'description': 'Advanced variables with calculations and logic',
+                'content': '`$(math:5+5)` - Basic math operations (+, -, *, /, ())\n`$(random:1-100)` - Random number in range\n`$(choose:a|b|c)` - Random choice from list\n`$(len:text)` - String length calculator\n`$(upper:text)` - Convert to uppercase\n`$(if:user.bot?Bot:Human)` - Conditional logic\n\n**Format:** `$(if:condition?true:false)`'
+            },
+            {
+                'title': f'{SPROUTS_INFORMATION} Advanced Ticket Variables',
+                'description': 'Specialized variables for ticket system',
+                'content': '`$(ticket.id)` - Ticket\'s unique ID number\n`$(ticket.creator)` - User who created ticket\n`$(ticket.category)` - Ticket category name\n`$(ticket.status)` - Current ticket status\n`$(ticket.staff)` - Staff member assigned\n`$(ticket.claimed)` - Is ticket claimed (Yes/No)\n`$(ticket.tags)` - List of ticket tags\n`$(ticket.panel)` - Panel used to create ticket\n`$(ticket.transcript)` - Transcript download URL'
+            }
+        ]
+    
+    async def create_embed(self, page_num):
+        """Create embed for specific page"""
+        page = self.pages[page_num]
+        
+        embed = discord.Embed(
+            title=page['title'],
+            description=page['description'],
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        embed.add_field(
+            name="Available Variables",
+            value=page['content'],
+            inline=False
+        )
+        
+        embed.add_field(
+            name=f"{SPROUTS_INFORMATION} Usage Examples",
+            value="• In embeds: `$(user.name)` → Actual username\n• Mix text: `Welcome $(user.mention) to $(server.name)!`\n• Math: `You rolled $(random:1-6)!`\n• Logic: `$(if:channel.nsfw?NSFW Content:Safe Channel)`",
+            inline=False
+        )
+        
+        embed.set_footer(
+            text=f"Page {page_num + 1}/{len(self.pages)} • Use $(variable.name) syntax",
+            icon_url=self.user.display_avatar.url
+        )
+        embed.timestamp = discord.utils.utcnow()
+        
+        return embed
+    
+    @discord.ui.button(label='◀ Previous', style=discord.ButtonStyle.blurple, disabled=True)
+    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.user:
+            await interaction.response.send_message("Only the command user can navigate pages.", ephemeral=True)
+            return
+            
+        self.current_page = max(0, self.current_page - 1)
+        self.children[0].disabled = self.current_page == 0
+        self.children[1].disabled = self.current_page == len(self.pages) - 1
+        
+        embed = await self.create_embed(self.current_page)
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label='Next ▶', style=discord.ButtonStyle.blurple)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.user:
+            await interaction.response.send_message("Only the command user can navigate pages.", ephemeral=True)
+            return
+            
+        self.current_page = min(len(self.pages) - 1, self.current_page + 1)
+        self.children[0].disabled = self.current_page == 0
+        self.children[1].disabled = self.current_page == len(self.pages) - 1
+        
+        embed = await self.create_embed(self.current_page)
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label=f'{SPROUTS_CHECK} Test Variables', style=discord.ButtonStyle.green)
+    async def test_variables(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.user:
+            await interaction.response.send_message("Only the command user can test variables.", ephemeral=True)
+            return
+        
+        test_text = """**Live Variable Test:**
+
+User: $(user.name) ($(user.tag))
+Server: $(server.name) with $(server.membercount) members  
+Channel: $(channel.mention) in $(channel.category)
+Time: $(datetime)
+Math: 5 + 5 = $(math:5+5)
+Random: $(random:1-100)
+Choice: $(choose:Awesome|Cool|Amazing)
+Logic: This user is $(if:user.bot?a bot:human)"""
+
+        try:
+            from src.utils.variable_processor import variable_processor
+            variable_processor.bot = self.user.guild.get_member(interaction.client.user.id).bot if self.user.guild else interaction.client
+            processed_text = await variable_processor.process_variables(
+                test_text,
+                user=interaction.user,
+                guild=interaction.guild,
+                channel=interaction.channel
+            )
+        except Exception as e:
+            processed_text = f"Error processing variables: {e}\n\n{test_text}"
+        
+        embed = discord.Embed(
+            title="🧪 Variable Test Results",
+            description=processed_text,
+            color=EMBED_COLOR_SUCCESS
+        )
+        embed.set_footer(text="Variables work in embeds, auto-responders, and ticket messages!")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 class Utilities(commands.Cog):
     def __init__(self, bot):
@@ -225,7 +363,7 @@ class Utilities(commands.Cog):
                 color=EMBED_COLOR_NORMAL
             )
             
-            # Main ping stats
+            # Main ping stats with specified emojis (exception approved)
             ping_stats = f"💟 HB: {heartbeat} ms\n"
             ping_stats += f"🔁 RTT: {response_time} ms\n"
             ping_stats += f"⬆️ UT: {uptime_display}"
@@ -349,39 +487,59 @@ class Utilities(commands.Cog):
                     inline=True
                 )
             
-            # Account info with proper presence
-            status_emoji = {
-                discord.Status.online: "",
-                discord.Status.idle: "", 
-                discord.Status.dnd: "",
-                discord.Status.offline: ""
+            # Account info with proper presence - text-based status for SPROUTS consistency
+            status_text = {
+                discord.Status.online: "Online",
+                discord.Status.idle: "Away", 
+                discord.Status.dnd: "Do Not Disturb",
+                discord.Status.offline: "Offline",
+                discord.Status.invisible: "Offline"  # Discord shows invisible as offline
             }
             
-            # Get user activity
+            # Get user activity with improved detection
             activity_text = "None"
             if target.activities:
-                activity = target.activities[0]  # Get primary activity
-                if activity.type == discord.ActivityType.playing:
-                    activity_text = f"Playing {activity.name}"
-                elif activity.type == discord.ActivityType.listening:
-                    activity_text = f"Listening to {activity.name}"
-                elif activity.type == discord.ActivityType.watching:
-                    activity_text = f"Watching {activity.name}"
-                elif activity.type == discord.ActivityType.streaming:
-                    activity_text = f"Streaming {activity.name}"
-                elif activity.type == discord.ActivityType.custom:
-                    activity_text = str(activity) if activity else "None"
+                for activity in target.activities:
+                    if activity.type == discord.ActivityType.playing:
+                        activity_text = f"Playing {activity.name}"
+                        break
+                    elif activity.type == discord.ActivityType.listening:
+                        if hasattr(activity, 'title') and hasattr(activity, 'artist'):
+                            activity_text = f"Listening to {activity.title} by {activity.artist}"
+                        else:
+                            activity_text = f"Listening to {activity.name}"
+                        break
+                    elif activity.type == discord.ActivityType.watching:
+                        activity_text = f"Watching {activity.name}"
+                        break
+                    elif activity.type == discord.ActivityType.streaming:
+                        activity_text = f"Streaming {activity.name}"
+                        break
+                    elif activity.type == discord.ActivityType.custom and activity.name:
+                        activity_text = f"{activity.name}"
+                        break
+            
+            # Also check presence for rich presence activities
+            if activity_text == "None" and hasattr(target, 'activity') and target.activity:
+                if target.activity.type == discord.ActivityType.playing:
+                    activity_text = f"Playing {target.activity.name}"
+                elif target.activity.type == discord.ActivityType.listening:
+                    activity_text = f"Listening to {target.activity.name}"
+                elif target.activity.type == discord.ActivityType.watching:
+                    activity_text = f"Watching {target.activity.name}"
+                elif target.activity.type == discord.ActivityType.streaming:
+                    activity_text = f"Streaming {target.activity.name}"
             
             embed.add_field(
                 name="Account Info",
                 value=f"**Created:** <t:{int(target.created_at.timestamp())}:F>\n"
-                      f"**Status:** {status_emoji.get(target.status, '')} {str(target.status).title()}\n"
+                      f"**Status:** {status_text.get(target.status, 'Unknown')}\n"
                       f"**Activity:** {activity_text}",
                 inline=True
             )
             
-            # Role list (max 10)
-            roles = [role.name for role in target.roles[1:]]  # Skip @everyone
+            # Role list (max 10) - properly display roles
+            roles = [role.mention for role in target.roles[1:]]  # Skip @everyone, use mentions
             if roles:
                 role_list = ", ".join(roles[:10])
                 if len(roles) > 10:
@@ -492,8 +650,11 @@ class Utilities(commands.Cog):
                     inline=False
                 )
             
+            # Set server icon as thumbnail, fallback to bot avatar if no icon
             if guild.icon:
                 embed.set_thumbnail(url=guild.icon.url)
+            else:
+                embed.set_thumbnail(url=self.bot.user.display_avatar.url)
             
             embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
             embed.timestamp = discord.utils.utcnow()
@@ -835,6 +996,132 @@ class Utilities(commands.Cog):
         except Exception as e:
             logger.error(f"Error in prefix command: {e}")
             await ctx.reply("An error occurred while fetching prefix.", mention_author=False)
+
+    @commands.command(name="variables", help="Display all available embed variables")
+    @commands.cooldown(1, 10, commands.BucketType.user)
+    async def variables(self, ctx):
+        """Show available embed variables with comprehensive support using clean layout"""
+        try:
+            embed = discord.Embed(
+                title="Available Variables",
+                description="Use these variables in embeds, auto responders, and ticket messages.\nFormat: `$(variable.name)`",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            # User Variables
+            embed.add_field(
+                name="User Variables",
+                value="`$(user.name)` - User's username\n"
+                      "`$(user.mention)` - Mentions the user\n"
+                      "`$(user.id)` - User's Discord ID\n"
+                      "`$(user.nick)` - User's server nickname\n"
+                      "`$(user.tag)` - Full username with discriminator\n"
+                      "`$(user.avatar)` - User's avatar image URL\n"
+                      "`$(user.joined)` - Date user joined the server\n"
+                      "`$(user.created)` - Date user account was created",
+                inline=False
+            )
+            
+            # Server Variables
+            embed.add_field(
+                name="Server Variables",
+                value="`$(server.name)` - Server name\n"
+                      "`$(server.membercount)` - Total member count\n"
+                      "`$(server.owner)` - Server owner's name\n"
+                      "`$(server.id)` - Server's Discord ID\n"
+                      "`$(server.icon)` - Server icon image URL\n"
+                      "`$(server.created)` - Date server was created\n"
+                      "`$(server.boosts)` - Number of server boosts\n"
+                      "`$(server.channels)` - Total channel count",
+                inline=False
+            )
+            
+            # Channel Variables
+            embed.add_field(
+                name="Channel Variables",
+                value="`$(channel.name)` - Current channel name\n"
+                      "`$(channel.id)` - Channel's Discord ID\n"
+                      "`$(channel.mention)` - Mentions the current channel\n"
+                      "`$(channel.topic)` - Channel's topic description\n"
+                      "`$(channel.category)` - Channel's category name\n"
+                      "`$(channel.position)` - Channel's position in list\n"
+                      "`$(channel.created)` - Date channel was created\n"
+                      "`$(channel.nsfw)` - Whether channel is NSFW\n"
+                      "`$(channel.slowmode)` - Channel slowmode delay",
+                inline=False
+            )
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name} • Use s.variables2 for more", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.info(f"Variables command used by {ctx.author}")
+            
+        except Exception as e:
+            logger.error(f"Error in variables command: {e}")
+            await ctx.reply("An error occurred while showing variables.", mention_author=False)
+    
+    @commands.command(name="variables2", help="Display advanced variables (time, math, logic, tickets)")
+    @commands.cooldown(1, 10, commands.BucketType.user)
+    async def variables2(self, ctx):
+        """Show advanced variables including time, math, logic and ticket variables"""
+        try:
+            embed = discord.Embed(
+                title="Advanced Variables",
+                description="Advanced variables for complex automation and ticket systems.\nFormat: `$(variable.name)`",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            # Time Variables
+            embed.add_field(
+                name="Time Variables",
+                value="`$(time)` - Current time\n"
+                      "`$(date)` - Current date\n"
+                      "`$(datetime)` - Current date and time\n"
+                      "`$(year)` - Current year\n"
+                      "`$(month)` - Current month name\n"
+                      "`$(day)` - Current day of month\n"
+                      "`$(weekday)` - Current day of week\n"
+                      "`$(timestamp)` - Unix timestamp",
+                inline=False
+            )
+            
+            # Math & Logic Variables
+            embed.add_field(
+                name="Math & Logic Variables",
+                value="`$(math:5+5)` - Basic math operations\n"
+                      "`$(random:1-100)` - Random number in range\n"
+                      "`$(choose:a|b|c)` - Random choice from list\n"
+                      "`$(if:user.bot?Bot:Human)` - Conditional logic\n"
+                      "`$(len:text)` - String length calculator\n"
+                      "`$(upper:text)` - Convert to uppercase",
+                inline=False
+            )
+            
+            # Advanced Ticket Variables
+            embed.add_field(
+                name="Advanced Ticket Variables",
+                value="`$(ticket.id)` - Ticket's unique ID number\n"
+                      "`$(ticket.creator)` - User who created ticket\n"
+                      "`$(ticket.category)` - Ticket category name\n"
+                      "`$(ticket.status)` - Current ticket status\n"
+                      "`$(ticket.staff)` - Staff member assigned\n"
+                      "`$(ticket.claimed)` - Is ticket claimed (Yes/No)\n"
+                      "`$(ticket.tags)` - List of ticket tags\n"
+                      "`$(ticket.panel)` - Panel used to create ticket\n"
+                      "`$(ticket.transcript)` - Transcript download URL",
+                inline=False
+            )
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name} • Use s.variables for basic variables", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.info(f"Variables2 command used by {ctx.author}")
+            
+        except Exception as e:
+            logger.error(f"Error in variables2 command: {e}")
+            await ctx.reply("An error occurred while showing advanced variables.", mention_author=False)
 
 async def setup_utilities(bot):
     """Setup utilities commands for the bot"""
