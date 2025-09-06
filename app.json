@@ -1,6 +1,6 @@
 {
   "name": "Sprouts Discord Bot",
-  "description": "Enterprise-grade Discord bot with ticket system, feature flags, embed builder, and deployment protection",
+  "description": "Enterprise-grade Discord bot with ticket system, transcript generation, and comprehensive server management",
   "keywords": ["discord", "bot", "python", "digital-ocean", "tickets", "moderation"],
   "website": "https://github.com/jeffreyz29/sprouts-bot-official",
   "repository": "https://github.com/jeffreyz29/sprouts-bot-official",
@@ -10,51 +10,25 @@
   },
   "env": {
     "DISCORD_BOT_TOKEN": {
-      "description": "Discord bot token",
+      "description": "Discord bot token from Discord Developer Portal",
       "required": true
     },
     "BOT_OWNER_ID": {
-      "description": "Discord user ID of the bot owner",
+      "description": "Discord user ID of the bot owner (for admin commands)",
       "required": true
     },
     "DEFAULT_PREFIX": {
-      "description": "Bot default prefix",
+      "description": "Bot command prefix",
       "required": false,
       "value": "s."
     },
-    "LOG_COMMANDS_CHANNEL": {
-      "description": "Discord channel ID for command logging (default: none)",
-      "required": false,
-      "value": ""
-    },
-    "LOG_DMS_CHANNEL": {
-      "description": "Discord channel ID for DM logging (default: none)",
-      "required": false,
-      "value": ""
-    },
-    "LOG_GUILD_EVENTS": {
-      "description": "Discord channel ID for guild event logging (default: none)",
-      "required": false,
-      "value": ""
-    },
     "DATABASE_URL": {
-      "description": "PostgreSQL connection string for enterprise data storage",
+      "description": "PostgreSQL connection string for ticket system and data storage",
       "required": true
     },
-    "EMBED_COLOR_NORMAL": {
-      "description": "Normal embed color (hex)",
-      "required": false,
-      "value": "0x2ecc71"
-    },
-    "EMBED_COLOR_ERROR": {
-      "description": "Error embed color (hex)",
-      "required": false,
-      "value": "0xe74c3c"
-    },
-    "EMBED_COLOR_HIERARCHY": {
-      "description": "Hierarchy embed color (hex)",
-      "required": false,
-      "value": "0xFFE682"
+    "MONGO_URI": {
+      "description": "MongoDB connection string for backup data storage",
+      "required": true
     }
   }
 }
