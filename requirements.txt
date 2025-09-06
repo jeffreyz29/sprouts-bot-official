@@ -1,32 +1,33 @@
-aiohttp==3.9.1
-aiosignal==1.4.0
-async-timeout==4.0.3
-asyncpg==0.29.0
-attrs==25.3.0
-blinker==1.9.0
-certifi==2023.11.17
-cffi==1.17.1
-charset-normalizer==3.4.3
-click==8.2.1
-discord.py==2.3.2
-dnspython==2.7.0
-Flask==3.0.0
-frozenlist==1.7.0
-greenlet==3.2.4
-idna==3.10
-itsdangerous==2.2.0
-Jinja2==3.1.2
-MarkupSafe==3.0.2
-multidict==6.6.4
-propcache==0.3.2
-psutil==5.9.6
+# Core Discord Bot Framework
+discord.py==2.4.0
+
+# Database and Storage
 psycopg2-binary==2.9.9
-pycparser==2.22
-pymongo==4.6.0
+pymongo==4.8.0
+
+# Web Framework for Dashboard
+Flask==3.0.3
+Werkzeug==3.0.4
+Jinja2==3.1.4
+
+# Official Transcript Generation
+chat-exporter==2.8.4
+
+# System Utilities
+psutil==6.0.0
+python-dotenv==1.0.1
+
+# Audio Support (needed for discord.py voice features)
 PyNaCl==1.5.0
-python-dotenv==1.0.0
-PyYAML==6.0.1
-SQLAlchemy==2.0.23
-typing_extensions==4.8.0
-Werkzeug==3.0.1
-yarl==1.20.1
+
+# HTTP Client for Discord API optimization
+aiohttp==3.10.5
+
+# YAML Support for configuration
+PyYAML==6.0.2
+
+# Security and SSL
+certifi==2024.8.30
+
+# Type hints support
+typing-extensions==4.12.2
