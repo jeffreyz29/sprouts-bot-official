@@ -2569,7 +2569,7 @@ class DevOnly(commands.Cog):
     async def create_backup(self, ctx, backup_name: str = None):
         """Create a manual backup of all bot data"""
         try:
-            from src.data_manager import data_manager
+            from data_manager import data_manager
             
             embed = discord.Embed(
                 title=f"{SPROUTS_WARNING} Creating Backup",
@@ -2876,10 +2876,24 @@ class DevOnly(commands.Cog):
     async def persistence_status(self, ctx):
         """Check the status of the data persistence system"""
         try:
-            from src.database.replit_persistence import replit_persistence
-            status = await replit_persistence.get_persistence_status()
+            from data_manager import data_manager
             
-            if "error" in status:
+            # Check file-based backup system status
+            backups = data_manager.list_backups()
+            integrity = data_manager.verify_data_integrity()
+            
+            # Create status summary
+            status = {
+                "system_health": "healthy" if integrity else "needs_attention",
+                "files_present": len([f for f in data_manager.config_files.values() if os.path.exists(f)]),
+                "total_files": len(data_manager.config_files),
+                "files_missing": [name for name, path in data_manager.config_files.items() if not os.path.exists(path)],
+                "database_backups": len(backups),
+                "snapshots_available": len(backups),
+                "latest_deployment": None
+            }
+            
+            if "error" in str(status):
                 embed = discord.Embed(
                     title=f"{SPROUTS_ERROR} Persistence System Error",
                     description=f"Error getting status: {status['error']}",
@@ -2955,38 +2969,40 @@ class DevOnly(commands.Cog):
     async def force_backup(self, ctx):
         """Force an immediate backup of all data to the database"""
         try:
-            from src.database.replit_persistence import replit_persistence
+            # Use file-based backup instead of database
+            from data_manager import data_manager
             
             # Show initial status
             initial_embed = discord.Embed(
                 title=f"{SPROUTS_INFORMATION} Creating Force Backup",
-                description="Backing up all critical data to database...",
+                description="Creating emergency file-based backup...",
                 color=EMBED_COLOR_NORMAL
             )
             message = await ctx.reply(embed=initial_embed, mention_author=False)
             
-            # Perform backup
-            result = await replit_persistence.backup_all_data_to_database()
+            # Perform file backup
+            backup_name = f"force_backup_{int(time.time())}"
+            backup_path = data_manager.create_backup(backup_name)
             
-            if result.get("success"):
+            if backup_path:
                 embed = discord.Embed(
                     title=f"{SPROUTS_CHECK} Force Backup Completed",
-                    description="All critical data has been safely backed up to the database.",
+                    description="All critical data has been safely backed up to files.",
                     color=EMBED_COLOR_SUCCESS
                 )
                 
                 embed.add_field(
                     name="Backup Results",
-                    value=f"{SPROUTS_CHECK} **{result['files_backed_up']}** files backed up\n"
-                          f"{SPROUTS_INFORMATION} Snapshot ID: **{result['snapshot_id']}**",
+                    value=f"{SPROUTS_CHECK} **Backup created:** `{backup_name}`\n"
+                          f"{SPROUTS_INFORMATION} **Location:** `{backup_path}`",
                     inline=False
                 )
                 
-                logger.info(f"Force backup completed by {ctx.author}: {result['files_backed_up']} files")
+                logger.info(f"Force backup completed by {ctx.author}: {backup_name}")
             else:
                 embed = discord.Embed(
                     title=f"{SPROUTS_ERROR} Force Backup Failed",
-                    description=f"Backup failed: {result.get('error', 'Unknown error')}",
+                    description="Backup failed: Unable to create file backup",
                     color=EMBED_COLOR_ERROR
                 )
             
@@ -3003,14 +3019,39 @@ class DevOnly(commands.Cog):
             )
             await ctx.reply(embed=error_embed, mention_author=False)
     
-    @commands.command(name="forcerestore", help="Force restore data from database")
-    async def force_restore(self, ctx):
-        """Force restore all data from the database"""
+    @commands.command(name="forcerestore", help="Force restore data from backup")
+    async def force_restore(self, ctx, backup_name: str = None):
+        """Force restore all data from a file backup"""
         try:
+            from data_manager import data_manager
+            
+            # If no backup specified, show available backups
+            if not backup_name:
+                backups = data_manager.list_backups()
+                if not backups:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} No Backups Found",
+                        description="No backups available for restore. Create a backup first using `s.backup`.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.reply(embed=embed, mention_author=False)
+                    return
+                
+                # Show available backups
+                embed = discord.Embed(
+                    title=f"{SPROUTS_INFORMATION} Available Backups",
+                    description="Use `s.forcerestore <backup_name>` to restore from a specific backup:",
+                    color=EMBED_COLOR_NORMAL
+                )
+                backup_list = "\n".join([f"• `{b['name']}`" for b in backups[:10]])
+                embed.add_field(name="Recent Backups", value=backup_list, inline=False)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
             # Confirmation check
             confirm_embed = discord.Embed(
                 title=f"{SPROUTS_WARNING} Force Restore Confirmation",
-                description=f"{SPROUTS_WARNING} **WARNING:** This will overwrite all current data files with database backups.\n\n"
+                description=f"{SPROUTS_WARNING} **WARNING:** This will overwrite all current data files with backup: `{backup_name}`\n\n"
                            "Type `CONFIRM RESTORE` to proceed or wait 30 seconds to cancel.",
                 color=EMBED_COLOR_WARNING
             )
@@ -3034,32 +3075,30 @@ class DevOnly(commands.Cog):
                 return
             
             # Perform restore
-            from src.database.replit_persistence import replit_persistence
-            
             progress_embed = discord.Embed(
                 title=f"{SPROUTS_INFORMATION} Restoring Data",
-                description="Restoring all critical data from database...",
+                description=f"Restoring all data from backup: `{backup_name}`...",
                 color=EMBED_COLOR_NORMAL
             )
             await message.edit(embed=progress_embed)
             
-            result = await replit_persistence.restore_all_data_from_database()
+            result = data_manager.restore_backup(backup_name)
             
-            if result.get("success"):
+            if result:
                 embed = discord.Embed(
                     title=f"{SPROUTS_CHECK} Restore Completed",
-                    description="All critical data has been successfully restored from the database.",
+                    description=f"All data has been successfully restored from backup: `{backup_name}`.",
                     color=EMBED_COLOR_SUCCESS
                 )
                 
                 embed.add_field(
                     name="Restore Results",
-                    value=f"{SPROUTS_CHECK} **{result['files_restored']}** files restored\n"
+                    value=f"{SPROUTS_CHECK} **Backup restored:** `{backup_name}`\n"
                           f"{SPROUTS_WARNING} Bot restart recommended for full effect",
                     inline=False
                 )
                 
-                logger.info(f"Force restore completed by {ctx.author}: {result['files_restored']} files")
+                logger.info(f"Force restore completed by {ctx.author}: {backup_name}")
             else:
                 embed = discord.Embed(
                     title=f"{SPROUTS_ERROR} Restore Failed",
