@@ -335,8 +335,8 @@ class Uncategorized(commands.Cog):
         """
         try:
             embed = discord.Embed(
-                title="Vote for sprouts beta",
-                description="Thanks for wanting to support sprouts beta! Your votes help us grow and improve.",
+                title="Vote for sprouts",
+                description="Thanks for wanting to support sprouts! Your votes help us grow and improve.",
                 color=EMBED_COLOR_NORMAL
             )
             

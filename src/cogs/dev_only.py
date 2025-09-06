@@ -13,9 +13,12 @@ import json
 import time
 import re
 import shutil
+import psutil
+import platform
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-from config import BOT_CONFIG, EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING
+from config import BOT_CONFIG, EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING, SPROUTS_INFORMATION
 
 # Add missing color constant
 EMBED_COLOR_WARNING = 0xFFE682
@@ -1605,7 +1608,7 @@ class DevOnly(commands.Cog):
         # Developer check is handled automatically by cog_check method
         
         embed = discord.Embed(
-            title=f"{SPROUTS_CHECK} Developer Commands Help",
+            title="Developer Commands Help",
             description="Complete list of developer-only bot commands. All commands require bot developer permissions.",
             color=EMBED_COLOR_NORMAL
         )
@@ -1697,18 +1700,6 @@ class DevOnly(commands.Cog):
             inline=False
         )
         
-        embed.add_field(
-            name="Feature Management System",
-            value=(
-                "`s.features` - View all feature flags and their status\n"
-                "`s.enablefeature <name>` - Enable specific features for gradual rollout\n"
-                "`s.disablefeature <name>` - Disable features for maintenance\n"
-                "`s.featureinfo <name>` - Get detailed info about any feature\n"
-                "`s.enableall` - Enable all features at once (use with caution)\n"
-                "**Controls command visibility and availability for users**"
-            ),
-            inline=False
-        )
         
         embed.add_field(
             name="Advanced Data Management",
@@ -2854,6 +2845,344 @@ class DevOnly(commands.Cog):
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} GitHub Prep Error",
                 description=f"Error preparing GitHub deployment: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    # Persistence Commands (merged from persistence_commands.py)
+    @commands.command(name="persiststatus", help="Check persistence system status")
+    async def persistence_status(self, ctx):
+        """Check the status of the data persistence system"""
+        try:
+            from src.database.replit_persistence import replit_persistence
+            status = await replit_persistence.get_persistence_status()
+            
+            if "error" in status:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Persistence System Error",
+                    description=f"Error getting status: {status['error']}",
+                    color=EMBED_COLOR_ERROR
+                )
+            else:
+                # Determine overall health
+                health_color = EMBED_COLOR_NORMAL
+                health_icon = SPROUTS_CHECK
+                if status["system_health"] == "needs_attention":
+                    health_color = EMBED_COLOR_WARNING
+                    health_icon = SPROUTS_WARNING
+                
+                embed = discord.Embed(
+                    title=f"{health_icon} Data Persistence Status",
+                    description=f"System Health: **{status['system_health'].title()}**",
+                    color=health_color
+                )
+                
+                # File system status
+                embed.add_field(
+                    name="File System Status",
+                    value=f"{SPROUTS_CHECK} **{status['files_present']}/{status['total_files']}** files present\n"
+                          f"{SPROUTS_ERROR} **{len(status['files_missing'])}** files missing",
+                    inline=True
+                )
+                
+                # Database status
+                embed.add_field(
+                    name="Database Persistence",
+                    value=f"{SPROUTS_INFORMATION} **{status['database_backups']}** data backups\n"
+                          f"{SPROUTS_INFORMATION} **{status['snapshots_available']}** snapshots available",
+                    inline=True
+                )
+                
+                # Latest deployment info
+                if status['latest_deployment']:
+                    latest = status['latest_deployment']
+                    embed.add_field(
+                        name="Latest Deployment",
+                        value=f"**ID:** {latest['deployment_id']}\n"
+                              f"**Time:** <t:{int(latest['deployment_time'].timestamp())}:R>\n"
+                              f"**Status:** {f'{SPROUTS_CHECK} Success' if latest['restoration_successful'] else f'{SPROUTS_ERROR} Failed'}",
+                        inline=False
+                    )
+                
+                # Missing files warning
+                if status['files_missing']:
+                    missing_list = "\n".join([f"• `{f}`" for f in status['files_missing'][:5]])
+                    if len(status['files_missing']) > 5:
+                        missing_list += f"\n• ...and {len(status['files_missing']) - 5} more"
+                    
+                    embed.add_field(
+                        name=f"{SPROUTS_WARNING} Missing Files",
+                        value=missing_list,
+                        inline=False
+                    )
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error getting persistence status: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Status Check Failed",
+                description="An error occurred while checking persistence status.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+    
+    @commands.command(name="forcebackup", help="Force immediate backup to database")
+    async def force_backup(self, ctx):
+        """Force an immediate backup of all data to the database"""
+        try:
+            from src.database.replit_persistence import replit_persistence
+            
+            # Show initial status
+            initial_embed = discord.Embed(
+                title=f"{SPROUTS_INFORMATION} Creating Force Backup",
+                description="Backing up all critical data to database...",
+                color=EMBED_COLOR_NORMAL
+            )
+            message = await ctx.reply(embed=initial_embed, mention_author=False)
+            
+            # Perform backup
+            result = await replit_persistence.backup_all_data_to_database()
+            
+            if result.get("success"):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Force Backup Completed",
+                    description="All critical data has been safely backed up to the database.",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                
+                embed.add_field(
+                    name="Backup Results",
+                    value=f"{SPROUTS_CHECK} **{result['files_backed_up']}** files backed up\n"
+                          f"{SPROUTS_INFORMATION} Snapshot ID: **{result['snapshot_id']}**",
+                    inline=False
+                )
+                
+                logger.info(f"Force backup completed by {ctx.author}: {result['files_backed_up']} files")
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Force Backup Failed",
+                    description=f"Backup failed: {result.get('error', 'Unknown error')}",
+                    color=EMBED_COLOR_ERROR
+                )
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await message.edit(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error in force backup: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Backup Error",
+                description=f"An error occurred during backup: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+    
+    @commands.command(name="forcerestore", help="Force restore data from database")
+    async def force_restore(self, ctx):
+        """Force restore all data from the database"""
+        try:
+            # Confirmation check
+            confirm_embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Force Restore Confirmation",
+                description=f"{SPROUTS_WARNING} **WARNING:** This will overwrite all current data files with database backups.\n\n"
+                           "Type `CONFIRM RESTORE` to proceed or wait 30 seconds to cancel.",
+                color=EMBED_COLOR_WARNING
+            )
+            message = await ctx.reply(embed=confirm_embed, mention_author=False)
+            
+            # Wait for confirmation
+            def check(m):
+                return (m.author == ctx.author and 
+                       m.channel == ctx.channel and 
+                       m.content.upper() == "CONFIRM RESTORE")
+            
+            try:
+                await self.bot.wait_for('message', check=check, timeout=30.0)
+            except:
+                timeout_embed = discord.Embed(
+                    title=f"{SPROUTS_INFORMATION} Restore Cancelled",
+                    description="Force restore operation timed out and was cancelled.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                await message.edit(embed=timeout_embed)
+                return
+            
+            # Perform restore
+            from src.database.replit_persistence import replit_persistence
+            
+            progress_embed = discord.Embed(
+                title=f"{SPROUTS_INFORMATION} Restoring Data",
+                description="Restoring all critical data from database...",
+                color=EMBED_COLOR_NORMAL
+            )
+            await message.edit(embed=progress_embed)
+            
+            result = await replit_persistence.restore_all_data_from_database()
+            
+            if result.get("success"):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Restore Completed",
+                    description="All critical data has been successfully restored from the database.",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                
+                embed.add_field(
+                    name="Restore Results",
+                    value=f"{SPROUTS_CHECK} **{result['files_restored']}** files restored\n"
+                          f"{SPROUTS_WARNING} Bot restart recommended for full effect",
+                    inline=False
+                )
+                
+                logger.info(f"Force restore completed by {ctx.author}: {result['files_restored']} files")
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Restore Failed",
+                    description=f"Restore failed: {result.get('error', 'Unknown error')}",
+                    color=EMBED_COLOR_ERROR
+                )
+            
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await message.edit(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error in force restore: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Restore Error",
+                description=f"An error occurred during restore: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    # Server Stats Commands (merged from server_stats.py - essential commands only)
+    def format_bytes(self, bytes_value: int) -> str:
+        """Format bytes to human readable format"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if bytes_value < 1024.0:
+                return f"{bytes_value:.2f} {unit}"
+            bytes_value /= 1024.0
+        return f"{bytes_value:.2f} PB"
+    
+    def format_uptime(self, uptime: timedelta) -> str:
+        """Format uptime to human readable format"""
+        days = uptime.days
+        hours, remainder = divmod(uptime.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        
+        if days > 0:
+            return f"{days} days, {hours} hours, {minutes} minutes"
+        elif hours > 0:
+            return f"{hours} hours, {minutes} minutes"
+        else:
+            return f"{minutes} minutes, {seconds} seconds"
+    
+    @commands.command(name="serverstats", aliases=["stats", "systeminfo"], help="Show server system statistics")
+    async def show_server_stats(self, ctx):
+        """Show current server stats for developer monitoring"""
+        try:
+            # CPU Information
+            cpu_percent = psutil.cpu_percent(interval=1)
+            cpu_cores = psutil.cpu_count(logical=False)
+            cpu_threads = psutil.cpu_count(logical=True)
+            
+            # Memory Information
+            memory = psutil.virtual_memory()
+            
+            # Disk Information
+            disk = psutil.disk_usage('/')
+            
+            # Network Information
+            try:
+                net_io = psutil.net_io_counters()
+            except (FileNotFoundError, OSError):
+                net_io = None
+            
+            # System Information
+            bot_uptime = datetime.now() - self.bot.start_time.replace(tzinfo=None)
+            
+            # Bot Statistics
+            guild_count = len(self.bot.guilds)
+            user_count = len(set(self.bot.get_all_members()))
+            channel_count = sum(len(guild.channels) for guild in self.bot.guilds)
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Server System Statistics",
+                description="Real-time server monitoring for development",
+                color=EMBED_COLOR_NORMAL,
+                timestamp=discord.utils.utcnow()
+            )
+            
+            # System Information
+            embed.add_field(
+                name="System Information",
+                value=f"```"
+                      f"CPU Usage: {cpu_percent:.1f}%\n"
+                      f"Physical Cores: {cpu_cores}\n"
+                      f"Total Cores: {cpu_threads}"
+                      f"```",
+                inline=True
+            )
+            
+            # Memory & Storage
+            embed.add_field(
+                name="Memory & Storage",
+                value=f"```"
+                      f"Memory Used: {self.format_bytes(memory.used)}\n"
+                      f"Memory Total: {self.format_bytes(memory.total)}\n"
+                      f"Memory Usage: {memory.percent:.1f}%\n"
+                      f"\n"
+                      f"Disk Used: {self.format_bytes(disk.used)}\n"
+                      f"Disk Total: {self.format_bytes(disk.total)}\n"
+                      f"Disk Usage: {(disk.used / disk.total) * 100:.1f}%"
+                      f"```",
+                inline=True
+            )
+            
+            # Bot Performance and Statistics
+            embed.add_field(
+                name="Bot Performance",
+                value=f"```"
+                      f"WebSocket Ping: {round(self.bot.latency * 1000, 2)} ms\n"
+                      f"Bot Uptime: {self.format_uptime(bot_uptime)}"
+                      f"```",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="Bot Statistics",
+                value=f"```"
+                      f"Guilds: {guild_count}\n"
+                      f"Users: {user_count}\n"
+                      f"Channels: {channel_count}"
+                      f"```",
+                inline=True
+            )
+            
+            # Network (if available)
+            if net_io:
+                embed.add_field(
+                    name="Network Statistics",
+                    value=f"```"
+                          f"Total Sent: {self.format_bytes(net_io.bytes_sent)}\n"
+                          f"Total Received: {self.format_bytes(net_io.bytes_recv)}"
+                          f"```",
+                    inline=True
+                )
+            
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error showing server stats: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Stats Error",
+                description="Failed to get server statistics.",
                 color=EMBED_COLOR_ERROR
             )
             await ctx.reply(embed=embed, mention_author=False)

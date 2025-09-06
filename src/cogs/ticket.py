@@ -16,7 +16,7 @@ from typing import Optional, List
 import random
 import string
 from config import EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR
-from src.emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_INFORMATION
+from emojis import SPROUTS_ERROR, SPROUTS_CHECK, SPROUTS_WARNING, SPROUTS_INFORMATION
 
 logger = logging.getLogger(__name__)
 
@@ -1033,7 +1033,7 @@ class NamingSelectView(discord.ui.View):
 
 # Import database classes
 try:
-    from src.database.connection import TicketDatabase, PanelDatabase, SettingsDatabase, db_manager
+    from database.connection import TicketDatabase, PanelDatabase, SettingsDatabase, db_manager
 except ImportError:
     # Fallback for development
     TicketDatabase = None
@@ -1560,7 +1560,7 @@ class TicketSystem(commands.Cog):
                     if embed_data:
 
                         # Import the variable processor
-                        from src.utils.variables import VariableProcessor
+                        from utils.variables import VariableProcessor
 
                         # Process variables with await
                         title = await embed_builder.variable_processor.process_variables(
@@ -1871,7 +1871,11 @@ class TicketSystem(commands.Cog):
             ticket_number = len(guild_tickets) + 1
             return f"ticket-{ticket_number:03d}"
 
-    async def new_ticket_old(self, ctx, *, reason: str = "No reason provided"):
+    async def create_ticket_command(self, ctx, user, reason: str = "No reason provided"):
+        """Core ticket creation logic used by different commands"""
+        return await self.new_ticket_old_renamed(ctx, reason=reason)
+
+    async def new_ticket_old_renamed(self, ctx, *, reason: str = "No reason provided"):
         """Create a new ticket command
         
         Usage: `{ctx.prefix}new [reason]`
@@ -2432,8 +2436,8 @@ class TicketSystem(commands.Cog):
             ticket_id = None
             
             # Get ticket from database
-            from src.database.all_data_access import get_ticket_by_channel
-            db_ticket = await get_ticket_by_channel(ctx.channel.id)
+            from database.connection import TicketDatabase
+            db_ticket = TicketDatabase.get_ticket_by_channel(ctx.channel.id)
             
             if db_ticket:
                 ticket_id = db_ticket['ticket_id']
@@ -2469,13 +2473,13 @@ class TicketSystem(commands.Cog):
                     except:
                         pass
 
-            # Generate HTML transcript using new transcript system
+            # Generate transcript using official discord-tickets system
             transcript_url = None
             transcript_file_path = None
             try:
-                from src.utils.transcript_generator import transcript_generator
+                from utils.transcript_generator import transcript_generator
                 
-                # Generate beautiful HTML transcript
+                # Generate transcript using official discord-tickets method
                 transcript_url, transcript_file_path = await transcript_generator.generate_transcript(
                     channel=ctx.channel,
                     ticket_id=ticket_id,
@@ -2485,10 +2489,10 @@ class TicketSystem(commands.Cog):
                     close_reason=reason
                 )
                 
-                logger.info(f"Generated HTML transcript for ticket {ticket_id}: {transcript_file_path}")
+                logger.info(f"Generated discord-tickets transcript for ticket {ticket_id}: {transcript_file_path}")
 
             except Exception as e:
-                logger.error(f"Error generating HTML transcript: {e}")
+                logger.error(f"Error generating discord-tickets transcript: {e}")
                 transcript_url = None
                 transcript_file_path = None
 
@@ -2745,118 +2749,7 @@ class TicketSystem(commands.Cog):
                 except Exception as e:
                     logger.error(f"Error sending log message: {e}")
 
-            # Send DM to ticket creator with transcript info
-            if ticket_creator:
-                try:
-                    dm_embed = discord.Embed(
-                        title=
-                        f"{SPROUTS_ERROR} Your Ticket Has Been Closed",
-                        description=
-                        f"Your ticket in **{ctx.guild.name}** has been closed.",
-                        color=EMBED_COLOR_ERROR)
-                    dm_embed.add_field(name="Closed By",
-                                       value=ctx.author.display_name,
-                                       inline=True)
-                    dm_embed.add_field(name="Reason",
-                                       value=reason,
-                                       inline=True)
-                    dm_embed.add_field(name="Server",
-                                       value=ctx.guild.name,
-                                       inline=True)
-
-                    # Send transcript as attachment in DM using saved file
-                    if transcript_file_path and os.path.exists(
-                            transcript_file_path):
-                        try:
-                            file_size = os.path.getsize(transcript_file_path)
-                            if file_size < 8 * 1024 * 1024:  # 8MB limit
-                                # Send transcript file attachment in DM
-                                transcript_filename = f"ticket_{ticket_id}_transcript.txt"
-                                with open(transcript_file_path, 'rb') as f:
-                                    transcript_file = discord.File(
-                                        f, filename=transcript_filename)
-                                    dm_embed.add_field(
-                                        name="Transcript",
-                                        value=
-                                        "Full conversation attached below",
-                                        inline=False)
-                                    dm_embed.set_thumbnail(
-                                        url=ctx.guild.icon.url if ctx.guild.
-                                        icon else None)
-                                    dm_embed.timestamp = discord.utils.utcnow()
-                                    dm_embed.set_footer(
-                                        text=f"Ticket ID: #{ticket_id}")
-
-                                    await ticket_creator.send(
-                                        embed=dm_embed, file=transcript_file)
-                                    logger.info(
-                                        f"Successfully sent DM with transcript file to ticket creator {ticket_creator.id}"
-                                    )
-                            else:
-                                # File too large for DM
-                                dm_embed.add_field(
-                                    name="Transcript",
-                                    value=
-                                    "Transcript was too large for DM but was logged to staff channels",
-                                    inline=False)
-                                dm_embed.set_thumbnail(
-                                    url=ctx.guild.icon.url if ctx.guild.
-                                    icon else None)
-                                dm_embed.timestamp = discord.utils.utcnow()
-                                dm_embed.set_footer(
-                                    text=f"Ticket ID: #{ticket_id}")
-                                await ticket_creator.send(embed=dm_embed)
-                                logger.info(
-                                    f"Successfully sent DM (transcript too large) to ticket creator {ticket_creator.id}"
-                                )
-                        except Exception as e:
-                            logger.error(
-                                f"Error sending DM with transcript file: {e}")
-                            # Fall back to DM without transcript
-                            dm_embed.add_field(
-                                name="Transcript",
-                                value="Transcript was logged to staff channels",
-                                inline=False)
-                            dm_embed.set_thumbnail(url=ctx.guild.icon.url
-                                                   if ctx.guild.icon else None)
-                            dm_embed.timestamp = discord.utils.utcnow()
-                            dm_embed.set_footer(
-                                text=f"Ticket ID: #{ticket_id}")
-                            await ticket_creator.send(embed=dm_embed)
-                            logger.info(
-                                f"Successfully sent DM without transcript to ticket creator {ticket_creator.id}"
-                            )
-                    else:
-                        # No transcript file
-                        dm_embed.add_field(
-                            name="Transcript",
-                            value="No transcript file was generated",
-                            inline=False)
-                        dm_embed.set_thumbnail(
-                            url=ctx.guild.icon.url if ctx.guild.icon else None)
-                        dm_embed.timestamp = discord.utils.utcnow()
-                        dm_embed.set_footer(text=f"Ticket ID: #{ticket_id}")
-                        await ticket_creator.send(embed=dm_embed)
-                        logger.info(
-                            f"Successfully sent DM (no transcript) to ticket creator {ticket_creator.id}"
-                        )
-
-                except discord.Forbidden:
-                    logger.warning(
-                        f"Could not DM ticket creator {ticket_creator.id} - DMs disabled or blocked"
-                    )
-                except discord.HTTPException as e:
-                    logger.error(
-                        f"HTTP error sending DM to ticket creator {ticket_creator.id}: {e}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Unexpected error sending DM to ticket creator {ticket_creator.id}: {e}"
-                    )
-            else:
-                logger.warning(
-                    f"Could not find ticket creator with ID {ticket_data.get('creator_id')} for DM"
-                )
+            # DM with URL already sent above - no additional DM needed
 
             # Wait 10 seconds before deleting channel (give time for people to see the close message)
             await asyncio.sleep(10)
@@ -4332,7 +4225,7 @@ class TicketSystem(commands.Cog):
         """Enhanced ticket event logging system"""
         try:
             # Check if event logging is configured for this guild
-            from src.cogs.cmd_logging import cmd_logging
+            from cogs.logging.cmd_logging import cmd_logging
             log_channel_id = cmd_logging.get_cmd_log_channel(guild.id)
             
             if not log_channel_id:
@@ -5179,7 +5072,7 @@ async def setup_ticket_system(bot):
             logger.info("Database initialized for ticket system")
             # Run data migration if needed
             try:
-                from src.database.migrate_data import DataMigrator
+                from database.migrate_data import DataMigrator
                 migrator = DataMigrator()
                 
                 # Check if migration is needed (if JSON files exist but database is empty)

@@ -1,1 +1,19 @@
-{}
+{
+    "1412650062517108789": {
+        "log_channel_id": null,
+        "staff_role_ids": [],
+        "ticket_category_id": null,
+        "naming_style": "numbers",
+        "embed_title": "Support Ticket",
+        "embed_description": "Thank you for creating a ticket! Please describe your issue and a staff member will assist you shortly.",
+        "embed_color": 13434833,
+        "embed_author_name": null,
+        "embed_author_icon": null,
+        "max_tickets_per_user": 10,
+        "use_saved_embed": false,
+        "saved_embed_name": null,
+        "use_threads": true,
+        "ticket_limit": 3,
+        "transcript_channel": 1412916044938346719
+    }
+}

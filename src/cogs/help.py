@@ -183,6 +183,7 @@ class DetailedCommandHelpView(discord.ui.View):
             },
             
             # Ticket System Commands
+            
             "new": {
                 "category": "Ticket System",
                 "description": "Create a new support ticket with optional reason",
@@ -201,10 +202,52 @@ class DetailedCommandHelpView(discord.ui.View):
                 "permissions": "None required",
                 "cooldown": "30 seconds per user", 
                 "error_scenarios": [
-                    "**Tickets disabled:** `Ticket system is not enabled in this server.`",
-                    "**Too many tickets:** `You already have the maximum number of open tickets.`",
+                    "**Existing ticket:** `You already have an open ticket: #ticket-123`",
                     "**Channel creation failed:** `Failed to create ticket channel. Contact an administrator.`",
-                    f"**Solution:** Ask an admin to run `{self.prefix}ticketsetup` to enable tickets"
+                    "**Tickets disabled:** `Ticket system is not enabled in this server.`",
+                    f"**Solution:** Ask an admin to run `{self.prefix}panel` to create ticket panels"
+                ]
+            },
+            
+            "close": {
+                "category": "Ticket System",
+                "description": "Close the current ticket and generate a transcript",
+                "usage": f"{self.prefix}close [reason]",
+                "detailed_usage": [
+                    f"`{self.prefix}close` - Close ticket with no reason",
+                    f"`{self.prefix}close Issue resolved` - Close with reason",
+                    f"`{self.prefix}close User helped successfully` - Detailed close reason"
+                ],
+                "examples": [
+                    f"`{self.prefix}close` - Simple ticket closure",
+                    f"`{self.prefix}close Problem solved` - Close with reason",
+                    f"`{self.prefix}close User was helped by support team` - Detailed reason"
+                ],
+                "permissions": "Ticket creator or staff",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**No permissions:** `Only ticket creator or staff can close tickets.`",
+                    "**Transcript failed:** `Failed to generate transcript. Ticket still closed.`"
+                ]
+            },
+            
+            "claim": {
+                "category": "Ticket System",
+                "description": "Claim a ticket for yourself (Staff only)",
+                "usage": f"{self.prefix}claim",
+                "detailed_usage": [
+                    f"`{self.prefix}claim` - Claim the current ticket"
+                ],
+                "examples": [
+                    f"`{self.prefix}claim` - Take ownership of the ticket"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can claim tickets.`",
+                    "**Already claimed:** `This ticket is already claimed by another staff member.`"
                 ]
             },
             
@@ -222,13 +265,1517 @@ class DetailedCommandHelpView(discord.ui.View):
                     f"`{self.prefix}add Support Team` - Add by username",
                     f"`{self.prefix}add 351738977602887681` - Add by user ID"
                 ],
-                "permissions": "**Manage Channels** required",
+                "permissions": "Staff role required",
                 "cooldown": "5 seconds per user",
                 "error_scenarios": [
                     "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission to add users.`",
+                    "**Not staff:** `Only staff can add users to tickets.`",
                     "**User not found:** `Could not find user 'username' in this server.`",
                     "**User already in ticket:** `User is already added to this ticket.`"
+                ]
+            },
+            
+            "remove": {
+                "category": "Ticket System",
+                "description": "Remove a member from the current ticket (Staff only)",
+                "usage": f"{self.prefix}remove <member>",
+                "detailed_usage": [
+                    f"`{self.prefix}remove @username` - Remove user by mention",
+                    f"`{self.prefix}remove username` - Remove user by username",
+                    f"`{self.prefix}remove 123456789` - Remove user by ID"
+                ],
+                "examples": [
+                    f"`{self.prefix}remove @John` - Remove John from ticket",
+                    f"`{self.prefix}remove Support Team` - Remove by username",
+                    f"`{self.prefix}remove 351738977602887681` - Remove by user ID"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can remove users from tickets.`",
+                    "**User not found:** `Could not find user 'username' in this server.`",
+                    "**User not in ticket:** `User is not in this ticket.`"
+                ]
+            },
+            
+            "rename": {
+                "category": "Ticket System",
+                "description": "Rename the current ticket channel (Staff only)",
+                "usage": f"{self.prefix}rename <new_name>",
+                "detailed_usage": [
+                    f"`{self.prefix}rename billing issue` - Rename to ticket-billing-issue",
+                    f"`{self.prefix}rename bug report` - Rename to ticket-bug-report"
+                ],
+                "examples": [
+                    f"`{self.prefix}rename account help` - Rename to ticket-account-help",
+                    f"`{self.prefix}rename discord bot issue` - Rename to ticket-discord-bot-issue"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can rename tickets.`",
+                    "**No name:** `Please provide a new name for the ticket.`"
+                ]
+            },
+            
+            "topic": {
+                "category": "Ticket System",
+                "description": "Set the topic/description for the current ticket",
+                "usage": f"{self.prefix}topic <new_topic>",
+                "detailed_usage": [
+                    f"`{self.prefix}topic User needs help with billing` - Set ticket topic",
+                    f"`{self.prefix}topic Bug report: Commands not working` - Bug topic"
+                ],
+                "examples": [
+                    f"`{self.prefix}topic Account access issue` - Set topic",
+                    f"`{self.prefix}topic Discord permissions help needed` - Detailed topic"
+                ],
+                "permissions": "Ticket participants",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**No topic:** `Please provide a topic for the ticket.`"
+                ]
+            },
+            
+            
+            "move": {
+                "category": "Ticket System",
+                "description": "Move the ticket to a different category using category ID (Staff only)",
+                "usage": f"{self.prefix}move <category_id>",
+                "detailed_usage": [
+                    f"`{self.prefix}move 123456789012345678` - Move ticket to category with specified ID",
+                    f"Right-click category → Copy ID to get category ID (requires Developer Mode)"
+                ],
+                "examples": [
+                    f"`{self.prefix}move 987654321098765432` - Move ticket to category ID 987654321098765432",
+                    f"`{self.prefix}move 123456789012345678` - Move ticket using specific category ID"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can move tickets.`",
+                    "**Category not found:** `Could not find category: 'category_name'`"
+                ]
+            },
+            
+            "transfer": {
+                "category": "Ticket System",
+                "description": "Transfer ticket ownership to another user",
+                "usage": f"{self.prefix}transfer <user>",
+                "detailed_usage": [
+                    f"`{self.prefix}transfer @newowner` - Transfer to mentioned user",
+                    f"`{self.prefix}transfer username` - Transfer by username"
+                ],
+                "examples": [
+                    f"`{self.prefix}transfer @John` - Transfer ticket to John",
+                    f"`{self.prefix}transfer Support Lead` - Transfer to support lead"
+                ],
+                "permissions": "Ticket creator or staff",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**No permissions:** `Only ticket creator or staff can transfer tickets.`",
+                    "**User not found:** `Could not find user in this server.`"
+                ]
+            },
+            
+            "release": {
+                "category": "Ticket System",
+                "description": "Release (unclaim) the current ticket",
+                "usage": f"{self.prefix}release",
+                "detailed_usage": [
+                    f"`{self.prefix}release` - Release ticket claim",
+                    f"`{self.prefix}unclaim` - Same as release (alias)"
+                ],
+                "examples": [
+                    f"`{self.prefix}release` - Release the ticket for other staff",
+                    f"`{self.prefix}unclaim` - Unclaim the ticket"
+                ],
+                "permissions": "Claimer or staff",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not claimed:** `This ticket is not currently claimed.`",
+                    "**No permissions:** `Only the claimer or staff can release tickets.`"
+                ]
+            },
+            
+            "forceclose": {
+                "category": "Ticket System",
+                "description": "Force close a ticket (Administrator only)",
+                "usage": f"{self.prefix}forceclose [reason]",
+                "detailed_usage": [
+                    f"`{self.prefix}forceclose` - Force close with no reason",
+                    f"`{self.prefix}forceclose Spam ticket` - Force close with reason",
+                    f"`{self.prefix}force-close User violation` - Using alias"
+                ],
+                "examples": [
+                    f"`{self.prefix}forceclose` - Emergency ticket closure",
+                    f"`{self.prefix}forceclose Duplicate ticket` - Close duplicate",
+                    f"`{self.prefix}force-close Policy violation` - Policy violation closure"
+                ],
+                "permissions": "Administrator only",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not admin:** `Only administrators can force close tickets.`"
+                ]
+            },
+            
+            "createpanel": {
+                "category": "Ticket System",
+                "description": "Create a ticket panel with interactive button (Staff only)",
+                "usage": f"`{self.prefix}createpanel [title]`",
+                "detailed_usage": [
+                    f"`{self.prefix}createpanel` - Create panel with default title 'Support Tickets'",
+                    f"`{self.prefix}createpanel Bug Reports` - Create panel with custom title",
+                    f"`{self.prefix}createpanel General Support` - Panel for general support tickets"
+                ],
+                "examples": [
+                    f"`{self.prefix}createpanel` - Default support ticket panel",
+                    f"`{self.prefix}createpanel Technical Support` - Technical support panel",
+                    f"`{self.prefix}createpanel Billing Questions` - Billing support panel"
+                ],
+                "permissions": "Staff role required + Manage Channels permission",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not staff:** `Only staff members can create ticket panels.`",
+                    "**No permissions:** `Missing Manage Channels permission.`",
+                    "**Error creating:** `An error occurred while creating the panel.`"
+                ]
+            },
+            
+            "listpanels": {
+                "category": "Ticket System", 
+                "description": "List all active ticket panels in the server (Staff only)",
+                "usage": f"`{self.prefix}listpanels`",
+                "detailed_usage": [
+                    f"`{self.prefix}listpanels` - Show all active panels with details",
+                    f"Shows panel ID, title, channel, creator, and creation date",
+                    f"Automatically cleans up panels with deleted messages"
+                ],
+                "examples": [
+                    f"`{self.prefix}listpanels` - View all server panels",
+                    f"Panel cleanup happens automatically during listing"
+                ],
+                "permissions": "Staff role required + Manage Channels permission",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Not staff:** `Only staff members can list ticket panels.`",
+                    "**No panels:** `No active ticket panels found in this server.`",
+                    "**No permissions:** `Missing Manage Channels permission.`"
+                ]
+            },
+            
+            "delpanel": {
+                "category": "Ticket System",
+                "description": "Delete a ticket panel by ID (Staff only)",
+                "usage": f"`{self.prefix}delpanel <panel_id>`",
+                "detailed_usage": [
+                    f"`{self.prefix}delpanel ABC12345` - Delete panel with ID ABC12345",
+                    f"Use `{self.prefix}listpanels` to find panel IDs",
+                    f"Deletes both the panel message and database entry"
+                ],
+                "examples": [
+                    f"`{self.prefix}delpanel XYZ98765` - Delete specific panel",
+                    f"`{self.prefix}delpanel DEF456AB` - Remove outdated panel"
+                ],
+                "permissions": "Staff role required + Manage Channels permission",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not staff:** `Only staff members can delete ticket panels.`",
+                    "**Panel not found:** `No panel found with ID: 'panel_id'`",
+                    "**Wrong server:** `You can only delete panels from this server.`",
+                    "**No permissions:** `Missing Manage Channels permission.`"
+                ]
+            },
+
+            "transcript": {
+                "category": "Ticket System",
+                "description": "Generate a transcript of the current ticket",
+                "usage": f"{self.prefix}transcript",
+                "detailed_usage": [
+                    f"`{self.prefix}transcript` - Generate and view transcript"
+                ],
+                "examples": [
+                    f"`{self.prefix}transcript` - Create transcript with viewing URL"
+                ],
+                "permissions": "Ticket participants",
+                "cooldown": "30 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Generation failed:** `Failed to generate transcript. Please try again.`"
+                ]
+            },
+            
+            "tickets": {
+                "category": "Ticket System",
+                "description": "List all open tickets in the server (Staff only)",
+                "usage": f"{self.prefix}tickets",
+                "detailed_usage": [
+                    f"`{self.prefix}tickets` - List all open tickets",
+                    f"`{self.prefix}list` - Same as tickets (alias)"
+                ],
+                "examples": [
+                    f"`{self.prefix}tickets` - View all open tickets with details",
+                    f"`{self.prefix}list` - List tickets with creators and status"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**Not staff:** `Only staff can view the ticket list.`",
+                    "**No tickets:** `There are currently no open tickets in this server.`"
+                ]
+            },
+            
+            
+            "notes": {
+                "category": "Ticket System",
+                "description": "Create a private staff notes thread for the ticket",
+                "usage": f"{self.prefix}notes",
+                "detailed_usage": [
+                    f"`{self.prefix}notes` - Create private staff thread"
+                ],
+                "examples": [
+                    f"`{self.prefix}notes` - Create notes thread for internal discussion"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can create notes threads.`",
+                    "**Thread exists:** `A notes thread already exists for this ticket.`"
+                ]
+            },
+
+            # NEW TICKETSBOT COMMANDS - Complete documentation for all 33 commands
+            
+            "open": {
+                "category": "Ticket System", 
+                "description": "Alternative command to create a new support ticket (alias for 'new')",
+                "usage": f"`{self.prefix}open [subject]`",
+                "detailed_usage": [
+                    f"`{self.prefix}open` - Creates ticket with no subject",
+                    f"`{self.prefix}open I need help with billing` - Creates ticket with subject",
+                    f"`{self.prefix}open Bug report: Bot not responding` - Detailed subject"
+                ],
+                "examples": [
+                    f"`{self.prefix}open` - Creates a simple support ticket",
+                    f"`{self.prefix}open Can't access my account` - Ticket with specific issue", 
+                    f"`{self.prefix}open Payment processing error` - Payment issue ticket",
+                    f"`{self.prefix}open Discord bot permissions help` - Permission help ticket"
+                ],
+                "permissions": "None required",
+                "cooldown": "30 seconds per user",
+                "error_scenarios": [
+                    "**Existing ticket:** `You already have an open ticket: #ticket-123`",
+                    "**Channel creation failed:** `Failed to create ticket channel. Contact an administrator.`",
+                    "**Tickets disabled:** `Ticket system is not enabled in this server.`",
+                    f"**Solution:** Ask an admin to run `{self.prefix}panel` to create ticket panels",
+                    "**Rate limited:** `Please wait 30 seconds before creating another ticket.`"
+                ]
+            },
+            
+            "unclaim": {
+                "category": "Ticket System",
+                "description": "Remove your claim from the current ticket, making it available for other staff",
+                "usage": f"`{self.prefix}unclaim`",
+                "detailed_usage": [
+                    f"`{self.prefix}unclaim` - Remove your claim from ticket"
+                ],
+                "examples": [
+                    f"`{self.prefix}unclaim` - Release ticket for other staff to handle",
+                    "After unclaiming, other staff can claim this ticket"
+                ],
+                "permissions": "Staff role required (must be the claimer)",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not claimed:** `This ticket is not currently claimed.`",
+                    "**Not your claim:** `You can only unclaim tickets you have claimed.`",
+                    "**Not staff:** `Only staff members can unclaim tickets.`"
+                ]
+            },
+            
+            "closerequest": {
+                "category": "Ticket System",
+                "description": "Send a close request to the ticket opener for approval",
+                "usage": f"`{self.prefix}closerequest [reason]`",
+                "detailed_usage": [
+                    f"`{self.prefix}closerequest` - Send close request with no reason",
+                    f"`{self.prefix}closerequest Issue resolved` - Send close request with reason",
+                    f"`{self.prefix}closerequest User helped successfully` - Detailed close reason"
+                ],
+                "examples": [
+                    f"`{self.prefix}closerequest` - Send basic close request to user",
+                    f"`{self.prefix}closerequest Problem solved` - Request closure with reason",
+                    f"`{self.prefix}closerequest All questions answered` - Detailed closure request"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can send close requests.`",
+                    "**User offline:** `Ticket opener is not available. Use regular close instead.`",
+                    "**Already requested:** `A close request is already pending for this ticket.`"
+                ]
+            },
+            
+            "jumptotop": {
+                "category": "Ticket System",
+                "description": "Display a button that users can click to jump to the top of the ticket",
+                "usage": f"`{self.prefix}jumptotop`",
+                "detailed_usage": [
+                    f"`{self.prefix}jumptotop` - Shows jump to top button for easy navigation"
+                ],
+                "examples": [
+                    f"`{self.prefix}jumptotop` - Helpful for long tickets with lots of messages",
+                    "Users can click the button to quickly scroll to the ticket beginning"
+                ],
+                "permissions": "Ticket participants",
+                "cooldown": "30 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Button limit:** `Too many buttons in this channel. Try again later.`"
+                ]
+            },
+            
+            "reopen": {
+                "category": "Ticket System",
+                "description": "Reopen a previously closed ticket by ID",
+                "usage": f"`{self.prefix}reopen <ticket_id>`",
+                "detailed_usage": [
+                    f"`{self.prefix}reopen 123` - Reopen ticket with ID 123",
+                    f"`{self.prefix}reopen ticket-456` - Reopen using full ticket name"
+                ],
+                "examples": [
+                    f"`{self.prefix}reopen 123` - Reopen closed ticket #123",
+                    f"`{self.prefix}reopen 456` - Restore previously closed ticket",
+                    "Reopened tickets restore all previous messages and permissions"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**Ticket not found:** `Could not find a closed ticket with ID: 123`",
+                    "**Not staff:** `Only staff can reopen closed tickets.`",
+                    "**Already open:** `Ticket 123 is already open.`",
+                    "**Channel exists:** `Cannot reopen - a channel with this name already exists.`"
+                ]
+            },
+            
+            "switchpanel": {
+                "category": "Ticket System",
+                "description": "Switch the current ticket to a different panel configuration",
+                "usage": f"`{self.prefix}switchpanel <panel_name>`",
+                "detailed_usage": [
+                    f"`{self.prefix}switchpanel Support` - Switch to Support panel config",
+                    f"`{self.prefix}switchpanel Bug Reports` - Switch to Bug Reports panel"
+                ],
+                "examples": [
+                    f"`{self.prefix}switchpanel General Support` - Move to general support panel",
+                    f"`{self.prefix}switchpanel VIP Support` - Move to VIP support panel",
+                    f"`{self.prefix}switchpanel Technical` - Move to technical support panel"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `This command can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can switch ticket panels.`",
+                    "**Panel not found:** `Could not find panel: 'panel_name'`",
+                    "**Same panel:** `Ticket is already using this panel configuration.`"
+                ]
+            },
+            
+            # SETTING COMMANDS (15 commands)
+            
+            "addadmin": {
+                "category": "Ticket Settings",
+                "description": "Grant admin privileges to a user or role for the ticket system",
+                "usage": f"`{self.prefix}addadmin <user/role>`",
+                "detailed_usage": [
+                    f"`{self.prefix}addadmin @Admin` - Add admin role to ticket system",
+                    f"`{self.prefix}addadmin @JohnDoe` - Add user as ticket admin",
+                    f"`{self.prefix}addadmin 123456789` - Add user by ID as admin"
+                ],
+                "examples": [
+                    f"`{self.prefix}addadmin @Moderator` - Give Moderator role admin access",
+                    f"`{self.prefix}addadmin @Manager` - Give Manager role admin privileges",
+                    f"`{self.prefix}addadmin @Alice` - Give user Alice admin access"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage ticket admins.`",
+                    "**Missing target:** `Please specify a user or role to add as admin.`",
+                    "**User/role not found:** `Could not find that user or role in this server.`",
+                    "**Already admin:** `This user/role already has admin privileges.`"
+                ]
+            },
+            
+            "removeadmin": {
+                "category": "Ticket Settings",
+                "description": "Revoke admin privileges from a user or role for the ticket system",
+                "usage": f"`{self.prefix}removeadmin <user/role>`",
+                "detailed_usage": [
+                    f"`{self.prefix}removeadmin @Admin` - Remove admin role from ticket system",
+                    f"`{self.prefix}removeadmin @JohnDoe` - Remove user's admin privileges",
+                    f"`{self.prefix}removeadmin 123456789` - Remove admin by user ID"
+                ],
+                "examples": [
+                    f"`{self.prefix}removeadmin @OldModerator` - Remove admin access from old mod",
+                    f"`{self.prefix}removeadmin @FormerManager` - Revoke manager's admin access",
+                    f"`{self.prefix}removeadmin @Bob` - Remove Bob's admin privileges"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage ticket admins.`",
+                    "**Missing target:** `Please specify a user or role to remove as admin.`",
+                    "**User/role not found:** `Could not find that user or role in this server.`",
+                    "**Not admin:** `This user/role doesn't have admin privileges.`"
+                ]
+            },
+            
+            "addsupport": {
+                "category": "Ticket Settings",
+                "description": "Add support staff privileges to a user or role for the ticket system",
+                "usage": f"`{self.prefix}addsupport <user/role>`",
+                "detailed_usage": [
+                    f"`{self.prefix}addsupport @Support` - Add support role to ticket system",
+                    f"`{self.prefix}addsupport @JaneDoe` - Add user as support staff",
+                    f"`{self.prefix}addsupport 987654321` - Add support staff by user ID"
+                ],
+                "examples": [
+                    f"`{self.prefix}addsupport @Helper` - Give Helper role support access",
+                    f"`{self.prefix}addsupport @Agent` - Give Agent role support privileges",
+                    f"`{self.prefix}addsupport @Charlie` - Give Charlie support access"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage support staff.`",
+                    "**Missing target:** `Please specify a user or role to add as support.`",
+                    "**User/role not found:** `Could not find that user or role in this server.`",
+                    "**Already support:** `This user/role already has support privileges.`"
+                ]
+            },
+            
+            "removesupport": {
+                "category": "Ticket Settings",
+                "description": "Remove support staff privileges from a user or role for the ticket system",
+                "usage": f"`{self.prefix}removesupport <user/role>`",
+                "detailed_usage": [
+                    f"`{self.prefix}removesupport @Support` - Remove support role from ticket system",
+                    f"`{self.prefix}removesupport @JaneDoe` - Remove user's support privileges",
+                    f"`{self.prefix}removesupport 987654321` - Remove support by user ID"
+                ],
+                "examples": [
+                    f"`{self.prefix}removesupport @OldHelper` - Remove support access from old helper",
+                    f"`{self.prefix}removesupport @FormerAgent` - Revoke agent's support access",
+                    f"`{self.prefix}removesupport @David` - Remove David's support privileges"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage support staff.`",
+                    "**Missing target:** `Please specify a user or role to remove as support.`",
+                    "**User/role not found:** `Could not find that user or role in this server.`",
+                    "**Not support:** `This user/role doesn't have support privileges.`"
+                ]
+            },
+            
+            "blacklist": {
+                "category": "Ticket Settings",
+                "description": "Toggle blacklist status for a user or role in the ticket system",
+                "usage": f"`{self.prefix}blacklist <user/role>`",
+                "detailed_usage": [
+                    f"`{self.prefix}blacklist @BadUser` - Toggle blacklist for user",
+                    f"`{self.prefix}blacklist @SpamRole` - Toggle blacklist for role",
+                    f"`{self.prefix}blacklist 111222333` - Toggle blacklist by user ID"
+                ],
+                "examples": [
+                    f"`{self.prefix}blacklist @Spammer` - Prevent Spammer from creating tickets",
+                    f"`{self.prefix}blacklist @Troll` - Block Troll from ticket system",
+                    f"`{self.prefix}blacklist @GoodUser` - Unblacklist previously blocked user"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage the blacklist.`",
+                    "**Missing target:** `Please specify a user or role to blacklist/unblacklist.`",
+                    "**User/role not found:** `Could not find that user or role in this server.`",
+                    "**Cannot blacklist staff:** `Cannot blacklist users with admin or support privileges.`"
+                ]
+            },
+            
+            "viewstaff": {
+                "category": "Ticket Settings",
+                "description": "Display all current ticket admins and support staff",
+                "usage": f"`{self.prefix}viewstaff`",
+                "detailed_usage": [
+                    f"`{self.prefix}viewstaff` - Shows complete staff list with roles and users"
+                ],
+                "examples": [
+                    f"`{self.prefix}viewstaff` - View all ticket admins and support staff",
+                    "Shows organized list of all roles and users with ticket permissions"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Not staff:** `Only staff can view the staff list.`",
+                    "**No staff configured:** `No staff roles or users have been configured yet.`"
+                ]
+            },
+            
+            "panel": {
+                "category": "Ticket Settings",
+                "description": "Display setup guide for creating ticket panels with buttons",
+                "usage": f"`{self.prefix}panel`",
+                "detailed_usage": [
+                    f"`{self.prefix}panel` - Shows complete panel creation guide"
+                ],
+                "examples": [
+                    f"`{self.prefix}panel` - Learn how to create ticket panel with buttons",
+                    "Provides step-by-step instructions for setting up ticket panels"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can access panel setup.`",
+                    "**Embed builder missing:** `Embed builder system is required for panels.`"
+                ]
+            },
+            
+            "setup": {
+                "category": "Ticket Settings",
+                "description": "Show available ticket system setup options",
+                "usage": f"`{self.prefix}setup`",
+                "detailed_usage": [
+                    f"`{self.prefix}setup` - Show all setup options",
+                    f"`{self.prefix}setup limit <number>` - Set user ticket limit",
+                    f"`{self.prefix}setup transcripts <channel>` - Set transcript channel",
+                    f"`{self.prefix}setup use-threads` - Toggle thread vs channel mode"
+                ],
+                "examples": [
+                    f"`{self.prefix}setup` - View all available setup commands",
+                    f"`{self.prefix}setup limit 3` - Limit users to 3 tickets each",
+                    f"`{self.prefix}setup transcripts #logs` - Send transcripts to #logs",
+                    f"`{self.prefix}setup use-threads` - Switch between threads and channels"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can access setup options.`",
+                    "**Invalid limit:** `Ticket limit must be between 1 and 10.`",
+                    "**Channel not found:** `Could not find the specified transcript channel.`"
+                ]
+            },
+            
+            "autoclose": {
+                "category": "Ticket Settings", 
+                "description": "Configure automatic ticket closing settings",
+                "usage": f"`{self.prefix}autoclose`",
+                "detailed_usage": [
+                    f"`{self.prefix}autoclose` - Show autoclose options menu",
+                    f"`{self.prefix}autoclose configure` - Edit autoclose settings",
+                    f"`{self.prefix}autoclose exclude` - Exclude current ticket from autoclose"
+                ],
+                "examples": [
+                    f"`{self.prefix}autoclose` - View current autoclose configuration",
+                    f"`{self.prefix}autoclose configure` - Set inactive timeout periods",
+                    f"`{self.prefix}autoclose exclude` - Prevent this ticket from auto-closing"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can configure autoclose.`",
+                    "**Not in ticket:** `Exclude command can only be used in ticket channels.`",
+                    "**Invalid timeout:** `Autoclose timeout must be between 1 hour and 30 days.`"
+                ]
+            },
+            
+            # TAG COMMANDS (4 commands)
+            
+            "managetags": {
+                "category": "Ticket Tags",
+                "description": "Manage ticket tags for quick responses",
+                "usage": f"`{self.prefix}managetags`",
+                "detailed_usage": [
+                    f"`{self.prefix}managetags` - Show tag management options",
+                    f"`{self.prefix}managetags add <id> <content>` - Create new tag",
+                    f"`{self.prefix}managetags delete <id>` - Delete existing tag",
+                    f"`{self.prefix}managetags list` - List all available tags"
+                ],
+                "examples": [
+                    f"`{self.prefix}managetags` - Open tag management menu",
+                    f"`{self.prefix}managetags add welcome Welcome to our support!` - Create welcome tag",
+                    f"`{self.prefix}managetags delete old-tag` - Remove unwanted tag",
+                    f"`{self.prefix}managetags list` - See all configured tags"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage tags.`",
+                    "**Tag exists:** `A tag with that ID already exists.`",
+                    "**Tag not found:** `Could not find tag with ID: 'tag-id'`",
+                    "**Content too long:** `Tag content must be 2000 characters or less.`"
+                ]
+            },
+            
+            "tag": {
+                "category": "Ticket Tags",
+                "description": "Send a predefined tag message in the current ticket",
+                "usage": f"`{self.prefix}tag <tag_id>`",
+                "detailed_usage": [
+                    f"`{self.prefix}tag welcome` - Send welcome tag message",
+                    f"`{self.prefix}tag rules` - Send server rules tag",
+                    f"`{self.prefix}tag closing` - Send ticket closing tag"
+                ],
+                "examples": [
+                    f"`{self.prefix}tag welcome` - Send welcome message to ticket opener",
+                    f"`{self.prefix}tag faq` - Send frequently asked questions",
+                    f"`{self.prefix}tag escalate` - Send escalation information"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "3 seconds per user",
+                "error_scenarios": [
+                    "**Not in ticket:** `Tags can only be used in ticket channels.`",
+                    "**Not staff:** `Only staff can use tags.`",
+                    "**Tag not found:** `Could not find tag: 'tag-id'`",
+                    f"**No tags:** `No tags configured. Use {self.prefix}managetags to create tags.`"
+                ]
+            },
+            
+            # STAFF MANAGEMENT COMMAND
+            
+            "staff": {
+                "category": "Ticket Settings",
+                "description": "Open modern staff management interface with select menus",
+                "usage": f"`{self.prefix}staff`",
+                "detailed_usage": [
+                    f"`{self.prefix}staff` - Open interactive staff management menu"
+                ],
+                "examples": [
+                    f"`{self.prefix}staff` - Manage admins, support staff, and blacklist",
+                    "Use dropdown menus to add/remove staff and manage permissions"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can access staff management.`",
+                    "**Menu error:** `Failed to load staff management interface.`"
+                ]
+            },
+            
+            # CORE BOT COMMANDS
+            
+            "about": {
+                "category": "Bot Information",
+                "description": "Display comprehensive bot statistics, uptime, and system information",
+                "usage": f"`{self.prefix}about`",
+                "detailed_usage": [
+                    f"`{self.prefix}about` - Shows bot uptime, server count, memory usage, and system specs"
+                ],
+                "examples": [
+                    f"`{self.prefix}about` - View complete bot statistics and performance metrics",
+                    "Shows uptime, server/user counts, memory usage, Python version, and OS info"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works",
+                    "Shows bot performance metrics and system resource usage"
+                ]
+            },
+            
+            "invite": {
+                "category": "Bot Information",
+                "description": "Get bot invite link with proper permissions and support server information",
+                "usage": f"`{self.prefix}invite`",
+                "detailed_usage": [
+                    f"`{self.prefix}invite` - Provides bot invite link with pre-configured permissions"
+                ],
+                "examples": [
+                    f"`{self.prefix}invite` - Add bot to your server with full functionality",
+                    "Includes invite link, support server, and feature highlights"
+                ],
+                "permissions": "None required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works",
+                    "Provides all necessary links and permission information"
+                ]
+            },
+            
+            "shards": {
+                "category": "Bot Information",
+                "description": "Display bot shard information and server distribution with pagination",
+                "usage": f"`{self.prefix}shards`",
+                "detailed_usage": [
+                    f"`{self.prefix}shards` - Shows shard info and paginated server list with navigation"
+                ],
+                "examples": [
+                    f"`{self.prefix}shards` - View bot's shard info and browse connected servers",
+                    "Interactive pagination to explore all servers bot is connected to"
+                ],
+                "permissions": "None required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works",
+                    "Shows current shard, total shards, and server distribution"
+                ]
+            },
+            
+            "vote": {
+                "category": "Bot Information",
+                "description": "Get voting links to support the bot on listing platforms",
+                "usage": f"`{self.prefix}vote`",
+                "detailed_usage": [
+                    f"`{self.prefix}vote` - Provides voting links for Top.gg and other bot lists"
+                ],
+                "examples": [
+                    f"`{self.prefix}vote` - Support bot development by voting every 12 hours",
+                    "Shows voting platforms, current stats, and voting benefits"
+                ],
+                "permissions": "None required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works",
+                    "Displays current bot statistics and voting information"
+                ]
+            },
+            
+            # UTILITY COMMANDS
+            
+            "serverinfo": {
+                "category": "Server Utilities",
+                "description": "Display comprehensive server information and statistics",
+                "usage": f"`{self.prefix}serverinfo`",
+                "detailed_usage": [
+                    f"`{self.prefix}serverinfo` - Shows detailed server statistics and information"
+                ],
+                "examples": [
+                    f"`{self.prefix}serverinfo` - View server member count, creation date, boost level",
+                    "Shows verification level, features, roles, channels, and server owner"
+                ],
+                "permissions": "None required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**DM only:** `This command can only be used in servers, not DMs.`",
+                    "**Server unavailable:** `Could not fetch server information.`"
+                ]
+            },
+            
+            "channelinfo": {
+                "category": "Server Utilities",
+                "description": "Get detailed information about a Discord channel",
+                "usage": f"`{self.prefix}channelinfo [#channel]`",
+                "detailed_usage": [
+                    f"`{self.prefix}channelinfo` - Shows current channel information",
+                    f"`{self.prefix}channelinfo #general` - Shows info for specific channel"
+                ],
+                "examples": [
+                    f"`{self.prefix}channelinfo` - View current channel details",
+                    f"`{self.prefix}channelinfo #announcements` - Get announcements channel info"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Channel not found:** `Could not find the specified channel.`",
+                    "**No access:** `You don't have permission to view that channel.`"
+                ]
+            },
+            
+            "roleinfo": {
+                "category": "Server Utilities",
+                "description": "Display detailed information about a server role",
+                "usage": f"`{self.prefix}roleinfo <@role or role name>`",
+                "detailed_usage": [
+                    f"`{self.prefix}roleinfo @Moderator` - Shows role info by mention",
+                    f"`{self.prefix}roleinfo Moderator` - Shows role info by name"
+                ],
+                "examples": [
+                    f"`{self.prefix}roleinfo @Admin` - View Admin role permissions and details",
+                    f"`{self.prefix}roleinfo Member` - Get Member role information"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Role not found:** `Could not find role: 'role-name'`",
+                    "**Missing role:** `Please specify a role to get information about.`"
+                ]
+            },
+            
+            "inviteinfo": {
+                "category": "Server Utilities",
+                "description": "Get information about a Discord invite link",
+                "usage": f"`{self.prefix}inviteinfo <invite_code>`",
+                "detailed_usage": [
+                    f"`{self.prefix}inviteinfo discord.gg/abc123` - Analyze full invite link",
+                    f"`{self.prefix}inviteinfo abc123` - Analyze just the invite code"
+                ],
+                "examples": [
+                    f"`{self.prefix}inviteinfo discord.gg/example` - Get invite details",
+                    f"`{self.prefix}inviteinfo abc123def` - Check invite validity and server info"
+                ],
+                "permissions": "None required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Invalid invite:** `The provided invite link is invalid or expired.`",
+                    "**Missing invite:** `Please provide an invite link or code to analyze.`"
+                ]
+            },
+            
+            "prefix": {
+                "category": "Server Management",
+                "description": "Display the current command prefix for this server",
+                "usage": f"`{self.prefix}prefix`",
+                "detailed_usage": [
+                    f"`{self.prefix}prefix` - Shows current server prefix and mention option"
+                ],
+                "examples": [
+                    f"`{self.prefix}prefix` - Check what prefix is currently set",
+                    "Also shows if bot mention is enabled as a prefix alternative"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works",
+                    "Shows current prefix and bot mention availability"
+                ]
+            },
+            
+            "variables": {
+                "category": "Utilities",
+                "description": "Display all available variables for embeds, autoresponders, and messages",
+                "usage": f"`{self.prefix}variables`",
+                "detailed_usage": [
+                    f"`{self.prefix}variables` - Shows complete variable reference with 40+ variables"
+                ],
+                "examples": [
+                    f"`{self.prefix}variables` - View all user, server, channel, date/time variables",
+                    "Variables use $(variable.name) syntax for embeds and auto-responses"
+                ],
+                "permissions": "None required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No errors possible** - This command always works",
+                    "Shows comprehensive variable reference for customization"
+                ]
+            },
+            
+            # AUTORESPONDER COMMANDS
+            
+            "autoresponder": {
+                "category": "Auto Responders",
+                "description": "Advanced autoresponder system with comprehensive features and multiple match modes",
+                "usage": f"`{self.prefix}autoresponder <add/list/show/remove/editreply/editmatchmode/showraw>`",
+                "detailed_usage": [
+                    f"`{self.prefix}autoresponder add` - Create new autoresponder with interactive modal setup",
+                    f"`{self.prefix}autoresponder list` - View all configured autoresponders with status",
+                    f"`{self.prefix}autoresponder show <id>` - Show detailed information about specific autoresponder",
+                    f"`{self.prefix}autoresponder remove <id>` - Delete an autoresponder by ID",
+                    f"`{self.prefix}autoresponder editreply <id>` - Edit response message using modal",
+                    f"`{self.prefix}autoresponder editmatchmode <id>` - Change trigger match mode",
+                    f"`{self.prefix}autoresponder showraw <id>` - Display raw response text",
+                    f"`{self.prefix}reset server autoresponders` - Reset all server autoresponders"
+                ],
+                "examples": [
+                    f"`{self.prefix}autoresponder add` - Create autoresponder with modal for trigger/response",
+                    f"`{self.prefix}autoresponder list` - See all autoresponders with IDs and status",
+                    f"`{self.prefix}autoresponder show ar1` - View complete details for autoresponder ID 'ar1'",
+                    f"`{self.prefix}autoresponder remove ar1` - Delete autoresponder with ID 'ar1'",
+                    f"`{self.prefix}autoresponder editreply ar1` - Edit response for autoresponder 'ar1'",
+                    f"`{self.prefix}autoresponder editmatchmode ar1` - Change match mode (exact/contains/startswith/endswith/regex)"
+                ],
+                "permissions": "Administrator permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Administrator permission to manage autoresponders.`",
+                    "**Invalid ID:** `Autoresponder ID 'ar1' not found!`",
+                    "**No autoresponders:** `This server has no autoresponders configured.`",
+                    "**Match modes:** Available modes: exact, contains, startswith, endswith, regex"
+                ]
+            },
+            
+            # REMINDER COMMANDS
+            
+            "remind": {
+                "category": "Reminders",
+                "description": "Set a personal reminder with flexible time parsing",
+                "usage": f"`{self.prefix}remind <time> <message>`",
+                "detailed_usage": [
+                    f"`{self.prefix}remind 1h Take a break` - Reminder in 1 hour",
+                    f"`{self.prefix}remind 30m Check the oven` - Reminder in 30 minutes",
+                    f"`{self.prefix}remind 2d Call mom` - Reminder in 2 days",
+                    f"`{self.prefix}remind 1w Meeting prep` - Reminder in 1 week"
+                ],
+                "examples": [
+                    f"`{self.prefix}remind 15m Meeting starts` - 15 minute reminder",
+                    f"`{self.prefix}remind 2h Lunch break` - 2 hour reminder",
+                    f"`{self.prefix}remind 1d Submit assignment` - Daily reminder",
+                    f"`{self.prefix}remind 3w Vacation planning` - Weekly reminder"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Invalid time:** `Please use format like: 1h, 30m, 2d, 1w`",
+                    "**Missing message:** `Please provide a reminder message.`",
+                    "**Time too long:** `Reminders can't be set for more than 30 days.`",
+                    "**Time too short:** `Reminders must be at least 1 minute in the future.`"
+                ]
+            },
+            
+            "reminders": {
+                "category": "Reminders",
+                "description": "List all your active reminders with details",
+                "usage": f"`{self.prefix}reminders`",
+                "detailed_usage": [
+                    f"`{self.prefix}reminders` - Shows all your active reminders with IDs and times"
+                ],
+                "examples": [
+                    f"`{self.prefix}reminders` - View all pending reminders",
+                    "Shows reminder ID, message, and time remaining for each reminder"
+                ],
+                "permissions": "None required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No reminders:** `You don't have any active reminders.`",
+                    f"**Create reminder:** `Use {self.prefix}remind <time> <message> to create one.`"
+                ]
+            },
+            
+            "delreminder": {
+                "category": "Reminders",
+                "description": "Delete a specific reminder by ID",
+                "usage": f"`{self.prefix}delreminder <reminder_id>`",
+                "detailed_usage": [
+                    f"`{self.prefix}delreminder 1` - Delete reminder with ID 1",
+                    f"`{self.prefix}delreminder 5` - Delete reminder with ID 5"
+                ],
+                "examples": [
+                    f"`{self.prefix}delreminder 2` - Remove reminder ID 2",
+                    f"Use `{self.prefix}reminders` first to see your reminder IDs"
+                ],
+                "permissions": "None required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Invalid ID:** `Could not find reminder with ID: 123`",
+                    "**Not your reminder:** `You can only delete your own reminders.`",
+                    "**Missing ID:** `Please provide a reminder ID to delete.`"
+                ]
+            },
+            
+            # STICKY MESSAGE COMMANDS
+            
+            "stick": {
+                "category": "Sticky Messages",
+                "description": "Create a sticky message that auto-reposts when new messages are sent",
+                "usage": f"`{self.prefix}stick <message or embed_name>`",
+                "detailed_usage": [
+                    f"`{self.prefix}stick Welcome to our server!` - Create text sticky message",
+                    f"`{self.prefix}stick RulesEmbed` - Create sticky from saved embed"
+                ],
+                "examples": [
+                    f"`{self.prefix}stick Please follow the rules` - Text sticky message",
+                    f"`{self.prefix}stick WelcomeEmbed` - Use saved embed as sticky",
+                    f"`{self.prefix}stick Join our Discord for updates` - Info sticky"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**Already exists:** `A sticky message already exists in this channel.`",
+                    "**Message too long:** `Sticky message must be 2000 characters or less.`",
+                    "**Embed not found:** `Could not find saved embed: 'embed-name'`"
+                ]
+            },
+            
+            "stickslow": {
+                "category": "Sticky Messages",
+                "description": "Create a slow sticky message with less frequent updates",
+                "usage": f"`{self.prefix}stickslow <message or embed_name>`",
+                "detailed_usage": [
+                    f"`{self.prefix}stickslow Welcome message` - Create slow sticky text",
+                    f"`{self.prefix}stickslow EmbedName` - Create slow sticky from embed"
+                ],
+                "examples": [
+                    f"`{self.prefix}stickslow Please follow the rules` - Slow text sticky",
+                    f"`{self.prefix}stickslow RulesEmbed` - Slow sticky from saved embed",
+                    f"`{self.prefix}stickslow Join our Discord` - Low-frequency info sticky"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**Already exists:** `A sticky message already exists in this channel.`",
+                    "**Message too long:** `Sticky message must be 2000 characters or less.`"
+                ]
+            },
+            
+            "stickstop": {
+                "category": "Sticky Messages",
+                "description": "Stop the sticky message in the current channel",
+                "usage": f"`{self.prefix}stickstop`",
+                "detailed_usage": [
+                    f"`{self.prefix}stickstop` - Pause sticky message without deleting it"
+                ],
+                "examples": [
+                    f"`{self.prefix}stickstop` - Temporarily pause sticky message",
+                    f"Use {self.prefix}stickstart to resume it later"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**No sticky:** `No sticky message exists in this channel.`",
+                    "**Already stopped:** `Sticky message is already stopped.`"
+                ]
+            },
+            
+            "stickstart": {
+                "category": "Sticky Messages",
+                "description": "Resume a stopped sticky message in the current channel",
+                "usage": f"`{self.prefix}stickstart`",
+                "detailed_usage": [
+                    f"`{self.prefix}stickstart` - Resume sticky message in current channel"
+                ],
+                "examples": [
+                    f"`{self.prefix}stickstart` - Resume paused sticky message",
+                    "Restarts the sticky message auto-posting behavior"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**No sticky:** `No sticky message exists in this channel.`",
+                    "**Already running:** `Sticky message is already active.`"
+                ]
+            },
+            
+            "stickremove": {
+                "category": "Sticky Messages",
+                "description": "Permanently remove the sticky message from current channel",
+                "usage": f"`{self.prefix}stickremove`",
+                "detailed_usage": [
+                    f"`{self.prefix}stickremove` - Completely delete sticky message"
+                ],
+                "examples": [
+                    f"`{self.prefix}stickremove` - Delete sticky message permanently",
+                    "This action cannot be undone - sticky will be completely removed"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**No sticky:** `No sticky message exists in this channel.`"
+                ]
+            },
+            
+            "getstickies": {
+                "category": "Sticky Messages",
+                "description": "List all sticky messages in the server",
+                "usage": f"`{self.prefix}getstickies`",
+                "detailed_usage": [
+                    f"`{self.prefix}getstickies` - Shows all sticky messages with channels and status"
+                ],
+                "examples": [
+                    f"`{self.prefix}getstickies` - View all server sticky messages",
+                    "Shows channel, message content, and active/stopped status"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**No stickies:** `No sticky messages are configured in this server.`"
+                ]
+            },
+            
+            "stickspeed": {
+                "category": "Sticky Messages",
+                "description": "View or change sticky message update speed",
+                "usage": f"`{self.prefix}stickspeed [new_speed]`",
+                "detailed_usage": [
+                    f"`{self.prefix}stickspeed` - View current update speed",
+                    f"`{self.prefix}stickspeed 5` - Set update speed to 5 messages"
+                ],
+                "examples": [
+                    f"`{self.prefix}stickspeed` - Check current sticky update frequency",
+                    f"`{self.prefix}stickspeed 3` - Sticky reposts every 3 new messages"
+                ],
+                "permissions": "Manage Messages permission required",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `You need Manage Messages permission.`",
+                    "**Invalid speed:** `Speed must be between 1 and 20 messages.`",
+                    "**No sticky:** `No sticky message exists in this channel.`"
+                ]
+            },
+            
+            # LOGGING COMMANDS
+            
+            "cmdlogs": {
+                "category": "Logging (Developer)",
+                "description": "Configure global command logging across all servers",
+                "usage": f"`{self.prefix}cmdlogs <set/status/stats/test>`",
+                "detailed_usage": [
+                    f"`{self.prefix}cmdlogs set #channel` - Set command logging channel",
+                    f"`{self.prefix}cmdlogs status` - Check logging status",
+                    f"`{self.prefix}cmdlogs stats` - View logging statistics",
+                    f"`{self.prefix}cmdlogs test` - Send test log message"
+                ],
+                "examples": [
+                    f"`{self.prefix}cmdlogs set #bot-logs` - Log all commands to #bot-logs",
+                    f"`{self.prefix}cmdlogs status` - Check current logging configuration"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Channel not found:** `Could not find the specified channel.`",
+                    "**No permissions:** `Bot doesn't have permission to send messages in that channel.`"
+                ]
+            },
+            
+            "dmlogs": {
+                "category": "Logging (Developer)",
+                "description": "Configure global DM logging system",
+                "usage": f"`{self.prefix}dmlogs <set/status/test>`",
+                "detailed_usage": [
+                    f"`{self.prefix}dmlogs set #channel` - Set DM logging channel",
+                    f"`{self.prefix}dmlogs status` - Check DM logging status",
+                    f"`{self.prefix}dmlogs test` - Send test DM log"
+                ],
+                "examples": [
+                    f"`{self.prefix}dmlogs set #dm-logs` - Log all DMs to #dm-logs",
+                    f"`{self.prefix}dmlogs status` - Check current DM logging setup"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Channel not found:** `Could not find the specified channel.`",
+                    "**No permissions:** `Bot needs Send Messages permission in that channel.`"
+                ]
+            },
+            
+            "guildlogs": {
+                "category": "Logging (Developer)",
+                "description": "Configure global guild event logging",
+                "usage": f"`{self.prefix}guildlogs <set/status>`",
+                "detailed_usage": [
+                    f"`{self.prefix}guildlogs set #channel` - Set guild event logging channel",
+                    f"`{self.prefix}guildlogs status` - Check guild logging status"
+                ],
+                "examples": [
+                    f"`{self.prefix}guildlogs set #guild-events` - Log guild joins/leaves",
+                    f"`{self.prefix}guildlogs status` - View current guild logging config"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Channel not found:** `Could not find the specified channel.`"
+                ]
+            },
+            
+            # DEVELOPER COMMANDS
+            
+            "reload": {
+                "category": "Developer",
+                "description": "Reload a specific bot cog/module (Developer only)",
+                "usage": f"`{self.prefix}reload <cog_name>`",
+                "detailed_usage": [
+                    f"`{self.prefix}reload tickets` - Reload tickets cog",
+                    f"`{self.prefix}reload utilities` - Reload utilities cog"
+                ],
+                "examples": [
+                    f"`{self.prefix}reload help` - Reload help system",
+                    f"`{self.prefix}reload autoresponders` - Reload autoresponder system"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Cog not found:** `Could not find cog: 'cog-name'`",
+                    "**Reload failed:** `Failed to reload cog due to syntax error.`"
+                ]
+            },
+            
+            "reloadall": {
+                "category": "Developer",
+                "description": "Reload all bot cogs/modules at once (Developer only)",
+                "usage": f"`{self.prefix}reloadall`",
+                "detailed_usage": [
+                    f"`{self.prefix}reloadall` - Reload every cog in the bot"
+                ],
+                "examples": [
+                    f"`{self.prefix}reloadall` - Complete bot refresh without restart"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "30 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Partial failure:** `Some cogs failed to reload due to errors.`"
+                ]
+            },
+            
+            "eval": {
+                "category": "Developer",
+                "description": "Evaluate Python code in bot context (Developer only)",
+                "usage": f"`{self.prefix}eval <python_code>`",
+                "detailed_usage": [
+                    f"`{self.prefix}eval len(self.bot.guilds)` - Get guild count",
+                    f"`{self.prefix}eval ctx.guild.name` - Get current guild name"
+                ],
+                "examples": [
+                    f"`{self.prefix}eval 2 + 2` - Simple math evaluation",
+                    f"`{self.prefix}eval len(self.bot.users)` - Count bot users"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "5 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Syntax error:** `Invalid Python syntax in code.`",
+                    "**Runtime error:** `Code execution failed with error.`"
+                ]
+            },
+            
+            "setstatus": {
+                "category": "Developer",
+                "description": "Change bot's Discord status (Developer only)",
+                "usage": f"`{self.prefix}setstatus <online/idle/dnd/invisible>`",
+                "detailed_usage": [
+                    f"`{self.prefix}setstatus online` - Set status to online",
+                    f"`{self.prefix}setstatus dnd` - Set status to do not disturb"
+                ],
+                "examples": [
+                    f"`{self.prefix}setstatus idle` - Show as away/idle",
+                    f"`{self.prefix}setstatus invisible` - Appear offline"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Invalid status:** `Status must be: online, idle, dnd, or invisible.`"
+                ]
+            },
+            
+            "setactivity": {
+                "category": "Developer",
+                "description": "Change bot's activity/rich presence (Developer only)",
+                "usage": f"`{self.prefix}setactivity <playing/watching/listening> <text>`",
+                "detailed_usage": [
+                    f"`{self.prefix}setactivity playing Discord` - Playing Discord",
+                    f"`{self.prefix}setactivity watching servers` - Watching servers",
+                    f"`{self.prefix}setactivity listening music` - Listening to music"
+                ],
+                "examples": [
+                    f"`{self.prefix}setactivity playing with tickets` - Playing with tickets",
+                    f"`{self.prefix}setactivity watching {{servers}} servers` - Dynamic server count"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Invalid type:** `Activity type must be: playing, watching, or listening.`"
+                ]
+            },
+            
+            # MONITORING COMMANDS
+            
+            "monitoring": {
+                "category": "Monitoring (Developer)",
+                "description": "Advanced bot monitoring dashboard with system metrics",
+                "usage": f"`{self.prefix}monitoring <ratelimits/shards/cluster/alerts/export>`",
+                "detailed_usage": [
+                    f"`{self.prefix}monitoring ratelimits` - View Discord API rate limits",
+                    f"`{self.prefix}monitoring shards` - Check shard health and latency",
+                    f"`{self.prefix}monitoring cluster` - Cluster performance metrics",
+                    f"`{self.prefix}monitoring alerts` - System alerts and warnings",
+                    f"`{self.prefix}monitoring export` - Export metrics data"
+                ],
+                "examples": [
+                    f"`{self.prefix}monitoring ratelimits` - Check API usage and limits",
+                    f"`{self.prefix}monitoring shards` - View shard status and ping times"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Monitoring unavailable:** `Monitoring system is currently offline.`"
+                ]
+            },
+            
+            "cluster": {
+                "category": "Cluster Management (Developer)",
+                "description": "Manage bot cluster operations and optimization",
+                "usage": f"`{self.prefix}cluster <info/shards/optimize/export>`",
+                "detailed_usage": [
+                    f"`{self.prefix}cluster info` - Display cluster information",
+                    f"`{self.prefix}cluster shards` - Show shard distribution",
+                    f"`{self.prefix}cluster optimize` - Optimize cluster performance",
+                    f"`{self.prefix}cluster export` - Export cluster data"
+                ],
+                "examples": [
+                    f"`{self.prefix}cluster info` - View current cluster status",
+                    f"`{self.prefix}cluster optimize` - Balance load across shards"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "20 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Cluster error:** `Cluster management system encountered an error.`"
+                ]
+            },
+            
+            # DATA MANAGEMENT COMMANDS
+            
+            "backup": {
+                "category": "Data Management (Developer)",
+                "description": "Create manual backup of bot data (Developer only)",
+                "usage": f"`{self.prefix}backup [backup_name]`",
+                "detailed_usage": [
+                    f"`{self.prefix}backup` - Create backup with timestamp",
+                    f"`{self.prefix}backup pre-update` - Create named backup"
+                ],
+                "examples": [
+                    f"`{self.prefix}backup` - Create automatic backup",
+                    f"`{self.prefix}backup before-changes` - Named backup for safety"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "60 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Backup failed:** `Failed to create backup due to file system error.`"
+                ]
+            },
+            
+            "restore": {
+                "category": "Data Management (Developer)",
+                "description": "Restore bot data from backup (Developer only)",
+                "usage": f"`{self.prefix}restore <backup_name>`",
+                "detailed_usage": [
+                    f"`{self.prefix}restore latest` - Restore from latest backup",
+                    f"`{self.prefix}restore backup-name` - Restore specific backup"
+                ],
+                "examples": [
+                    f"`{self.prefix}restore startup_backup` - Restore startup backup",
+                    f"`{self.prefix}restore pre-update` - Restore named backup"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "120 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**Backup not found:** `Could not find backup: 'backup-name'`",
+                    "**Restore failed:** `Failed to restore backup due to corruption.`"
+                ]
+            },
+            
+            "listbackups": {
+                "category": "Data Management (Developer)",
+                "description": "List all available backups with details (Developer only)",
+                "usage": f"`{self.prefix}listbackups`",
+                "detailed_usage": [
+                    f"`{self.prefix}listbackups` - Shows all backups with creation dates and sizes"
+                ],
+                "examples": [
+                    f"`{self.prefix}listbackups` - View all available backups for restoration"
+                ],
+                "permissions": "Bot owner only",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**Owner only:** `This command is restricted to bot owners.`",
+                    "**No backups:** `No backups are currently available.`"
+                ]
+            },
+
+            "addsupport": {
+                "category": "Ticket System",
+                "description": "Add support roles or users to the ticket system",
+                "usage": f"{self.prefix}addsupport <role_or_user>",
+                "detailed_usage": [
+                    f"`{self.prefix}addsupport @Support` - Add support role",
+                    f"`{self.prefix}addsupport @username` - Add support user"
+                ],
+                "examples": [
+                    f"`{self.prefix}addsupport @Helper` - Add helper role as support",
+                    f"`{self.prefix}addsupport @JaneDoe` - Add user as support"
+                ],
+                "permissions": "Administrator permission",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can add support roles.`",
+                    "**Invalid target:** `Please specify a valid role or user.`",
+                    "**Already support:** `This role/user is already support.`"
+                ]
+            },
+
+            "blacklist": {
+                "category": "Ticket System",
+                "description": "Manage the ticket system blacklist",
+                "usage": f"{self.prefix}blacklist <add|remove|list> [user]",
+                "detailed_usage": [
+                    f"`{self.prefix}blacklist add @user` - Blacklist a user",
+                    f"`{self.prefix}blacklist remove @user` - Remove from blacklist",
+                    f"`{self.prefix}blacklist list` - View blacklisted users"
+                ],
+                "examples": [
+                    f"`{self.prefix}blacklist add @Spammer` - Prevent user from creating tickets",
+                    f"`{self.prefix}blacklist remove @ReformedUser` - Allow tickets again",
+                    f"`{self.prefix}blacklist list` - See all blacklisted users"
+                ],
+                "permissions": "Administrator permission",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can manage blacklist.`",
+                    "**Invalid action:** `Valid actions: add, remove, list`",
+                    "**User not found:** `Could not find the specified user.`"
+                ]
+            },
+
+            "viewstaff": {
+                "category": "Ticket System",
+                "description": "View all staff members and roles in the ticket system",
+                "usage": f"{self.prefix}viewstaff",
+                "detailed_usage": [
+                    f"`{self.prefix}viewstaff` - List all admins and support staff"
+                ],
+                "examples": [
+                    f"`{self.prefix}viewstaff` - See admin roles, support roles, and individual staff"
+                ],
+                "permissions": "Staff role required",
+                "cooldown": "15 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only staff can view the staff list.`",
+                    "**No staff set:** `No staff roles have been configured yet.`"
+                ]
+            },
+
+            "tconfig": {
+                "category": "Ticket System",
+                "description": "Configure ticket system settings via commands",
+                "usage": f"{self.prefix}tconfig <transcripts|staff|view> [value]",
+                "detailed_usage": [
+                    f"`{self.prefix}tconfig transcripts #channel` - Set transcript channel",
+                    f"`{self.prefix}tconfig staff @role` - Add staff role",
+                    f"`{self.prefix}tconfig view` - View current settings"
+                ],
+                "examples": [
+                    f"`{self.prefix}tconfig transcripts #ticket-logs` - Set logging channel",
+                    f"`{self.prefix}tconfig staff @Support` - Add support role",
+                    f"`{self.prefix}tconfig view` - See current configuration"
+                ],
+                "permissions": "Administrator permission",
+                "cooldown": "10 seconds per user",
+                "error_scenarios": [
+                    "**No permissions:** `Only administrators can configure tickets.`",
+                    "**Invalid option:** `Valid options: transcripts, staff, view`",
+                    "**Invalid channel:** `Please specify a valid text channel.`"
                 ]
             },
             
@@ -494,233 +2041,8 @@ class DetailedCommandHelpView(discord.ui.View):
             },
             
             # Additional Ticket Commands
-            "close": {
-                "category": "Ticket System",
-                "description": "Close the current ticket with optional reason",
-                "usage": f"{self.prefix}close [reason]",
-                "detailed_usage": [
-                    f"`{self.prefix}close` - Close ticket with no reason",
-                    f"`{self.prefix}close Issue resolved` - Close with reason",
-                    f"`{self.prefix}close Duplicate ticket` - Close with explanation"
-                ],
-                "examples": [
-                    f"`{self.prefix}close` - Simple ticket closure",
-                    f"`{self.prefix}close Issue has been resolved` - Close with resolution note",
-                    f"`{self.prefix}close User no longer needs help` - Close with status update"
-                ],
-                "permissions": "**Manage Channels** or ticket creator",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission to close tickets.`",
-                    "**Already closed:** `This ticket is already closed.`"
-                ]
-            },
-            
-            "forceclose": {
-                "category": "Ticket System", 
-                "description": "Force close any ticket without confirmation (Staff only)",
-                "usage": f"{self.prefix}forceclose [ticket_id]",
-                "detailed_usage": [
-                    f"`{self.prefix}forceclose` - Force close current ticket",
-                    f"`{self.prefix}forceclose ticket-001` - Force close specific ticket by ID"
-                ],
-                "examples": [
-                    f"`{self.prefix}forceclose` - Immediately close current ticket",
-                    f"`{self.prefix}forceclose ticket-001` - Force close ticket-001",
-                    f"`{self.prefix}forceclose 12345` - Force close ticket by number"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user", 
-                "error_scenarios": [
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**Ticket not found:** `Ticket with ID 'xyz' not found.`",
-                    "**Already closed:** `Ticket is already closed.`"
-                ]
-            },
-            
-            "claim": {
-                "category": "Ticket System",
-                "description": "Claim ownership of the current ticket",
-                "usage": f"{self.prefix}claim",
-                "detailed_usage": [
-                    f"`{self.prefix}claim` - Claim ownership of current ticket"
-                ],
-                "examples": [
-                    f"`{self.prefix}claim` - Take ownership of the ticket",
-                    "Shows your name as the assigned staff member"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**Already claimed:** `This ticket is already claimed by another staff member.`"
-                ]
-            },
-            
-            "unclaim": {
-                "category": "Ticket System",
-                "description": "Release ownership of a claimed ticket",
-                "usage": f"{self.prefix}unclaim",
-                "detailed_usage": [
-                    f"`{self.prefix}unclaim` - Release ownership of current ticket"
-                ],
-                "examples": [
-                    f"`{self.prefix}unclaim` - Remove yourself as assigned staff",
-                    "Makes ticket available for other staff to claim"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Not claimed:** `This ticket is not currently claimed.`",
-                    "**Not owner:** `You can only release tickets you have claimed.`"
-                ]
-            },
-            
-            "remove": {
-                "category": "Ticket System",
-                "description": "Remove a member from the current ticket",
-                "usage": f"{self.prefix}remove <member>",
-                "detailed_usage": [
-                    f"`{self.prefix}remove @username` - Remove user by mention",
-                    f"`{self.prefix}remove username` - Remove user by username",
-                    f"`{self.prefix}remove 123456789` - Remove user by ID"
-                ],
-                "examples": [
-                    f"`{self.prefix}remove @John` - Remove John from ticket",
-                    f"`{self.prefix}remove BadUser` - Remove by username",
-                    f"`{self.prefix}remove 351738977602887681` - Remove by user ID"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**User not found:** `Could not find user in this ticket.`",
-                    "**Cannot remove creator:** `Cannot remove the ticket creator.`"
-                ]
-            },
-            
-            "listtickets": {
-                "category": "Ticket System",
-                "description": "List all open tickets in the server",
-                "usage": f"{self.prefix}listtickets",
-                "detailed_usage": [
-                    f"`{self.prefix}listtickets` - Shows all open tickets with details"
-                ],
-                "examples": [
-                    f"`{self.prefix}listtickets` - View ticket list with creators, status, priority",
-                    "Shows: Ticket ID, creator, claimed status, priority level"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "10 seconds per user",
-                "error_scenarios": [
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**No tickets:** `No active tickets at the moment.`"
-                ]
-            },
-            
-            "topic": {
-                "category": "Ticket System",
-                "description": "Set or change the ticket topic/subject",
-                "usage": f"{self.prefix}topic <new_topic>",
-                "detailed_usage": [
-                    f"`{self.prefix}topic Billing Issue` - Set ticket topic",
-                    f"`{self.prefix}topic Bug Report: Login Problem` - Detailed topic"
-                ],
-                "examples": [
-                    f"`{self.prefix}topic Account Recovery` - Set topic to account recovery",
-                    f"`{self.prefix}topic Server Issues` - Set topic to server problems",
-                    f"`{self.prefix}topic Feature Request` - Set topic for new feature"
-                ],
-                "permissions": "**Manage Channels** or ticket creator",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission or be the ticket creator.`",
-                    "**No topic provided:** `Please provide a topic for the ticket.`"
-                ]
-            },
-            
-            
-            "rename": {
-                "category": "Ticket System",
-                "description": "Rename the ticket channel",
-                "usage": f"{self.prefix}rename <new_name>",
-                "detailed_usage": [
-                    f"`{self.prefix}rename billing-issue` - Rename to billing-issue",
-                    f"`{self.prefix}rename urgent-bug-report` - Rename with description"
-                ],
-                "examples": [
-                    f"`{self.prefix}rename account-help` - Rename to account-help",
-                    f"`{self.prefix}rename server-problem` - Rename to server-problem",
-                    f"`{self.prefix}rename feature-request` - Rename to feature-request"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "10 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**Invalid name:** `Channel name contains invalid characters.`",
-                    "**Name too long:** `Channel name must be 100 characters or less.`"
-                ]
-            },
-            
-            "move": {
-                "category": "Ticket System",
-                "description": "Move ticket to a different category",
-                "usage": f"{self.prefix}move <#category>",
-                "detailed_usage": [
-                    f"`{self.prefix}move #Support` - Move to Support category",
-                    f"`{self.prefix}move #Urgent` - Move to Urgent category"
-                ],
-                "examples": [
-                    f"`{self.prefix}move #General-Support` - Move to general support",
-                    f"`{self.prefix}move #Billing-Issues` - Move to billing category",
-                    f"`{self.prefix}move #Bug-Reports` - Move to bug reports"
-                ],
-                "permissions": "**Manage Channels** required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Not in ticket:** `This command can only be used in ticket channels.`",
-                    "**Missing permissions:** `You need Manage Channels permission.`",
-                    "**Category not found:** `The specified category does not exist.`",
-                    "**Category full:** `The target category has reached its channel limit.`"
-                ]
-            },
-            
             
             # Embed Builder Commands
-            "embed": {
-                "category": "Embed Builder",
-                "description": "Advanced embed creation and management system",
-                "usage": f"{self.prefix}embed <create|edit|list|view|delete|export|import>",
-                "detailed_usage": [
-                    f"`{self.prefix}embed create` - Create new embed with visual editor",
-                    f"`{self.prefix}embed edit EmbedName` - Edit existing embed",
-                    f"`{self.prefix}embed list` - List all saved embeds",
-                    f"`{self.prefix}embed view EmbedName` - Preview saved embed",
-                    f"`{self.prefix}embed delete EmbedName` - Delete saved embed",
-                    f"`{self.prefix}embed export EmbedName` - Export as YAML template",
-                    f"`{self.prefix}embed import` - Import from YAML template"
-                ],
-                "examples": [
-                    f"`{self.prefix}embed create` - Start interactive embed creator",
-                    f"`{self.prefix}embed edit WelcomeMessage` - Edit welcome embed",
-                    f"`{self.prefix}embed list` - See all server embeds",
-                    f"`{self.prefix}embed export Rules` - Export rules embed as template"
-                ],
-                "permissions": "**Manage Messages** required for create/edit/delete",
-                "cooldown": "10 seconds per user",
-                "error_scenarios": [
-                    "**Missing permissions:** `You need Manage Messages permission.`",
-                    "**Embed not found:** `Embed 'name' does not exist.`",
-                    "**Invalid YAML:** `The YAML template format is invalid.`",
-                    "**Too many embeds:** `Maximum of 25 embeds per server.`"
-                ]
-            },
             
             # Sticky Messages Commands
             "stick": {
@@ -947,70 +2269,8 @@ class DetailedCommandHelpView(discord.ui.View):
             },
             
             # Embed Builder - SPROUTS System
-            "embed": {
-                "category": "Embed Builder",
-                "description": "SPROUTS advanced Discord-native embed builder with interactive forms and live preview",
-                "usage": f"{self.prefix}embed",
-                "detailed_usage": [
-                    f"`{self.prefix}embed` - Open the main embed builder interface",
-                    f"`{self.prefix}createembed` - Alternative command name",
-                    f"`{self.prefix}embedcreate` - Alternative command name"
-                ],
-                "examples": [
-                    f"`{self.prefix}embed` - Start the interactive embed builder",
-                    "Choose from: Interactive Builder, Quick Builder, Templates, or JSON Import",
-                    "Create professional embeds with live preview before sending"
-                ],
-                "permissions": "None required",
-                "cooldown": "5 seconds per user",
-                "features": [
-                    "🎨 **Interactive Builder** - Step-by-step creation with modal forms",
-                    "⚡ **Quick Builder** - Fast single-modal creation",
-                    "📋 **Professional Templates** - 6 pre-made designs (announcement, welcome, rules, event, support, info)",
-                    "📤 **JSON Import/Export** - Import from external builders & export for reuse",
-                    "🎨 **Live Preview** - See your embed before sending",
-                    "🎨 **Advanced Color System** - Named colors (red, blue, discord) + hex support"
-                ],
-                "error_scenarios": [
-                    "**No errors possible** - The builder handles all validation",
-                    "**JSON Import:** Invalid JSON format will be clearly reported",
-                    "**Modal Timeout:** Modals timeout after 5 minutes of inactivity"
-                ]
-            },
             
-            "createembed": {
-                "category": "Embed Builder",
-                "description": "Alternative command name for SPROUTS embed builder",
-                "usage": f"{self.prefix}createembed",
-                "detailed_usage": [
-                    f"`{self.prefix}createembed` - Same as {self.prefix}embed command"
-                ],
-                "examples": [
-                    f"`{self.prefix}createembed` - Opens the interactive embed builder interface"
-                ],
-                "permissions": "None required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**No errors possible** - Redirects to main embed builder"
-                ]
-            },
             
-            "embedcreate": {
-                "category": "Embed Builder", 
-                "description": "Alternative command name for SPROUTS embed builder",
-                "usage": f"{self.prefix}embedcreate",
-                "detailed_usage": [
-                    f"`{self.prefix}embedcreate` - Same as {self.prefix}embed command"
-                ],
-                "examples": [
-                    f"`{self.prefix}embedcreate` - Opens the interactive embed builder interface"
-                ],
-                "permissions": "None required",
-                "cooldown": "5 seconds per user", 
-                "error_scenarios": [
-                    "**No errors possible** - Redirects to main embed builder"
-                ]
-            },
         }
         
         # Get command info or return generic info
@@ -1264,7 +2524,7 @@ class HelpView(discord.ui.View):
         # Define all help pages with the same content structure
         self.pages = {
             "main": {
-                "title": "Sprouts Commands List",
+                "title": f"{self.bot.user.display_name} Commands List",
                 "description": f"Optional arguments are marked by `[arg]` and mandatory arguments are marked by `<arg>`.\n\nUse `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@{self.bot.user.id}>",
                 "fields": [
                     {
@@ -1314,96 +2574,32 @@ class HelpView(discord.ui.View):
                 ]
             },
             "tickets": {
-                "title": f"{SPROUTS_INFORMATION} Ticket System Commands",
-                "description": f"Complete support ticket management system\nPrefix: `{prefix}`",
+                "title": f"{SPROUTS_CHECK} TicketsBot-Compatible System (33 Commands)",
+                "description": f"Complete TicketsBot.net equivalent with all enterprise features\nPrefix: `{prefix}`",
                 "fields": [
                     {
-                        "name": "User Ticket Commands",
-                        "value": "`new` / `open` - Create new support ticket\n"
-                                "`close` - Close current ticket with reason",
+                        "name": "🎫 Ticket Commands (14)",
+                        "value": "`new/open <subject>` - Opens new ticket | `close [reason]` - Closes ticket\n"
+                                "`add <user>` - Add user | `remove <user>` - Remove user\n"
+                                "`claim` - Assign staff | `unclaim` - Remove claim\n"
+                                "`rename <name>` - Rename ticket | `transfer <user>` - Transfer ownership\n"
+                                "`closerequest [reason]` - Request close | `reopen <id>` - Reopen ticket\n"
+                                "`jumptotop` - Jump button | `notes` - Staff thread | `switchpanel` - Change panel",
                         "inline": False
                     },
                     {
-                        "name": "Staff Tools & Moderation",
-                        "value": "`blacklist` - Manage user blacklist system\n"
-                                "`viewstaff` - View all staff members\n"
-                                "`managetags add/delete/list` - Manage response tags\n"
-                                "`tickettag` - Send tag response\n"
-                                "`notes` - Create staff-only thread\n"
-                                "`on-call` - Toggle staff auto-assignment",
+                        "name": "⚙️ Setting Commands (15)",
+                        "value": "`addadmin/removeadmin <user>` - Admin management\n"
+                                "`addsupport/removesupport <user>` - Support management\n"
+                                "`blacklist <user>` - Toggle blacklist | `viewstaff` - List staff\n"
+                                "`panel` - Panel setup | `setup limit/transcripts/use-threads`\n"
+                                "`autoclose configure/exclude` - Auto-close settings",
                         "inline": False
                     },
                     {
-                        "name": "Configuration Commands",
-                        "value": "`setup auto` - Initial ticket system configuration\n"
-                                "`setup limit` - Set user ticket limit per server\n"
-                                "`setup transcripts` - Configure full conversation transcripts\n"
-                                "`setup use-threads` - Toggle threads vs channels\n"
-                                "`autoclose configure` - Configure automatic closure\n"
-                                "`autoclose exclude` - Exclude ticket from autoclose\n"
-                                "`addadmin` / `removeadmin` - Manage admin roles\n"
-                                "`addsupport` / `removesupport` - Manage staff roles",
-                        "inline": False
-                    },
-                    {
-                        "name": "Ticket Panels & Setup",
-                        "value": "`createpanel` - Create new ticket panel\n"
-                                "`listpanels` - List all ticket panels\n"
-                                "`delpanel` - Delete ticket panel\n"
-                                "`ticketsetup` - Interactive setup wizard\n"
-                                "`ticketlimit` - Set user ticket limit\n"
-                                "`ghostping` - Toggle ghost ping",
-                        "inline": False
-                    },
-                    {
-                        "name": "Staff Ticket Management",
-                        "value": "`claim` - Claim ownership of ticket\n"
-                                "`unclaim` - Release ticket ownership\n"
-                                "`add` - Add user to current ticket\n"
-                                "`remove` - Remove user from ticket\n"
-                                "`rename` - Rename ticket channel\n"
-                                "`tickettopic` - Set ticket description\n"
-                                "`move` - Move ticket to category\n"
-                                "`forceclose` - Force close any ticket\n"
-                                "`listtickets` - View all active tickets",
-                        "inline": False
-                    }
-                ]
-            },
-            "embeds": {
-                "title": f"{SPROUTS_INFORMATION} SPROUTS Style Embed System",
-                "description": f"Professional partnership-grade embed builder with advanced customization\nPrefix: `{prefix}`",
-                "fields": [
-                    {
-                        "name": "Advanced Embed Creation",
-                        "value": "`embedcreate [name]` - Create professional embed with visual editor\n"
-                                "`embededit [name] [element] [value]` - Edit specific embed elements\n"
-                                "`embedcreateempty [name]` - Create blank embed template\n"
-                                "`embedtest [name]` - Preview embed before saving",
-                        "inline": False
-                    },
-                    {
-                        "name": "Embed Management & Variables", 
-                        "value": "`embedlist` - List all saved embeds with previews\n"
-                                "`embedview [name]` - View saved embed with full details\n"
-                                "`embeddelete [name]` - Remove saved embed\n"
-                                "`embedvariables` - Show all available variables",
-                        "inline": False
-                    },
-                    {
-                        "name": "Import, Export & Templates",
-                        "value": "`embedexport [name]` - Export as shareable YAML template\n"
-                                "`embedimport` - Import from YAML/JSON template\n"
-                                "`embedcopy [name] [newname]` - Copy existing embed\n"
-                                "`embedtemplate [type]` - Load partnership templates",
-                        "inline": False
-                    },
-                    {
-                        "name": "Quick Actions & Integration",
-                        "value": "`embedsend [name] [#channel]` - Send embed to channel\n"
-                                "`embedattach [name]` - Attach to autoresponder/panel\n"
-                                "`embedcolor [name] [hex]` - Quick color changes\n"
-                                "`embedpreview [name]` - Live preview with variables",
+                        "name": "🏷️ Tag Commands (4)",
+                        "value": "`managetags add/delete/list` - Manage tags\n"
+                                "`tag <tag_id>` - Send tag message snippet",
                         "inline": False
                     }
                 ]
@@ -1626,20 +2822,16 @@ class HelpCommand(commands.Cog):
                 "description": "Basic ticket commands for users"
             }),
             ("Staff Ticket Management", {
-                "commands": ["claim", "unclaim", "add", "remove", "rename", "topic", "move", "forceclose", "listtickets"],
+                "commands": ["claim", "unclaim", "add", "remove", "rename", "topic", "move", "transfer", "forceclose", "tickets", "notes", "transcript"],
                 "description": "Advanced ticket management for staff"
             }),
-            ("Ticket Panels & Setup", {
-                "commands": ["createpanel", "listpanels", "delpanel", "ticketsetup", "ticketlimit", "ghostping"],
-                "description": "Ticket system configuration and panels"
-            }),
-            ("Embed builder", {
-                "commands": ["embed", "embedquick"],
-                "description": "Create and edit custom embeds"
+            ("Ticket Administration", {
+                "commands": ["settings", "addadmin", "addsupport", "blacklist", "viewstaff", "tconfig"],
+                "description": "Administrative ticket configuration commands"
             }),
             ("Auto responders", {
-                "commands": ["autoresponder", "autoresponderlist", "autoresponderdelete"],
-                "description": "Automated message responses"
+                "commands": ["autoresponder"],
+                "description": "Advanced automated message responses with match modes"
             }),
             ("Sticky messages", {
                 "commands": ["stick", "stickslow", "stickstop", "stickstart", "stickremove", "getstickies", "stickspeed"],
@@ -1678,13 +2870,13 @@ class HelpCommand(commands.Cog):
             if not category_commands:
                 continue
             
-            # Create new page if needed
-            if current_page is None or current_fields >= 3:
+            # Create new page if needed (6 pages instead of 3)
+            if current_page is None or current_fields >= 1:
                 if current_page is not None:
                     pages.append(current_page)
                 
                 current_page = discord.Embed(
-                    title="Sprouts Commands",
+                    title=f"{self.bot.user.display_name} Commands",
                     description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
                     color=EMBED_COLOR_NORMAL
                 )
@@ -1730,11 +2922,11 @@ class HelpCommand(commands.Cog):
                 
                 # Add remaining chunks as continuation fields
                 for i, chunk in enumerate(chunks[1:], 1):
-                    # Create new page if needed
-                    if current_fields >= 3:
+                    # Create new page if needed (6 pages instead of 3)
+                    if current_fields >= 1:
                         pages.append(current_page)
                         current_page = discord.Embed(
-                            title="Sprouts Commands",
+                            title=f"{self.bot.user.display_name} Commands",
                             description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
                             color=EMBED_COLOR_NORMAL
                         )
@@ -1781,182 +2973,6 @@ class HelpCommand(commands.Cog):
         
         return pages
     
-    async def show_command_help(self, ctx, command_name, prefix):
-        page2 = discord.Embed(
-            title="Sprouts Commands",
-            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        # Set bot thumbnail
-        if self.bot.user and self.bot.user.display_avatar:
-            page2.set_thumbnail(url=self.bot.user.display_avatar.url)
-        
-        # User Ticket Commands
-        page2.add_field(
-            name="User Ticket Commands",
-            value=(
-                "`new` / `open` - Create new support ticket\n"
-                "`close` - Close current ticket with reason"
-            ),
-            inline=False
-        )
-        
-        # Staff Ticket Management
-        page2.add_field(
-            name="Staff Ticket Management",
-            value=(
-                "`claim` - Claim ownership of ticket\n"
-                "`unclaim` - Release ticket ownership\n"
-                "`add` - Add user to current ticket\n"
-                "`remove` - Remove user from ticket\n"
-                "`rename` - Rename ticket channel\n"
-                "`tickettopic` - Set ticket description\n"
-                "`move` - Move ticket to category\n"
-                "`forceclose` - Force close any ticket\n"
-                "`listtickets` - View all active tickets"
-            ),
-            inline=False
-        )
-        
-        # Ticket Panels & Setup
-        page2.add_field(
-            name="Ticket Panels & Setup",
-            value=(
-                "`createpanel` - Create new ticket panel\n"
-                "`listpanels` - List all ticket panels\n"
-                "`delpanel` - Delete ticket panel\n"
-                "`ticketsetup` - Interactive setup wizard\n"
-                "`ticketlimit` - Set user ticket limit\n"
-                "`ghostping` - Toggle ghost ping"
-            ),
-            inline=False
-        )
-        
-        page2.set_footer(text=f"Page 2/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
-        pages.append(page2)
-        
-        # Page 3: Configuration Commands & Advanced Features
-        page3 = discord.Embed(
-            title="Sprouts Commands",
-            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        # Set bot thumbnail
-        if self.bot.user and self.bot.user.display_avatar:
-            page3.set_thumbnail(url=self.bot.user.display_avatar.url)
-        
-        # Configuration Commands
-        page3.add_field(
-            name="Configuration Commands",
-            value=(
-                "`setup auto` - Initial ticket system configuration\n"
-                "`setup limit` - Set user ticket limit per server\n"
-                "`setup transcripts` - Configure full conversation transcripts\n"
-                "`setup use-threads` - Toggle threads vs channels\n"
-                "`autoclose configure` - Configure automatic closure\n"
-                "`autoclose exclude` - Exclude ticket from autoclose\n"
-                "`addadmin` / `removeadmin` - Manage admin roles\n"
-                "`addsupport` / `removesupport` - Manage staff roles"
-            ),
-            inline=False
-        )
-        
-        # Advanced Features
-        page3.add_field(
-            name="Advanced Features",
-            value=(
-                "`blacklist` - Manage user blacklist system\n"
-                "`viewstaff` - View all staff members\n"
-                "`managetags add/delete/list` - Manage response tags\n"
-                "`tickettag` - Send tag response\n"
-                "`notes` - Create staff-only thread\n"
-                "`on-call` - Toggle staff auto-assignment"
-            ),
-            inline=False
-        )
-        
-        page3.set_footer(text=f"Page 3/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
-        pages.append(page3)
-        
-        # Page 4: Modern Embed Builder & Auto Responder System
-        page4 = discord.Embed(
-            title="Sprouts Commands",
-            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        # Set bot thumbnail
-        if self.bot.user and self.bot.user.display_avatar:
-            page4.set_thumbnail(url=self.bot.user.display_avatar.url)
-        
-        # Embed Builder & Management
-        page4.add_field(
-            name="Embed Builder & Management",
-            value=(
-                "`embed` - Access comprehensive embed creation tools\n"
-                "`embedquick` - Quick embed creation with modal\n"
-                "`embedlist` - List all your saved embeds"
-            ),
-            inline=False
-        )
-        
-        # Auto Responder System
-        page4.add_field(
-            name="Auto Responder System",
-            value=(
-                "`autoresponder` - Create auto responder with embed support\n"
-                "`autoresponderlist` - List all server auto responders\n"
-                "`autoresponderdelete` - Delete an auto responder"
-            ),
-            inline=False
-        )
-        
-        page4.set_footer(text=f"Page 4/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
-        pages.append(page4)
-        
-        # Page 5: Sticky Messages & Reminders
-        page5 = discord.Embed(
-            title="Sprouts Commands",
-            description=f"Use `{prefix}help <command>` for detailed info.\nThis server prefix: `{prefix}`, <@1411758556667056310>",
-            color=EMBED_COLOR_NORMAL
-        )
-        
-        # Set bot thumbnail
-        if self.bot.user and self.bot.user.display_avatar:
-            page5.set_thumbnail(url=self.bot.user.display_avatar.url)
-        
-        # Sticky Messages
-        page5.add_field(
-            name="Sticky Messages",
-            value=(
-                "`stick` - Create sticky message\n"
-                "`stickslow` - Create slow sticky message\n"
-                "`stickstop` - Stop sticky in channel\n"
-                "`stickstart` - Restart sticky in channel\n"
-                "`stickremove` - Remove sticky completely\n"
-                "`getstickies` - List all server stickies\n"
-                "`stickspeed` - View/change sticky speed"
-            ),
-            inline=False
-        )
-        
-        # Reminders
-        page5.add_field(
-            name="Reminders",
-            value=(
-                "`remind` - Set a personal reminder\n"
-                "`reminders` - List your active reminders\n"
-                "`delreminder` - Delete a specific reminder"
-            ),
-            inline=False
-        )
-        
-        page5.set_footer(text=f"Page 5/5 • Requested by {author.display_name}", icon_url=author.display_avatar.url)
-        pages.append(page5)
-        
-        return pages
     
     async def show_command_help(self, ctx, command_name: str, prefix: str):
         """Show extremely detailed help for a specific command with interactive buttons"""
@@ -2020,168 +3036,6 @@ class HelpCommand(commands.Cog):
             embed.timestamp = discord.utils.utcnow()
             await ctx.reply(embed=embed, mention_author=False)
 
-class DetailedCommandHelpView(discord.ui.View):
-    """Interactive view for detailed command help with buttons"""
-    
-    def __init__(self, command, prefix: str, author: discord.Member):
-        super().__init__(timeout=300)
-        self.command = command
-        self.prefix = prefix
-        self.author = author
-        self.current_page = "main"
-    
-    def create_main_embed(self):
-        """Create the main command help embed"""
-        embed = discord.Embed(
-            title=f"Command: {self.prefix}{self.command.name}",
-            description=self.command.help or "Creates a new support ticket",
-            color=0xCCFFD1
-        )
-        
-        # Add usage information
-        if hasattr(self.command, 'signature') and self.command.signature:
-            usage = f"{self.prefix}{self.command.name} {self.command.signature}"
-        else:
-            usage = f"{self.prefix}{self.command.name} [reason=No reason provided]"
-        
-        embed.add_field(
-            name="Usage",
-            value=f"```\n{usage}\n```",
-            inline=False
-        )
-        
-        # Add category
-        if hasattr(self.command, 'cog') and self.command.cog:
-            category = self.command.cog.qualified_name
-        else:
-            category = "TicketSystem"
-            
-        embed.add_field(
-            name="Category",
-            value=category,
-            inline=False
-        )
-        
-        # Add footer
-        embed.set_footer(
-            text=f"Requested by {self.author.display_name} • Use {self.prefix}help for all commands • Today at {datetime.now().strftime('%I:%M %p')}",
-            icon_url=self.author.display_avatar.url
-        )
-        
-        return embed
-    
-    def create_detailed_usage_embed(self):
-        """Create detailed usage embed"""
-        embed = discord.Embed(
-            title=f"Detailed Usage - {self.prefix}{self.command.name}",
-            description="Comprehensive usage examples and parameters",
-            color=0xCCFFD1
-        )
-        
-        # Command-specific examples
-        if self.command.name == "new":
-            embed.add_field(
-                name="Basic Usage",
-                value=f"```\n{self.prefix}new I need help with my account\n{self.prefix}new Bug report - login issues\n{self.prefix}new\n```",
-                inline=False
-            )
-            embed.add_field(
-                name="Parameters",
-                value="**[reason]** - Optional reason for creating the ticket\n• If no reason provided, defaults to 'No reason provided'\n• Can include detailed descriptions and emojis\n• Maximum 2000 characters",
-                inline=False
-            )
-        elif self.command.name == "close":
-            embed.add_field(
-                name="Basic Usage",
-                value=f"```\n{self.prefix}close Issue resolved\n{self.prefix}close User helped successfully\n{self.prefix}close\n```",
-                inline=False
-            )
-            embed.add_field(
-                name="Parameters",
-                value="**[reason]** - Optional reason for closing\n• Defaults to 'No reason provided'\n• Appears in transcript and logs\n• Helps staff track resolution types",
-                inline=False
-            )
-        else:
-            embed.add_field(
-                name="Usage Examples",
-                value=f"```\n{self.prefix}{self.command.name}\n```",
-                inline=False
-            )
-        
-        embed.set_footer(text=f"Detailed usage for {self.command.name}")
-        return embed
-    
-    def create_common_errors_embed(self):
-        """Create common errors embed"""
-        embed = discord.Embed(
-            title=f"Common Errors - {self.prefix}{self.command.name}",
-            description="Common issues and how to resolve them",
-            color=0xFFE682
-        )
-        
-        if self.command.name == "new":
-            embed.add_field(
-                name="Blacklisted User",
-                value="**Error:** `You are currently blacklisted from creating tickets.`\n**Solution:** Contact a server administrator for assistance.",
-                inline=False
-            )
-            embed.add_field(
-                name="Ticket Limit Reached",
-                value="**Error:** `You have reached the maximum number of open tickets.`\n**Solution:** Close an existing ticket before creating a new one.",
-                inline=False
-            )
-            embed.add_field(
-                name="No Ticket Category",
-                value="**Error:** `No ticket category configured.`\n**Solution:** Ask administrators to set up the ticket system first.",
-                inline=False
-            )
-        elif self.command.name == "close":
-            embed.add_field(
-                name="Not a Ticket Channel",
-                value="**Error:** `This command can only be used in ticket channels.`\n**Solution:** Use this command only in active ticket channels.",
-                inline=False
-            )
-            embed.add_field(
-                name="No Permission",
-                value="**Error:** `Only staff members or the ticket creator can close tickets.`\n**Solution:** Ask a staff member to close the ticket for you.",
-                inline=False
-            )
-        else:
-            embed.add_field(
-                name="Permission Denied",
-                value="**Error:** Missing required permissions\n**Solution:** Contact an administrator",
-                inline=False
-            )
-        
-        embed.set_footer(text=f"Common errors for {self.command.name}")
-        return embed
-    
-    @discord.ui.button(label="Detailed Usage", style=discord.ButtonStyle.primary)
-    async def detailed_usage(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message("Only the command user can use these buttons.", ephemeral=True)
-            return
-        
-        embed = self.create_detailed_usage_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
-    
-    @discord.ui.button(label="Common Errors", style=discord.ButtonStyle.secondary)
-    async def common_errors(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message("Only the command user can use these buttons.", ephemeral=True)
-            return
-        
-        embed = self.create_common_errors_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
-    
-    @discord.ui.button(label="Close", style=discord.ButtonStyle.danger)
-    async def close_help(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.author.id:
-            await interaction.response.send_message("Only the command user can use these buttons.", ephemeral=True)
-            return
-        
-        await interaction.response.edit_message(view=None)
-        self.stop()
 
 async def setup_help(bot):
     """Setup help command for the bot"""
