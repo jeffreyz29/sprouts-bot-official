@@ -13,7 +13,7 @@
         "use_saved_embed": false,
         "saved_embed_name": null,
         "use_threads": true,
-        "ticket_limit": 3,
+        "ticket_limit": 10,
         "transcript_channel": 1412916044938346719
     }
 }

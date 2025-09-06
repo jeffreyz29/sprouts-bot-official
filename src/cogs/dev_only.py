@@ -1756,9 +1756,14 @@ class DevOnly(commands.Cog):
             description=f"You are about to send this changelog to **{len(unique_owner_ids)}** unique server owners:",
             color=EMBED_COLOR_WARNING
         )
+        # Truncate message preview if too long for embed field
+        preview_message = message
+        if len(message) > 950:  # Leave room for formatting
+            preview_message = message[:947] + "..."
+        
         confirm_embed.add_field(
             name="Message Preview:",
-            value=f"```{message}```",
+            value=f"```{preview_message}```",
             inline=False
         )
         confirm_embed.add_field(
@@ -1892,21 +1897,37 @@ class DevOnly(commands.Cog):
             inline=True
         )
         
-        if failed_owners and len(failed_owners) <= 10:
-            failed_text = "\n".join(failed_owners[:10])
-            if len(failed_owners) > 10:
-                failed_text += f"\n... and {len(failed_owners) - 10} more"
-            results_embed.add_field(
-                name="Failed Recipients",
-                value=f"```{failed_text}```",
-                inline=False
-            )
-        elif failed_owners:
-            results_embed.add_field(
-                name="Failed Recipients",
-                value=f"Too many to display ({len(failed_owners)} failed)",
-                inline=False
-            )
+        if failed_owners:
+            # Limit failed_text to stay under Discord's 1024 character limit
+            failed_text = ""
+            displayed_count = 0
+            
+            for failure in failed_owners:
+                # Truncate very long server names
+                if len(failure) > 80:
+                    failure = failure[:77] + "..."
+                
+                test_text = failed_text + failure + "\n"
+                if len(test_text) > 900:  # Leave room for formatting and "... and X more"
+                    break
+                failed_text += failure + "\n"
+                displayed_count += 1
+            
+            if displayed_count < len(failed_owners):
+                failed_text += f"... and {len(failed_owners) - displayed_count} more"
+            
+            if failed_text.strip():
+                results_embed.add_field(
+                    name="Failed Recipients",
+                    value=f"```{failed_text.strip()}```",
+                    inline=False
+                )
+            else:
+                results_embed.add_field(
+                    name="Failed Recipients",
+                    value=f"Too many failures to display ({len(failed_owners)} total)",
+                    inline=False
+                )
         
         results_embed.set_footer(text=f"Changelog executed by {ctx.author.display_name}")
         results_embed.timestamp = discord.utils.utcnow()

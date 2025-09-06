@@ -1,12 +1,1 @@
-{
-  "1412650062517108789": {
-    "1": {
-      "trigger": "e",
-      "response": "e",
-      "match_mode": "contains",
-      "enabled": true,
-      "created_by": "764874247646085151",
-      "created_at": "2025-09-05T19:54:37.652197"
-    }
-  }
-}
+{}

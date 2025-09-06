@@ -2686,53 +2686,37 @@ class TicketSystem(commands.Cog):
 
                     log_embed.set_thumbnail(url=ctx.author.display_avatar.url)
 
-                    # Send transcript as attachment using the saved file
-                    if transcript_file_path and os.path.exists(
-                            transcript_file_path):
+                    # Send transcript as URL button instead of file attachment
+                    if transcript_file_path and os.path.exists(transcript_file_path):
                         try:
-                            # Check file size
-                            file_size = os.path.getsize(transcript_file_path)
-                            if file_size < 8 * 1024 * 1024:  # 8MB limit
-                                # Create file attachment from saved file
-                                transcript_filename = f"ticket_{ticket_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.txt"
-                                with open(transcript_file_path, 'rb') as f:
-                                    transcript_file = discord.File(
-                                        f, filename=transcript_filename)
-                                    log_embed.add_field(
-                                        name="Transcript",
-                                        value=
-                                        "Full conversation attached below\n`Also saved locally for backup`",
-                                        inline=False)
-                                    await log_channel.send(
-                                        embed=log_embed, file=transcript_file)
-                                    logger.info(
-                                        f"Sent ticket close log with transcript attachment to {log_channel.name}"
-                                    )
-                            else:
-                                # File too large, send summary
-                                message_count = len([
-                                    line
-                                    for line in transcript_content.split('\n')
-                                    if line.strip()
-                                    and not line.startswith('===')
-                                ]) if transcript_content else 0
-                                log_embed.add_field(
-                                    name="Transcript",
-                                    value=
-                                    f"Transcript too large for Discord ({file_size} bytes)\nContained {message_count} messages\nSaved locally: `{transcript_file_path}`",
-                                    inline=False)
-                                await log_channel.send(embed=log_embed)
-                                logger.warning(
-                                    f"Transcript for ticket {ticket_id} too large for Discord attachment"
-                                )
+                            # Generate transcript URL
+                            from utils.transcript_generator import transcript_generator
+                            transcript_url = f"{transcript_generator.base_url}/ticket/transcripts/view={ticket_id}"
+                            
+                            # Create view with transcript button
+                            log_view = discord.ui.View()
+                            transcript_button = discord.ui.Button(
+                                label="View Transcript",
+                                style=discord.ButtonStyle.link,
+                                url=transcript_url
+                            )
+                            log_view.add_item(transcript_button)
+                            
+                            log_embed.add_field(
+                                name="Transcript",
+                                value=f"[View Full Conversation Log]({transcript_url})\n`Also saved locally for backup`",
+                                inline=False
+                            )
+                            
+                            await log_channel.send(embed=log_embed, view=log_view)
+                            logger.info(f"Sent ticket close log with transcript URL to {log_channel.name}")
+                            
                         except Exception as e:
-                            logger.error(
-                                f"Error sending transcript attachment: {e}")
+                            logger.error(f"Error sending transcript URL: {e}")
                             # Fall back to sending without transcript
                             log_embed.add_field(
                                 name="Transcript",
-                                value=
-                                f"Error sending transcript attachment\nSaved locally: `{transcript_file_path}`",
+                                value=f"Error generating transcript URL\nSaved locally: `{transcript_file_path}`",
                                 inline=False)
                             await log_channel.send(embed=log_embed)
                     else:
