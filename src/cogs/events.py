@@ -582,8 +582,7 @@ class BotEvents(commands.Cog):
         """Update bot activity status with current guild count"""
         try:
             # Get the current activity template
-            from src.cogs.dev_only import DevCommands
-            dev_cog = self.bot.get_cog('DevCommands')
+            dev_cog = self.bot.get_cog('DevOnly')
             
             if dev_cog and hasattr(dev_cog, 'current_activity_template'):
                 template = dev_cog.current_activity_template

@@ -242,6 +242,8 @@ class DevOnly(commands.Cog):
         self.current_status = discord.Status.online
         self.current_activity = None
         # Track original activity text for variable processing
+        # Initialize activity template with server count
+        self.current_activity_template = "watching $(server.count) servers"
         self.current_activity_text = None
         self.current_activity_type = None
         # Get developer ID from environment variables
@@ -722,6 +724,8 @@ class DevOnly(commands.Cog):
             # Store the original text with variables for future updates
             self.current_activity_text = activity_text
             self.current_activity_type = activity_type.lower()
+            # Update the template for future guild join/leave events
+            self.current_activity_template = f"{activity_type.lower()} {activity_text}"
             
             # Update tracked activity
             self.current_activity = discord_activity
