@@ -87,7 +87,6 @@ class DiscordBot(commands.AutoShardedBot):
         from cogs.logging.logger import setup_logger
         # from cogs.embed_builder import setup as setup_embed_builder  # Removed
         from cogs.dev_only import setup_devonly
-        from cogs.autoresponders import setup as setup_autoresponders
         from cogs.reminders import setup_reminders
         from cogs.sticky_messages import setup_stickymessages
         from cogs.logging.dm_logging import setup_dm_logging
@@ -105,7 +104,6 @@ class DiscordBot(commands.AutoShardedBot):
         await setup_logger(self)
         # await setup_embed_builder(self)  # Removed - using autoresponders only
         await setup_devonly(self)
-        await setup_autoresponders(self)
         await setup_reminders(self)
         await setup_stickymessages(self)
         await setup_dm_logging(self)

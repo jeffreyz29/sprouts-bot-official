@@ -1151,7 +1151,7 @@ class DetailedCommandHelpView(discord.ui.View):
             
             "variables": {
                 "category": "Utilities",
-                "description": "Display all available variables for embeds, autoresponders, and messages",
+                "description": "Display all available variables for embeds and messages",
                 "usage": f"`{self.prefix}variables`",
                 "detailed_usage": [
                     f"`{self.prefix}variables` - Shows complete variable reference with 40+ variables"
@@ -1168,39 +1168,6 @@ class DetailedCommandHelpView(discord.ui.View):
                 ]
             },
             
-            # AUTORESPONDER COMMANDS
-            
-            "autoresponder": {
-                "category": "Auto Responders",
-                "description": "Advanced autoresponder system with comprehensive features and multiple match modes",
-                "usage": f"`{self.prefix}autoresponder <add/list/show/remove/editreply/editmatchmode/showraw>`",
-                "detailed_usage": [
-                    f"`{self.prefix}autoresponder add` - Create new autoresponder with interactive modal setup",
-                    f"`{self.prefix}autoresponder list` - View all configured autoresponders with status",
-                    f"`{self.prefix}autoresponder show <id>` - Show detailed information about specific autoresponder",
-                    f"`{self.prefix}autoresponder remove <id>` - Delete an autoresponder by ID",
-                    f"`{self.prefix}autoresponder editreply <id>` - Edit response message using modal",
-                    f"`{self.prefix}autoresponder editmatchmode <id>` - Change trigger match mode",
-                    f"`{self.prefix}autoresponder showraw <id>` - Display raw response text",
-                    f"`{self.prefix}reset server autoresponders` - Reset all server autoresponders"
-                ],
-                "examples": [
-                    f"`{self.prefix}autoresponder add` - Create autoresponder with modal for trigger/response",
-                    f"`{self.prefix}autoresponder list` - See all autoresponders with IDs and status",
-                    f"`{self.prefix}autoresponder show ar1` - View complete details for autoresponder ID 'ar1'",
-                    f"`{self.prefix}autoresponder remove ar1` - Delete autoresponder with ID 'ar1'",
-                    f"`{self.prefix}autoresponder editreply ar1` - Edit response for autoresponder 'ar1'",
-                    f"`{self.prefix}autoresponder editmatchmode ar1` - Change match mode (exact/contains/startswith/endswith/regex)"
-                ],
-                "permissions": "Administrator permission required",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**No permissions:** `You need Administrator permission to manage autoresponders.`",
-                    "**Invalid ID:** `Autoresponder ID 'ar1' not found!`",
-                    "**No autoresponders:** `This server has no autoresponders configured.`",
-                    "**Match modes:** Available modes: exact, contains, startswith, endswith, regex"
-                ]
-            },
             
             # REMINDER COMMANDS
             
@@ -1495,7 +1462,7 @@ class DetailedCommandHelpView(discord.ui.View):
                 ],
                 "examples": [
                     f"`{self.prefix}reload help` - Reload help system",
-                    f"`{self.prefix}reload autoresponders` - Reload autoresponder system"
+                    f"`{self.prefix}reload help` - Reload help system"
                 ],
                 "permissions": "Bot owner only",
                 "cooldown": "10 seconds per user",
@@ -1779,34 +1746,6 @@ class DetailedCommandHelpView(discord.ui.View):
                 ]
             },
             
-            # Auto Responder Commands - Simple System
-            "autoresponder": {
-                "category": "Auto Responders",
-                "description": "Simple auto-response system with trigger and reply functionality",
-                "usage": f"{self.prefix}autoresponder <add|editreply|remove|list|toggle> [arguments]",
-                "detailed_usage": [
-                    f"`{self.prefix}autoresponder add trigger:<trigger> reply:<response>` - Add new auto responder",
-                    f"`{self.prefix}autoresponder editreply trigger:<trigger> reply:<new response>` - Edit responder reply",
-                    f"`{self.prefix}autoresponder remove <trigger>` - Remove auto responder",
-                    f"`{self.prefix}autoresponder list` - List all auto responders", 
-                    f"`{self.prefix}autoresponder toggle <trigger>` - Enable/disable responder"
-                ],
-                "examples": [
-                    f"`{self.prefix}autoresponder add trigger:hello reply:Hello there! Welcome!` - Basic responder",
-                    f"`{self.prefix}autoresponder add trigger:rules reply:Please check #rules channel` - Rules reminder",
-                    f"`{self.prefix}autoresponder editreply trigger:hello reply:Hi there! Welcome to our server!` - Edit existing responder",
-                    f"`{self.prefix}autoresponder remove hello` - Remove responder",
-                    f"`{self.prefix}autoresponder list` - See all server auto responders"
-                ],
-                "permissions": "**Administrator** required for all autoresponder commands",
-                "cooldown": "5 seconds per user",
-                "error_scenarios": [
-                    "**Missing permissions:** `You need Administrator permission.`",
-                    "**Invalid format:** `Use format: s.autoresponder add trigger:<trigger> reply:<response>`",
-                    "**Trigger not found:** `Auto responder 'trigger' does not exist.`",
-                    "**Trigger exists:** `Auto responder for that trigger already exists.`"
-                ]
-            },
             
             # Reminder Commands
             "remind": {
@@ -2518,7 +2457,7 @@ class HelpView(discord.ui.View):
         self.user = user
         self.prefix = prefix
         self.current_page = "main"
-        self.page_order = ["main", "utilities", "tickets", "embeds", "autoresponders", "sticky", "reminders", "serverstats"]
+        self.page_order = ["main", "utilities", "tickets", "embeds", "sticky", "reminders", "serverstats"]
         self.current_index = 0
         
         # Define all help pages with the same content structure
@@ -2600,29 +2539,6 @@ class HelpView(discord.ui.View):
                         "name": "🏷️ Tag Commands (4)",
                         "value": "`managetags add/delete/list` - Manage tags\n"
                                 "`tag <tag_id>` - Send tag message snippet",
-                        "inline": False
-                    }
-                ]
-            },
-            "autoresponders": {
-                "title": f"{SPROUTS_INFORMATION} Auto Responders Commands",
-                "description": f"Simple trigger and reply system\nPrefix: `{prefix}`",
-                "fields": [
-                    {
-                        "name": "Auto Responder Management",
-                        "value": "`autoresponder add` - Add simple auto responder\n"
-                                "`autoresponder editreply` - Edit responder reply\n"
-                                "`autoresponder remove` - Remove auto responder\n"
-                                "`autoresponder list` - List all auto responders\n"
-                                "`autoresponder toggle` - Enable/disable responder",
-                        "inline": False
-                    },
-                    {
-                        "name": "Format & Usage",
-                        "value": "**Format:** `trigger:<text> reply:<response>`\n"
-                                "Simple trigger and reply system without complex functions\n\n"
-                                "**Example:**\n"
-                                f"`{prefix}autoresponder add trigger:hello reply:Hello there!`",
                         "inline": False
                     }
                 ]
@@ -2828,10 +2744,6 @@ class HelpCommand(commands.Cog):
             ("Ticket Administration", {
                 "commands": ["settings", "addadmin", "addsupport", "blacklist", "viewstaff", "tconfig"],
                 "description": "Administrative ticket configuration commands"
-            }),
-            ("Auto responders", {
-                "commands": ["autoresponder"],
-                "description": "Advanced automated message responses with match modes"
             }),
             ("Sticky messages", {
                 "commands": ["stick", "stickslow", "stickstop", "stickstart", "stickremove", "getstickies", "stickspeed"],
