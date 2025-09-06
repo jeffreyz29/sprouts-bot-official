@@ -1735,10 +1735,10 @@ class DevOnly(commands.Cog):
     @commands.is_owner()
     async def send_changelog(self, ctx, *, message: str):
         """Send changelog update to all server owners"""
-        if len(message) > 1900:
+        if len(message) > 1800:
             embed = discord.Embed(
                 title=f"{SPROUTS_ERROR} Message Too Long",
-                description="Message must be under 1900 characters to ensure delivery.",
+                description="Message must be under 1800 characters to ensure delivery.",
                 color=EMBED_COLOR_ERROR
             )
             await ctx.reply(embed=embed, mention_author=False)
@@ -1756,10 +1756,11 @@ class DevOnly(commands.Cog):
             description=f"You are about to send this changelog to **{len(unique_owner_ids)}** unique server owners:",
             color=EMBED_COLOR_WARNING
         )
-        # Truncate message preview if too long for embed field
+        # Truncate message preview if too long for embed field (Discord limit is 1024)
         preview_message = message
-        if len(message) > 950:  # Leave room for formatting
-            preview_message = message[:947] + "..."
+        max_preview_length = 1000  # Leave room for formatting and code blocks
+        if len(preview_message) > max_preview_length:
+            preview_message = preview_message[:max_preview_length-3] + "..."
         
         confirm_embed.add_field(
             name="Message Preview:",
