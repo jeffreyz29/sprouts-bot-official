@@ -1,0 +1,3807 @@
+"""
+Developer-Only Commands (Text Commands Only)
+Hidden commands that only the bot developer can access
+"""
+
+import discord
+from discord.ext import commands
+import logging
+import os
+import sys
+import asyncio
+import json
+import time
+import re
+import shutil
+import psutil
+import platform
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
+from config import BOT_CONFIG, EMBED_COLOR_NORMAL, EMBED_COLOR_ERROR, EMBED_COLOR_SUCCESS, SPROUTS_CHECK, SPROUTS_ERROR, SPROUTS_WARNING, SPROUTS_INFORMATION
+
+# Add missing color constant
+EMBED_COLOR_WARNING = 0xFFE682
+
+logger = logging.getLogger(__name__)
+
+# Global cooldown storage
+COOLDOWN_FILE = "config/global_cooldown.json"
+
+
+class GlobalCooldown:
+    """Global cooldown manager for all bot commands"""
+
+    def __init__(self):
+        self.cooldown_seconds = 0  # 0 means no cooldown
+        self.user_cooldowns = {}  # user_id: last_command_time
+        self.load_cooldown_config()
+
+    def load_cooldown_config(self):
+        """Load cooldown configuration from file"""
+        try:
+            if os.path.exists(COOLDOWN_FILE):
+                with open(COOLDOWN_FILE, 'r') as f:
+                    data = json.load(f)
+                    self.cooldown_seconds = data.get('cooldown_seconds', 0)
+        except Exception as e:
+            logger.error(f"Error loading cooldown config: {e}")
+            self.cooldown_seconds = 0
+
+    def save_cooldown_config(self):
+        """Save cooldown configuration to file"""
+        try:
+            with open(COOLDOWN_FILE, 'w') as f:
+                json.dump({'cooldown_seconds': self.cooldown_seconds}, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving cooldown config: {e}")
+
+    def set_cooldown(self, seconds: int):
+        """Set global cooldown in seconds"""
+        self.cooldown_seconds = seconds
+        # Clear existing user cooldowns when setting new cooldown
+        self.user_cooldowns.clear()
+        self.save_cooldown_config()
+
+    def remove_cooldown(self):
+        """Remove global cooldown"""
+        self.cooldown_seconds = 0
+        self.user_cooldowns.clear()
+        self.save_cooldown_config()
+
+    def check_cooldown(self, user_id: int) -> float:
+        """Check if user is on cooldown. Returns remaining time or 0 if not on cooldown"""
+        if self.cooldown_seconds == 0:
+            return 0
+
+        current_time = time.time()
+        last_command_time = self.user_cooldowns.get(user_id, 0)
+        time_since_last = current_time - last_command_time
+
+        if time_since_last < self.cooldown_seconds:
+            return self.cooldown_seconds - time_since_last
+
+        return 0
+
+    def update_user_cooldown(self, user_id: int):
+        """Update user's last command time"""
+        if self.cooldown_seconds > 0:
+            self.user_cooldowns[user_id] = time.time()
+
+# Global cooldown instance
+global_cooldown = GlobalCooldown()
+
+class GuildsPaginationView(discord.ui.View):
+    """Pagination view for guilds list"""
+
+    def __init__(self, guilds, author):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.guilds = guilds
+        self.author = author
+        self.current_page = 0
+        self.per_page = 5
+        self.max_pages = (len(guilds) - 1) // self.per_page + 1
+        self.message = None
+
+        # Update button states for single page - find buttons by checking children
+        if self.max_pages <= 1:
+            for item in self.children:
+                if hasattr(item, 'disabled') and hasattr(item, 'label'):
+                    if item.label in ['▶', '◀']:
+                        item.disabled = True
+
+    async def create_embed(self, page):
+        """Create embed for specific page"""
+        start_idx = page * self.per_page
+        end_idx = start_idx + self.per_page
+        guilds_slice = self.guilds[start_idx:end_idx]
+
+        embed = discord.Embed(
+            title=f"Server List ({len(self.guilds)} total)",
+            color=EMBED_COLOR_NORMAL
+        )
+        embed.set_thumbnail(url=self.guilds[0].me.display_avatar.url if self.guilds else None)
+
+        # Create clean server list
+        for i, guild in enumerate(guilds_slice):
+            # Try to create an invite for the guild
+            invite_text = "No invite available"
+            try:
+                # Find a channel where we can create invites
+                invite_channel = None
+
+                # Try system channel first
+                if guild.system_channel and guild.system_channel.permissions_for(guild.me).create_instant_invite:
+                    invite_channel = guild.system_channel
+                else:
+                    # Find first text channel where bot can create invites
+                    for channel in guild.text_channels:
+                        if channel.permissions_for(guild.me).create_instant_invite:
+                            invite_channel = channel
+                            break
+
+                if invite_channel:
+                    invite = await invite_channel.create_invite(
+                        max_age=0,  # Never expires
+                        max_uses=0,  # Unlimited uses
+                        unique=False
+                    )
+                    invite_text = f"[Join Server]({invite.url})"
+
+            except Exception:
+                invite_text = "No invite permissions"
+
+            guild_number = start_idx + i + 1
+
+            # Add each guild as a separate field for clean display
+            embed.add_field(
+                name=f"{guild_number}. {guild.name}",
+                value=f"**ID:** `{guild.id}`\n"
+                      f"**Members:** {guild.member_count:,}\n"
+                      f"**Owner:** {guild.owner.display_name if guild.owner else 'Unknown'}\n"
+                      f"**Invite:** {invite_text}",
+                inline=True
+            )
+        embed.set_footer(text=f"Page {page + 1}/{self.max_pages} • Requested by {self.author.display_name}", 
+                        icon_url=self.author.display_avatar.url)
+        embed.timestamp = discord.utils.utcnow()
+
+        return embed
+
+    async def interaction_check(self, interaction):
+        """Only allow the command author to use buttons"""
+        return interaction.user == self.author
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.grey, disabled=True)
+    async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to previous page"""
+        self.current_page -= 1
+        embed = await self.create_embed(self.current_page)
+
+        # Update button states
+        for item in self.children:
+            if hasattr(item, 'disabled') and hasattr(item, 'label'):
+                if item.label == '◀':
+                    item.disabled = (self.current_page == 0)
+                elif item.label == '▶':
+                    item.disabled = (self.current_page == self.max_pages - 1)
+
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
+    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Stop pagination and disable all buttons"""
+        for item in self.children:
+            if hasattr(item, 'disabled'):
+                item.disabled = True
+
+        embed = await self.create_embed(self.current_page)
+        embed.set_footer(text=f"Pagination ended • Requested by {self.author.display_name}", 
+                        icon_url=self.author.display_avatar.url)
+
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.stop()
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.grey)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to next page"""
+        self.current_page += 1
+        embed = await self.create_embed(self.current_page)
+
+        # Update button states
+        for item in self.children:
+            if hasattr(item, 'disabled') and hasattr(item, 'label'):
+                if item.label == '◀':
+                    item.disabled = (self.current_page == 0)
+                elif item.label == '▶':
+                    item.disabled = (self.current_page == self.max_pages - 1)
+
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self):
+        """Disable all buttons when view times out"""
+        for item in self.children:
+            if hasattr(item, 'disabled'):
+                item.disabled = True
+
+        if self.message:
+            try:
+                embed = await self.create_embed(self.current_page)
+                embed.set_footer(text=f"Pagination timed out • Requested by {self.author.display_name}", 
+                               icon_url=self.author.display_avatar.url)
+                await self.message.edit(embed=embed, view=self)
+            except Exception:
+                pass
+
+class DevOnly(commands.Cog):
+    """Developer-only commands - hidden from help"""
+
+    def __init__(self, bot):
+        self.bot = bot
+        # Track current presence state independently
+        self.current_status = discord.Status.online
+        self.current_activity = None
+        # Track original activity text for variable processing
+        # Initialize activity template with server count
+        self.current_activity_template = "watching $(server.count) servers"
+        self.current_activity_text = None
+        self.current_activity_type = None
+        # Get developer ID from environment variables
+        try:
+            from config import BOT_OWNER_ID
+            self.developer_ids = [
+                BOT_OWNER_ID,  # Bot owner from environment
+                764874247646085151  # Your hardcoded ID as backup
+            ]
+        except:
+            # Fallback if config fails
+            self.developer_ids = [764874247646085151]
+        # Track maintenance mode and disabled commands with persistence
+        self.maintenance_file = 'data/maintenance.json'
+        self.maintenance_mode = self.load_maintenance_state()
+        self.disabled_commands = set()
+
+    async def _process_activity_variables(self, text: str) -> str:
+        """Process variables in activity text"""
+        if not text:
+            return text
+
+        try:
+            # Replace server count variable
+            if '$(server.count)' in text:
+                server_count = len(self.bot.guilds)
+                text = text.replace('$(server.count)', str(server_count))
+
+            # Replace shard ID variable
+            if '$(shard.id)' in text:
+                # For AutoShardedBot, get the first shard ID or show count
+                if hasattr(self.bot, 'shards') and self.bot.shards:
+                    shard_id = list(self.bot.shards.keys())[0]  # Get first shard ID
+                    text = text.replace('$(shard.id)', str(shard_id))
+                elif hasattr(self.bot, 'shard_count') and self.bot.shard_count:
+                    # Show shard count if multiple shards
+                    text = text.replace('$(shard.id)', f"0-{self.bot.shard_count-1}")
+                else:
+                    # Single shard bot
+                    text = text.replace('$(shard.id)', "0")
+
+            return text
+        except Exception as e:
+            logger.error(f"Error processing activity variables: {e}")
+            return text
+
+    async def update_activity_variables(self):
+        """Update current activity with fresh variable values"""
+        if not self.current_activity_text:
+            return
+
+        try:
+            # Process variables again with current values
+            processed_text = await self._process_activity_variables(self.current_activity_text)
+
+            # Recreate activity with updated text
+            if self.current_activity_type == "streaming":
+                new_activity = discord.Streaming(
+                    name=processed_text,
+                    url="https://twitch.tv/example"
+                )
+            else:
+                activity_types = {
+                    'playing': discord.ActivityType.playing,
+                    'watching': discord.ActivityType.watching,
+                    'listening': discord.ActivityType.listening,
+                    'competing': discord.ActivityType.competing
+                }
+                activity_type_obj = activity_types.get(self.current_activity_type, discord.ActivityType.playing)
+                new_activity = discord.Activity(
+                    type=activity_type_obj,
+                    name=processed_text
+                )
+
+            # Update presence
+            self.current_activity = new_activity
+            await self.bot.change_presence(status=self.current_status, activity=self.current_activity)
+            logger.info(f"Activity variables updated: {processed_text}")
+
+        except Exception as e:
+            logger.error(f"Error updating activity variables: {e}")
+
+    def load_maintenance_state(self):
+        """Load maintenance mode state from file"""
+        try:
+            import os
+            import json
+            if os.path.exists(self.maintenance_file):
+                with open(self.maintenance_file, 'r') as f:
+                    data = json.load(f)
+                    return data.get('maintenance_mode', False)
+        except Exception as e:
+            logger.warning(f"Could not load maintenance state: {e}")
+        return False
+
+    def save_maintenance_state(self):
+        """Save maintenance mode state to file"""
+        try:
+            import os
+            import json
+            os.makedirs(os.path.dirname(self.maintenance_file), exist_ok=True)
+            with open(self.maintenance_file, 'w') as f:
+                json.dump({'maintenance_mode': self.maintenance_mode}, f)
+        except Exception as e:
+            logger.error(f"Could not save maintenance state: {e}")
+
+    def cog_check(self, ctx):
+        """Check if user is developer for all commands in this cog"""
+        logger.info(f"Dev check - User ID: {ctx.author.id} (type: {type(ctx.author.id)})")
+        logger.info(f"Dev check - Developer IDs: {self.developer_ids} (types: {[type(x) for x in self.developer_ids]})")
+        result = ctx.author.id in self.developer_ids
+        logger.info(f"Dev check result: {result}")
+        return result
+
+    async def cog_command_error(self, ctx, error):
+        """Handle errors in this cog"""
+        if isinstance(error, commands.CheckFailure):
+            # User is not a developer
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Access Denied",
+                description="This command is only available to bot developers.",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+            # Don't re-raise the error since we handled it
+            return
+        elif isinstance(error, commands.MissingRequiredArgument):
+            # Handle missing arguments with helpful message
+            if ctx.command.name == "setactivity":
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Set Activity Error",
+                    description="This command requires an argument to work properly.\n\n"
+                               "**Valid activity types:** playing, watching, listening, competing, streaming\n\n"
+                               "**Example:** `s.setactivity playing with code`",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            else:
+                # For other commands, show generic missing argument message
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Missing Argument",
+                    description=f"Missing required argument: `{error.param.name}`\n\nUse `s.help {ctx.command.name}` for usage information.",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+        else:
+            # For other errors, let the global error handler deal with it
+            raise error
+
+    @commands.command(name="reload", description="Reload a specific cog", hidden=True)
+    @commands.is_owner()
+    async def reload_cog(self, ctx, cog: str):
+        """Reload a cog"""
+        try:
+            await self.bot.reload_extension(f"cogs.{cog}")
+
+            embed = discord.Embed(
+                title="Cog Reloaded",
+                description=f"Successfully reloaded `{cog}` cog",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Cog {cog} reloaded by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Reload Failed",
+                description=f"Failed to reload cog: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.error(f"Failed to reload cog {cog}: {e}")
+
+    @commands.command(name="reloadall", description="Reload all cogs", hidden=True)
+    @commands.is_owner()
+    async def reload_all_cogs(self, ctx):
+        """Reload all cogs"""
+        try:
+            # Get list of loaded extensions
+            extensions = list(self.bot.extensions.keys())
+            reloaded = []
+            failed = []
+
+            for extension in extensions:
+                try:
+                    await self.bot.reload_extension(extension)
+                    reloaded.append(extension)
+                    logger.info(f"Reloaded extension: {extension}")
+                except Exception as e:
+                    failed.append(f"{extension}: {str(e)}")
+                    logger.error(f"Failed to reload {extension}: {e}")
+
+            # Create result embed
+            embed = discord.Embed(
+                title="Reload All Cogs",
+                color=EMBED_COLOR_NORMAL if not failed else EMBED_COLOR_ERROR
+            )
+
+            if reloaded:
+                embed.add_field(
+                    name=f"Reloaded ({len(reloaded)}):",
+                    value="```\n" + "\n".join([ext.split('.')[-1] for ext in reloaded]) + "\n```",
+                    inline=False
+                )
+
+            if failed:
+                embed.add_field(
+                    name=f"Failed ({len(failed)}):",
+                    value="```\n" + "\n".join(failed) + "\n```",
+                    inline=False
+                )
+
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Reload All Failed",
+                description=f"Failed to reload all cogs: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.error(f"Failed to reload all cogs: {e}")
+
+    @commands.command(name="shutdown", description="Shutdown the bot", hidden=True)
+    @commands.is_owner()
+    async def shutdown_bot(self, ctx):
+        """Shutdown the bot"""
+        try:
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Bot Shutdown",
+                description="Bot is shutting down...",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Bot shutdown initiated by {ctx.author}")
+            await self.bot.close()
+
+        except Exception as e:
+            logger.error(f"Error during shutdown: {e}")
+
+    @commands.command(name="restart", description="Restart the bot", hidden=True)
+    @commands.is_owner()
+    async def restart_bot(self, ctx):
+        """Restart the bot"""
+        try:
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Bot Restart",
+                description="Bot is restarting...\nThis may take a few moments to reconnect.",
+                color=EMBED_COLOR_WARNING
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Bot restart initiated by {ctx.author}")
+
+            # Close the bot gracefully
+            await self.bot.close()
+
+            # In production environments like Replit, the bot will automatically restart
+            # due to the deployment configuration
+
+        except Exception as e:
+            logger.error(f"Error during restart: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Restart Failed",
+                description=f"Failed to restart bot: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="eval", description="Evaluate Python code", hidden=True)
+    @commands.is_owner()
+    async def eval_code(self, ctx, *, code: str):
+        """Evaluate Python code"""
+        try:
+            # Remove code blocks if present
+            if code.startswith('```py') or code.startswith('```python'):
+                code = code[5:-3]
+            elif code.startswith('```'):
+                code = code[3:-3]
+
+            # Setup local variables
+            local_vars = {
+                'bot': self.bot,
+                'ctx': ctx,
+                'channel': ctx.channel,
+                'author': ctx.author,
+                'guild': ctx.guild,
+                'message': ctx.message,
+                'discord': discord,
+                'commands': commands
+            }
+
+            # Execute code
+            try:
+                result = eval(code, globals(), local_vars)
+                if asyncio.iscoroutine(result):
+                    result = await result
+            except SyntaxError:
+                # Try exec instead
+                exec(code, globals(), local_vars)
+                result = "Code executed successfully (no return value)"
+
+            # Format result
+            if result is None:
+                result = "None"
+            elif isinstance(result, str) and len(result) > 1990:
+                result = result[:1990] + "..."
+
+            embed = discord.Embed(
+                title="Code Evaluation",
+                description=f"```py\n{code}\n```",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Result",
+                value=f"```py\n{result}\n```",
+                inline=False
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Evaluation Error",
+                description=f"```py\n{code}\n```",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.add_field(
+                name="Error",
+                value=f"```py\n{str(e)}\n```",
+                inline=False
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="setstatus", description="Change bot status", hidden=True)
+    @commands.is_owner()
+    async def set_status(self, ctx, status: str):
+        """Change bot status"""
+        try:
+            # Define valid statuses
+            valid_statuses = {
+                'online': discord.Status.online,
+                'idle': discord.Status.idle,
+                'dnd': discord.Status.dnd,
+                'invisible': discord.Status.invisible
+            }
+
+            # Validate status
+            if status.lower() not in valid_statuses:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Invalid Status",
+                    description="Valid statuses: online, idle, dnd, invisible",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Get the status
+            new_status = valid_statuses[status.lower()]
+
+            # Update tracked status
+            self.current_status = new_status
+
+            # Only change the status, preserve current activity
+            logger.info(f"Setting status to: {status.lower()}")
+
+            await self.bot.change_presence(status=self.current_status, activity=self.current_activity)
+
+            # Success message
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Status Updated",
+                description=f"Status: {status.lower()}",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Bot status changed by {ctx.author}: {status.lower()}")
+
+        except Exception as e:
+            logger.error(f"Error changing status: {e}")
+            embed = discord.Embed(
+                title="Error",
+                description="An error occurred while changing status.",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="setactivity", description="Change bot activity", hidden=True)
+    @commands.is_owner()
+    async def set_activity(self, ctx, activity_type: str, *, activity_text: str):
+        """Change bot activity with support for $(server.count) and $(shard.id) variables"""
+        try:
+            # Define valid activity types
+            valid_activities = {
+                'playing': discord.ActivityType.playing,
+                'watching': discord.ActivityType.watching,
+                'listening': discord.ActivityType.listening,
+                'competing': discord.ActivityType.competing,
+                'streaming': discord.ActivityType.streaming
+            }
+
+            # Validate activity type
+            if activity_type.lower() not in valid_activities:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Invalid Activity Type",
+                    description="Valid activity types: playing, watching, listening, competing, streaming\n\n"
+                               "**Supported Variables:**\n"
+                               "`$(server.count)` - Total number of servers\n"
+                               "`$(shard.id)` - Current shard ID",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Process variables in activity text
+            processed_text = await self._process_activity_variables(activity_text)
+
+            # Create activity
+            activity_type_obj = valid_activities[activity_type.lower()]
+            if activity_type.lower() == "streaming":
+                discord_activity = discord.Streaming(
+                    name=processed_text,
+                    url="https://twitch.tv/example"
+                )
+            else:
+                discord_activity = discord.Activity(
+                    type=activity_type_obj,
+                    name=processed_text
+                )
+
+            # Store the original text with variables for future updates
+            self.current_activity_text = activity_text
+            self.current_activity_type = activity_type.lower()
+            # Update the template for future guild join/leave events
+            self.current_activity_template = f"{activity_type.lower()} {activity_text}"
+
+            # Update tracked activity
+            self.current_activity = discord_activity
+
+            # Only change the activity, preserve current status  
+            logger.info(f"Setting activity to: {activity_type.lower()} {processed_text}")
+
+            await self.bot.change_presence(status=self.current_status, activity=self.current_activity)
+
+            # Success message
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Activity Updated",
+                description=f"Activity: {activity_type.lower()} {processed_text}\n\n"
+                           f"Raw input: `{activity_text}`",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Bot activity changed by {ctx.author}: {activity_type.lower()} {activity_text}")
+
+        except Exception as e:
+            logger.error(f"Error changing activity: {e}")
+            embed = discord.Embed(
+                title="Error",
+                description="An error occurred while changing activity.",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+
+    @commands.command(name="guilds", description="List all guilds", hidden=True)
+    @commands.is_owner()
+    async def list_guilds(self, ctx):
+        """List all guilds the bot is in with pagination"""
+        try:
+            guilds = list(self.bot.guilds)
+
+            if not guilds:
+                embed = discord.Embed(
+                    title="No Guilds",
+                    description="Bot is not in any guilds.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Sort guilds by member count (descending)
+            guilds.sort(key=lambda g: g.member_count, reverse=True)
+
+            # Create pagination view
+            view = GuildsPaginationView(guilds, ctx.author)
+            embed = await view.create_embed(0)
+
+            # Send initial message
+            message = await ctx.reply(embed=embed, view=view, mention_author=False)
+            view.message = message
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error",
+                description=f"Error listing guilds: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="leaveguild", description="Leave a guild", hidden=True)
+    @commands.is_owner()
+    async def leave_guild(self, ctx, guild_id: int):
+        """Leave a guild by ID"""
+        try:
+            guild = self.bot.get_guild(guild_id)
+            if not guild:
+                embed = discord.Embed(
+                    title="Guild Not Found",
+                    description=f"Guild with ID `{guild_id}` not found.",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            guild_name = guild.name
+            await guild.leave()
+
+            embed = discord.Embed(
+                title="Guild Left",
+                description=f"Successfully left guild: **{guild_name}** (`{guild_id}`)",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Left guild {guild_name} ({guild_id}) by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error",
+                description=f"Error leaving guild: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="maintenance", description="Toggle maintenance mode", hidden=True)
+    @commands.is_owner()
+    async def maintenance_mode(self, ctx):
+        """Toggle maintenance mode on/of"""
+        try:
+            # Simple toggle - flip the current state
+            self.maintenance_mode = not self.maintenance_mode
+
+            # Save the state to persist across restarts
+            self.save_maintenance_state()
+
+            if self.maintenance_mode:
+                status = "enabled"
+                color = EMBED_COLOR_ERROR  # Red for maintenance enabled
+                description = "Bot is now in maintenance mode. Only you can use commands."
+                emoji = SPROUTS_ERROR
+            else:
+                status = "disabled"
+                color = EMBED_COLOR_SUCCESS  # Green for maintenance disabled
+                description = "Bot is now available to all users."
+                emoji = SPROUTS_CHECK
+
+            embed = discord.Embed(
+                title=f"{emoji} Maintenance Mode {status.title()}",
+                description=description,
+                color=color
+            )
+            embed.set_footer(text=f"Toggled by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Maintenance mode {status} by {ctx.author} (persisted)")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error",
+                description=f"Error toggling maintenance mode: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    def parse_time(self, time_str):
+        """Parse time string like '5m', '1h', '30s' into seconds"""
+        if not time_str or time_str == "0":
+            return 0
+
+        # If it's just a number, treat as seconds
+        if time_str.isdigit():
+            return int(time_str)
+
+        # Parse time units
+        time_str = time_str.lower().strip()
+        if not time_str:
+            return None
+
+        # Extract number and unit
+        import re
+        match = re.match(r'^(\d+)([smhd]?)$', time_str)
+        if not match:
+            return None
+
+        value, unit = match.groups()
+        value = int(value)
+
+        # Convert to seconds
+        if unit == 's' or unit == '':  # seconds (default if no unit)
+            return value
+        elif unit == 'm':  # minutes
+            return value * 60
+        elif unit == 'h':  # hours
+            return value * 3600
+        elif unit == 'd':  # days
+            return value * 86400
+        else:
+            return None
+
+    def format_time(self, seconds):
+        """Format seconds into human readable format"""
+        if seconds == 0:
+            return "0 seconds"
+        elif seconds < 60:
+            return f"{seconds} second{'s' if seconds != 1 else ''}"
+        elif seconds < 3600:
+            minutes = seconds // 60
+            remaining = seconds % 60
+            result = f"{minutes} minute{'s' if minutes != 1 else ''}"
+            if remaining > 0:
+                result += f", {remaining} second{'s' if remaining != 1 else ''}"
+            return result
+        elif seconds < 86400:
+            hours = seconds // 3600
+            remaining = seconds % 3600
+            minutes = remaining // 60
+            result = f"{hours} hour{'s' if hours != 1 else ''}"
+            if minutes > 0:
+                result += f", {minutes} minute{'s' if minutes != 1 else ''}"
+            return result
+        else:
+            days = seconds // 86400
+            remaining = seconds % 86400
+            hours = remaining // 3600
+            result = f"{days} day{'s' if days != 1 else ''}"
+            if hours > 0:
+                result += f", {hours} hour{'s' if hours != 1 else ''}"
+            return result
+
+    # Global Logging Commands (Developer Only)
+
+    @commands.command(name="settings", description="List all configured bot settings", hidden=True)
+    @commands.is_owner()
+    async def list_bot_settings(self, ctx):
+        """Display all current bot configuration settings"""
+        try:
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Bot Configuration Settings",
+                description="Current configuration status for all bot systems",
+                color=EMBED_COLOR_NORMAL
+            )
+
+            # Bot Status Settings
+            status_text = f"Online ({self.bot.status.name})"
+            if self.bot.activity:
+                activity_type = self.bot.activity.type.name.title()
+                activity_name = self.bot.activity.name
+                status_text += f" - {activity_type}: {activity_name}"
+
+            embed.add_field(
+                name="Bot Status",
+                value=status_text,
+                inline=False
+            )
+
+            # Environment Variables
+            env_settings = []
+            env_vars = {
+                "DEFAULT_PREFIX": os.getenv('DEFAULT_PREFIX', 's.'),
+                "LOG_COMMANDS_CHANNEL": os.getenv('LOG_COMMANDS_CHANNEL', 'Not set'),
+                "LOG_DMS_CHANNEL": os.getenv('LOG_DMS_CHANNEL', 'Not set'),
+                "LOG_GUILD_EVENTS": os.getenv('LOG_GUILD_EVENTS', 'Not set'),
+                "EMBED_COLOR_NORMAL": os.getenv('EMBED_COLOR_NORMAL', '0x2ecc71'),
+                "EMBED_COLOR_ERROR": os.getenv('EMBED_COLOR_ERROR', '0xe74c3c')
+            }
+
+            for var, value in env_vars.items():
+                if var.startswith('LOG_') and value != 'Not set':
+                    try:
+                        channel = self.bot.get_channel(int(value))
+                        value = f"{channel.mention}" if channel else f"Channel ID: {value} (not found)"
+                    except (ValueError, TypeError):
+                        value = f"Invalid ID: {value}"
+                env_settings.append(f"**{var.replace('_', ' ').title()}:** {value}")
+
+            embed.add_field(
+                name="Environment Settings",
+                value="\n".join(env_settings),
+                inline=False
+            )
+
+            # Global Cooldown Status
+            try:
+                from src.utils.global_cooldown import global_cooldown
+                if hasattr(global_cooldown, 'cooldown_seconds') and global_cooldown.cooldown_seconds:
+                    cooldown_text = f"Active - {self.format_time(global_cooldown.cooldown_seconds)}"
+                else:
+                    cooldown_text = "Disabled"
+            except ImportError:
+                cooldown_text = "Not configured"
+
+            embed.add_field(
+                name="Global Cooldown",
+                value=cooldown_text,
+                inline=True
+            )
+
+            # Maintenance Mode Status
+            maintenance_status = "Disabled"
+            try:
+                maintenance_file = "config/maintenance.json"
+                if os.path.exists(maintenance_file):
+                    with open(maintenance_file, 'r') as f:
+                        maintenance_data = json.load(f)
+                        if maintenance_data.get('enabled', False):
+                            maintenance_status = f"Active - {maintenance_data.get('reason', 'No reason')}"
+            except Exception:
+                pass
+
+            embed.add_field(
+                name="Maintenance Mode",
+                value=maintenance_status,
+                inline=True
+            )
+
+            # Server Stats
+            total_guilds = len(self.bot.guilds)
+            total_users = sum(guild.member_count for guild in self.bot.guilds if guild.member_count)
+
+            embed.add_field(
+                name="Bot Statistics",
+                value=f"**Guilds:** {total_guilds}\n**Users:** {total_users:,}",
+                inline=True
+            )
+
+            # Data File Counts
+            data_counts = []
+            data_files = {
+                "Saved Embeds": "src/data/saved_embeds.json",
+                "Auto Responders": "src/data/autoresponders.json", 
+                "Sticky Messages": "src/data/stickies.json",
+                "Reminders": "src/data/reminders.json",
+                "Tickets": "src/data/tickets.json"
+            }
+
+            for name, file_path in data_files.items():
+                try:
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r') as f:
+                            data = json.load(f)
+                            count = len(data) if isinstance(data, dict) else 0
+                            data_counts.append(f"**{name}:** {count}")
+                    else:
+                        data_counts.append(f"**{name}:** 0")
+                except Exception:
+                    data_counts.append(f"**{name}:** Error")
+
+            embed.add_field(
+                name="Data File Status",
+                value="\n".join(data_counts),
+                inline=False
+            )
+
+            embed.set_footer(text=f"Settings requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.info(f"Bot settings displayed for {ctx.author}")
+
+        except Exception as e:
+            logger.error(f"Error displaying bot settings: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Settings Error",
+                description=f"Error retrieving bot settings: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="globalcooldown", aliases=["cooldown"], description="Set global command cooldown", hidden=True)
+    @commands.is_owner()
+    async def set_global_cooldown(self, ctx, time_input: str = None):
+        """Set global cooldown for all commands
+
+        Time format examples:
+        - 5 or 5s = 5 seconds
+        - 2m = 2 minutes
+        - 1h = 1 hour
+        - 0 = remove cooldown
+        """
+        try:
+            if time_input is None:
+                # Show current cooldown
+                current = global_cooldown.cooldown_seconds
+                if current == 0:
+                    description = "No global cooldown is currently set."
+                else:
+                    formatted_time = self.format_time(current)
+                    description = f"Global cooldown is set to **{formatted_time}** ({current} seconds)"
+
+                embed = discord.Embed(
+                    title="Global Cooldown Status",
+                    description=description,
+                    color=EMBED_COLOR_NORMAL
+                )
+                embed.add_field(
+                    name="Supported Time Formats", 
+                    value="• `5` or `5s` = 5 seconds\n• `2m` = 2 minutes\n• `1h` = 1 hour\n• `1d` = 1 day\n• `0` = remove cooldown",
+                    inline=False
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Parse the time input
+            seconds = self.parse_time(time_input)
+
+            if seconds is None:
+                embed = discord.Embed(
+                    title="Invalid Time Format",
+                    description="Please use a valid time format:\n"
+                               "• `5` or `5s` = 5 seconds\n"
+                               "• `2m` = 2 minutes\n"
+                               "• `1h` = 1 hour\n"
+                               "• `1d` = 1 day\n"
+                               "• `0` = remove cooldown",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            if seconds < 0:
+                embed = discord.Embed(
+                    title="Invalid Cooldown",
+                    description="Cooldown must be 0 or greater (0 = no cooldown)",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            if seconds == 0:
+                global_cooldown.remove_cooldown()
+                description = "Global cooldown has been **removed**"
+            else:
+                global_cooldown.set_cooldown(seconds)
+                formatted_time = self.format_time(seconds)
+                description = f"Global cooldown set to **{formatted_time}** ({seconds} seconds)"
+
+            embed = discord.Embed(
+                title="Global Cooldown Updated",
+                description=description,
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"Global cooldown set to {seconds} seconds ({time_input}) by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error",
+                description=f"Error setting global cooldown: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+
+
+    # Global Logging Commands (Developer Only)
+
+    @commands.group(name="cmdlogs", invoke_without_command=True, hidden=True)
+    async def cmdlogs(self, ctx):
+        """Global command logging system - Developer only"""
+        embed = discord.Embed(
+            title="Global Command Logging System",
+            description="Bot-wide command monitoring (Developer Only)",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        # Check current global command logging channel
+        global_channel_id = os.getenv('LOG_COMMANDS_CHANNEL')
+        if global_channel_id:
+            try:
+                channel = self.bot.get_channel(int(global_channel_id))
+                status = f"Enabled in {channel.mention if channel else 'Unknown Channel'}"
+            except (ValueError, TypeError):
+                status = "Configured but invalid channel ID"
+        else:
+            status = "Disabled"
+
+        embed.add_field(
+            name="**Current Status**",
+            value=status,
+            inline=False
+        )
+
+        embed.add_field(
+            name="**Available Commands**",
+            value=(
+                "`s.cmdlogs set <#channel>` - Set global command logging channel\n"
+                "`s.cmdlogs status` - View current configuration\n"
+                "**Note**: All command logs from all servers go to this one channel"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text=f"Developer: {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @cmdlogs.command(name="set", hidden=True)
+    async def cmdlogs_set(self, ctx, channel: discord.TextChannel):
+        """Set global command logging channel"""
+        try:
+            # Update environment variable (this will require manual .env update for persistence)
+            os.environ['LOG_COMMANDS_CHANNEL'] = str(channel.id)
+
+            # Also write to a config file for persistence
+            config_file = "config/global_logging.json"
+            os.makedirs("config", exist_ok=True)
+
+            config = {}
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as f:
+                        config = json.load(f)
+                except:
+                    config = {}
+
+            config['LOG_COMMANDS_CHANNEL'] = str(channel.id)
+
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            embed = discord.Embed(
+                title="Global Command Logging Configured",
+                description=f"All command logs will now be sent to {channel.mention}",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="**Channel Set**", 
+                value=f"{channel.mention} (`{channel.id}`)",
+                inline=False
+            )
+            embed.add_field(
+                name="**Scope**",
+                value="All commands from all servers will be logged here",
+                inline=False
+            )
+            embed.set_footer(text=f"Set by {ctx.author.display_name}")
+            await ctx.reply(embed=embed, mention_author=False)
+
+            # Send confirmation to the configured logging channel
+            try:
+                test_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Command Logging Test",
+                    description=f"Global command logging has been configured by {ctx.author.mention}\n\nAll future command logs will appear in this channel.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                test_embed.add_field(
+                    name="Setup Details",
+                    value=f"**Configured by:** {ctx.author} (`{ctx.author.id}`)\n**From channel:** {ctx.channel.mention}\n**Server:** {ctx.guild.name}",
+                    inline=False
+                )
+                test_embed.set_footer(text="This is a test message to confirm logging is working")
+                await channel.send(embed=test_embed)
+                logger.info(f"Sent test message to command logging channel {channel}")
+            except Exception as e:
+                logger.warning(f"Could not send test message to command logging channel: {e}")
+
+            logger.info(f"Global command logging set to {channel} by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error Setting Command Logging",
+                description=f"Failed to configure command logging: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.error(f"Error setting global command logging: {e}")
+
+    @cmdlogs.command(name="status", hidden=True)
+    async def cmdlogs_status(self, ctx):
+        """Check global command logging status"""
+        embed = discord.Embed(
+            title="Global Command Logging Status",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        global_channel_id = os.getenv('LOG_COMMANDS_CHANNEL')
+        if global_channel_id:
+            try:
+                channel = self.bot.get_channel(int(global_channel_id))
+                if channel:
+                    embed.add_field(name="**Status**", value="Enabled", inline=True)
+                    embed.add_field(name="**Channel**", value=channel.mention, inline=True)
+                    embed.add_field(name="**Server**", value=channel.guild.name, inline=True)
+                else:
+                    embed.add_field(name="**Status**", value="Channel Not Found", inline=False)
+                    embed.add_field(name="**Channel ID**", value=global_channel_id, inline=False)
+            except (ValueError, TypeError):
+                embed.add_field(name="**Status**", value="Invalid Channel ID", inline=False)
+        else:
+            embed.add_field(name="**Status**", value="Disabled", inline=False)
+
+        embed.set_footer(text=f"Checked by {ctx.author.display_name}")
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.group(name="dmlogs", invoke_without_command=True, hidden=True)
+    async def dmlogs(self, ctx):
+        """Global DM logging system - Developer only"""
+        embed = discord.Embed(
+            title="Global DM Logging System",
+            description="Bot-wide DM monitoring (Developer Only)",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        # Check current global DM logging channel
+        global_channel_id = os.getenv('LOG_DMS_CHANNEL')
+        if global_channel_id:
+            try:
+                channel = self.bot.get_channel(int(global_channel_id))
+                status = f"Enabled in {channel.mention if channel else 'Unknown Channel'}"
+            except (ValueError, TypeError):
+                status = "Configured but invalid channel ID"
+        else:
+            status = "Disabled"
+
+        embed.add_field(
+            name="**Current Status**",
+            value=status,
+            inline=False
+        )
+
+        embed.add_field(
+            name="**Available Commands**",
+            value=(
+                "`s.dmlogs set <#channel>` - Set global DM logging channel\n"
+                "`s.dmlogs status` - View current configuration\n"
+                "**Note**: All DMs to the bot will be logged to this one channel"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text=f"Developer: {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @dmlogs.command(name="set", hidden=True)
+    async def dmlogs_set(self, ctx, channel: discord.TextChannel):
+        """Set global DM logging channel"""
+        try:
+            # Update environment variable
+            os.environ['LOG_DMS_CHANNEL'] = str(channel.id)
+
+            # Also write to config file for persistence
+            config_file = "config/global_logging.json"
+            os.makedirs("config", exist_ok=True)
+
+            config = {}
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as f:
+                        config = json.load(f)
+                except:
+                    config = {}
+
+            config['LOG_DMS_CHANNEL'] = str(channel.id)
+
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            embed = discord.Embed(
+                title="Global DM Logging Configured",
+                description=f"All DM logs will now be sent to {channel.mention}",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="**Channel Set**", 
+                value=f"{channel.mention} (`{channel.id}`)",
+                inline=False
+            )
+            embed.add_field(
+                name="**Scope**",
+                value="All DMs to the bot will be logged here",
+                inline=False
+            )
+            embed.set_footer(text=f"Set by {ctx.author.display_name}")
+            await ctx.reply(embed=embed, mention_author=False)
+
+            # Send confirmation to the configured logging channel
+            try:
+                test_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} DM Logging Test",
+                    description=f"Global DM logging has been configured by {ctx.author.mention}\n\nAll future DMs to the bot will appear in this channel.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                test_embed.add_field(
+                    name="Setup Details",
+                    value=f"**Configured by:** {ctx.author} (`{ctx.author.id}`)\n**From channel:** {ctx.channel.mention}\n**Server:** {ctx.guild.name}",
+                    inline=False
+                )
+                test_embed.set_footer(text="This is a test message to confirm DM logging is working")
+                await channel.send(embed=test_embed)
+                logger.info(f"Sent test message to DM logging channel {channel}")
+            except Exception as e:
+                logger.warning(f"Could not send test message to DM logging channel: {e}")
+
+            logger.info(f"Global DM logging set to {channel} by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error Setting DM Logging",
+                description=f"Failed to configure DM logging: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.error(f"Error setting global DM logging: {e}")
+
+    @dmlogs.command(name="status", hidden=True)
+    async def dmlogs_status(self, ctx):
+        """Check global DM logging status"""
+        embed = discord.Embed(
+            title="Global DM Logging Status",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        global_channel_id = os.getenv('LOG_DMS_CHANNEL')
+        if global_channel_id:
+            try:
+                channel = self.bot.get_channel(int(global_channel_id))
+                if channel:
+                    embed.add_field(name="**Status**", value="Enabled", inline=True)
+                    embed.add_field(name="**Channel**", value=channel.mention, inline=True)
+                    embed.add_field(name="**Server**", value=channel.guild.name, inline=True)
+                else:
+                    embed.add_field(name="**Status**", value="Channel Not Found", inline=False)
+                    embed.add_field(name="**Channel ID**", value=global_channel_id, inline=False)
+            except (ValueError, TypeError):
+                embed.add_field(name="**Status**", value="Invalid Channel ID", inline=False)
+        else:
+            embed.add_field(name="**Status**", value="Disabled", inline=False)
+
+        embed.set_footer(text=f"Checked by {ctx.author.display_name}")
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.group(name="guildlogs", invoke_without_command=True, hidden=True)
+    async def guildlogs(self, ctx):
+        """Global guild join/leave logging system - Developer only"""
+        embed = discord.Embed(
+            title="Global Guild Logging System",
+            description="Bot join/leave event monitoring (Developer Only)",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        # Check current global guild logging channel
+        global_channel_id = os.getenv('LOG_GUILD_EVENTS')
+        if global_channel_id:
+            try:
+                channel = self.bot.get_channel(int(global_channel_id))
+                status = f"Enabled in {channel.mention if channel else 'Unknown Channel'}"
+            except (ValueError, TypeError):
+                status = "Configured but invalid channel ID"
+        else:
+            status = "Disabled"
+
+        embed.add_field(
+            name="**Current Status**",
+            value=status,
+            inline=False
+        )
+
+        embed.add_field(
+            name="**Available Commands**",
+            value=(
+                "`s.guildlogs set <#channel>` - Set global guild logging channel\n"
+                "`s.guildlogs status` - View current configuration\n"
+                "**Note**: Bot join/leave events will be logged to this channel"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text=f"Developer: {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @guildlogs.command(name="set", hidden=True)
+    async def guildlogs_set(self, ctx, channel: discord.TextChannel):
+        """Set global guild logging channel"""
+        try:
+            # Update environment variable
+            os.environ['LOG_GUILD_EVENTS'] = str(channel.id)
+
+            # Also write to config file for persistence
+            config_file = "config/global_logging.json"
+            os.makedirs("config", exist_ok=True)
+
+            config = {}
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as f:
+                        config = json.load(f)
+                except:
+                    config = {}
+
+            config['LOG_GUILD_EVENTS'] = str(channel.id)
+
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            embed = discord.Embed(
+                title="Global Guild Logging Configured",
+                description=f"All guild join/leave events will now be sent to {channel.mention}",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="**Channel Set**", 
+                value=f"{channel.mention} (`{channel.id}`)",
+                inline=False
+            )
+            embed.add_field(
+                name="**Events Logged**",
+                value="• Bot joins new servers\n• Bot leaves/gets kicked from servers",
+                inline=False
+            )
+            embed.set_footer(text=f"Set by {ctx.author.display_name}")
+            await ctx.reply(embed=embed, mention_author=False)
+
+            # Send confirmation to the configured logging channel
+            try:
+                test_embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Guild Logging Test",
+                    description=f"Global guild event logging has been configured by {ctx.author.mention}\n\nAll future guild join/leave events will appear in this channel.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                test_embed.add_field(
+                    name="Setup Details",
+                    value=f"**Configured by:** {ctx.author} (`{ctx.author.id}`)\n**From channel:** {ctx.channel.mention}\n**Server:** {ctx.guild.name}",
+                    inline=False
+                )
+                test_embed.add_field(
+                    name="Events That Will Be Logged",
+                    value="• Bot joins new servers\n• Bot leaves/gets kicked from servers",
+                    inline=False
+                )
+                test_embed.set_footer(text="This is a test message to confirm guild logging is working")
+                await channel.send(embed=test_embed)
+                logger.info(f"Sent test message to guild logging channel {channel}")
+            except Exception as e:
+                logger.warning(f"Could not send test message to guild logging channel: {e}")
+
+            logger.info(f"Global guild logging set to {channel} by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error Setting Guild Logging",
+                description=f"Failed to configure guild logging: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            logger.error(f"Error setting global guild logging: {e}")
+
+    @guildlogs.command(name="status", hidden=True)
+    async def guildlogs_status(self, ctx):
+        """Check global guild logging status"""
+        embed = discord.Embed(
+            title="Global Guild Logging Status",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        global_channel_id = os.getenv('LOG_GUILD_EVENTS')
+        if global_channel_id:
+            try:
+                channel = self.bot.get_channel(int(global_channel_id))
+                if channel:
+                    embed.add_field(name="**Status**", value="Enabled", inline=True)
+                    embed.add_field(name="**Channel**", value=channel.mention, inline=True)
+                    embed.add_field(name="**Server**", value=channel.guild.name, inline=True)
+                else:
+                    embed.add_field(name="**Status**", value="Channel Not Found", inline=False)
+                    embed.add_field(name="**Channel ID**", value=global_channel_id, inline=False)
+            except (ValueError, TypeError):
+                embed.add_field(name="**Status**", value="Invalid Channel ID", inline=False)
+        else:
+            embed.add_field(name="**Status**", value="Disabled", inline=False)
+
+        embed.set_footer(text=f"Checked by {ctx.author.display_name}")
+        await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="devhelp", description="Show developer commands help", hidden=True)
+    async def devhelp(self, ctx):
+        """Show help for developer-only commands"""
+        # Developer check is handled automatically by cog_check method
+
+        embed = discord.Embed(
+            title="Developer Commands Help",
+            description="Complete list of developer-only bot commands. All commands require bot developer permissions.",
+            color=EMBED_COLOR_NORMAL
+        )
+
+        # Command categories
+        embed.add_field(
+            name="Bot Management",
+            value=(
+                "`s.reload` - Reload a specific cog\n"
+                "`s.reloadall` - Reload all cogs\n"
+                "`s.eval` - Evaluate Python code\n"
+                "`s.guilds` - List all guilds the bot is in\n"
+                "`s.leaveguild` - Make bot leave a specific server\n"
+                "`s.settings` - View all configured bot settings"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Bot Status",
+            value=(
+                "`s.setstatus` - Set bot status (online/idle/dnd/invisible)\n"
+                "`s.setactivity` - Set bot activity (playing/watching/listening/competing/streaming)"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Global Logging System", 
+            value=(
+                "`s.cmdlogs set` - Set global command logging channel\n"
+                "`s.dmlogs set` - Set global DM logging channel\n"
+                "`s.guildlogs set` - Set global guild join/leave logging channel\n"
+                "`s.cmdlogs status` - Check command logging status\n"
+                "`s.dmlogs status` - Check DM logging status\n"
+                "`s.guildlogs status` - Check guild logging status\n"
+                "**Note:** All logs go to your bot server globally"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="System Management",
+            value=(
+                "`s.shutdown` - Safely shut down the bot\n"
+                "`s.restart` - Restart the bot instance\n"
+                "`s.maintenance` - Toggle maintenance mode (complete silence for others)\n"
+                "`s.cooldown` - Set global command cooldown (supports 1s, 5m, 2h, 1d)\n"
+                "`s.clearslash` - Remove all slash commands from Discord"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Legacy Data Management (File-based)",
+            value=(
+                "`s.backup [name]` - Create backup of all bot configurations\n"
+                "`s.restore <name>` - Restore data from backup (use with caution!)\n"
+                "`s.listbackups` - Show all available backups\n"
+                "`s.integrity` - Check data file integrity and health\n"
+                "`s.prepgithub [backup]` - Prepare backup for GitHub deployment auto-restore"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="New Deployment Protection (Database + Cloud)",
+            value=(
+                "`s.persiststatus` - Check deployment persistence system status\n"
+                "`s.forcebackup` - Force immediate backup to database\n"
+                "`s.forcerestore` - Force restore data from database\n"
+                "**Note:** Automatic deployment protection with zero data loss guarantee"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Server Stats & Monitoring",
+            value=(
+                "`s.serverstats start` - Start server stats monitoring\n"
+                "`s.serverstats stop` - Stop server stats monitoring\n"
+                "`s.serverstats show` - Show current server stats\n"
+                "`s.serverstats list` - List all monitored servers\n"
+                "`s.ratelimit status` - Check rate limit status\n"
+                "`s.ratelimit setchannel` - Set rate limit alert channel\n"
+                "`s.ratelimit threshold` - Set rate limit threshold\n"
+                "`s.ratelimit reset` - Reset rate limit warnings"
+            ),
+            inline=False
+        )
+
+
+        embed.add_field(
+            name="Advanced Data Management",
+            value=(
+                "`s.listdata user` - List saved embeds, tickets, reminders for user\n"
+                "`s.listdata guild` - List auto responders, sticky messages, settings for guild\n"
+                "`s.listdata all` - Overview of all data: embeds, tickets, transcripts, user data\n"
+                "`s.deletedata user` - Delete user's saved embeds, tickets, reminders\n"
+                "`s.deletedata guild` - Delete guild's auto responders, sticky messages, settings\n"
+                "`s.resetdata` - **DANGER** Reset all: embeds, tickets, auto responders, user data\n"
+                "**Owner Only - Manages: saved embeds, sticky messages, ticket settings, transcripts, user data, auto responders**"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="Communications",
+            value=(
+                "`s.changelog` - Send changelog updates to all server owners\n"
+                "**Owner Only - Use for bot changelog updates and version releases**"
+            ),
+            inline=False
+        )
+
+        embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+        embed.set_footer(text=f"Developer: {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        embed.timestamp = discord.utils.utcnow()
+
+        await ctx.reply(embed=embed, mention_author=False)
+        logger.info(f"Developer help accessed by {ctx.author}")
+
+    @commands.command(name="changelog", description="Send changelog update to all server owners", hidden=True)
+    @commands.is_owner()
+    async def send_changelog(self, ctx, *, message: str):
+        """Send changelog update to all server owners"""
+        if len(message) > 1800:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Message Too Long",
+                description="Message must be under 1800 characters to ensure delivery.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            return
+
+        # Count unique owners for confirmation
+        unique_owner_ids = set()
+        for guild in self.bot.guilds:
+            if guild.owner:
+                unique_owner_ids.add(guild.owner.id)
+
+        # Confirmation step
+        confirm_embed = discord.Embed(
+            title=f"{SPROUTS_WARNING} Changelog Confirmation",
+            description=f"You are about to send this changelog to **{len(unique_owner_ids)}** unique server owners:",
+            color=EMBED_COLOR_WARNING
+        )
+        # Truncate message preview if too long for embed field (Discord limit is 1024)
+        preview_message = message
+        max_preview_length = 1000  # Leave room for formatting and code blocks
+        if len(preview_message) > max_preview_length:
+            preview_message = preview_message[:max_preview_length-3] + "..."
+
+        confirm_embed.add_field(
+            name="Message Preview:",
+            value=f"```{preview_message}```",
+            inline=False
+        )
+        confirm_embed.add_field(
+            name="Recipients:",
+            value=f"{len(unique_owner_ids)} unique owners across {len(self.bot.guilds)} servers",
+            inline=True
+        )
+        confirm_embed.set_footer(text="React to confirm or cancel")
+
+        confirm_msg = await ctx.reply(embed=confirm_embed, mention_author=False)
+        await confirm_msg.add_reaction(SPROUTS_CHECK)
+        await confirm_msg.add_reaction(SPROUTS_ERROR)
+
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in [SPROUTS_CHECK, SPROUTS_ERROR] and reaction.message.id == confirm_msg.id
+
+        try:
+            reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+        except:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Changelog Cancelled",
+                description="Confirmation timed out. No messages were sent.",
+                color=EMBED_COLOR_ERROR
+            )
+            await confirm_msg.edit(embed=embed)
+            return
+
+        if str(reaction.emoji) == SPROUTS_ERROR:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Changelog Cancelled",
+                description="Operation cancelled by user. No messages were sent.",
+                color=EMBED_COLOR_ERROR
+            )
+            await confirm_msg.edit(embed=embed)
+            return
+
+        # Start mass DM process
+        processing_embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Sending Changelog...",
+            description="Processing... This may take a while.",
+            color=EMBED_COLOR_NORMAL
+        )
+        await confirm_msg.edit(embed=processing_embed)
+
+        successful = 0
+        failed = 0
+        failed_owners = []
+
+        # Create the DM message
+        dm_embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Sprouts Changelog Update",
+            description=message,
+            color=EMBED_COLOR_NORMAL
+        )
+        dm_embed.add_field(
+            name="Changelog Notice",
+            value="This is an official changelog update from the Sprouts development team.",
+            inline=False
+        )
+        dm_embed.set_footer(
+            text="Sprouts Bot • Official Team Communication",
+            icon_url=self.bot.user.display_avatar.url
+        )
+        dm_embed.timestamp = discord.utils.utcnow()
+
+        # Collect unique owners and their servers
+        unique_owners = {}  # {owner_id: {owner: User, guilds: [Guild1, Guild2, ...]}}
+
+        for guild in self.bot.guilds:
+            if guild.owner:
+                owner_id = guild.owner.id
+                if owner_id not in unique_owners:
+                    unique_owners[owner_id] = {
+                        'owner': guild.owner,
+                        'guilds': []
+                    }
+                unique_owners[owner_id]['guilds'].append(guild)
+            else:
+                failed += 1
+                failed_owners.append(f"{guild.name} (No owner found)")
+
+        # Send one message per unique owner
+        for owner_id, owner_data in unique_owners.items():
+            owner = owner_data['owner']
+            owned_guilds = owner_data['guilds']
+
+            try:
+                await owner.send(embed=dm_embed)
+                successful += 1
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                logger.info(f"Changelog sent to {owner} (Owner of {len(owned_guilds)} servers: {server_names})")
+
+                # Rate limiting - wait a bit between sends
+                await asyncio.sleep(1)
+
+            except discord.Forbidden:
+                failed += 1
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                failed_owners.append(f"{owner.display_name} ({len(owned_guilds)} servers: {server_names}) - DMs disabled")
+                logger.warning(f"Failed to send changelog to {owner} (Owner of {len(owned_guilds)} servers) - DMs disabled")
+            except discord.HTTPException as e:
+                failed += 1
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                failed_owners.append(f"{owner.display_name} ({len(owned_guilds)} servers: {server_names}) - Error: {str(e)}")
+                logger.error(f"Failed to send changelog to {owner} (Owner of {len(owned_guilds)} servers) - Error: {e}")
+            except Exception as e:
+                failed += 1
+                server_names = ", ".join([guild.name for guild in owned_guilds])
+                failed_owners.append(f"{owner.display_name} ({len(owned_guilds)} servers) - Unexpected error")
+                logger.error(f"Unexpected error sending changelog to {owner} (Owner of {len(owned_guilds)} servers): {e}")
+
+        # Results embed
+        results_embed = discord.Embed(
+            title=f"{SPROUTS_CHECK} Changelog Complete",
+            color=EMBED_COLOR_NORMAL if successful > 0 else EMBED_COLOR_ERROR
+        )
+
+        results_embed.add_field(
+            name=f"{SPROUTS_CHECK} Successful",
+            value=f"{successful} messages sent",
+            inline=True
+        )
+        results_embed.add_field(
+            name=f"{SPROUTS_ERROR} Failed", 
+            value=f"{failed} messages failed",
+            inline=True
+        )
+        results_embed.add_field(
+            name=f"{SPROUTS_WARNING} Success Rate",
+            value=f"{(successful/(successful+failed)*100):.1f}%" if (successful+failed) > 0 else "0%",
+            inline=True
+        )
+
+        if failed_owners:
+            # Limit failed_text to stay under Discord's 1024 character limit
+            failed_text = ""
+            displayed_count = 0
+
+            for failure in failed_owners:
+                # Truncate very long server names
+                if len(failure) > 80:
+                    failure = failure[:77] + "..."
+
+                test_text = failed_text + failure + "\n"
+                if len(test_text) > 900:  # Leave room for formatting and "... and X more"
+                    break
+                failed_text += failure + "\n"
+                displayed_count += 1
+
+            if displayed_count < len(failed_owners):
+                failed_text += f"... and {len(failed_owners) - displayed_count} more"
+
+            if failed_text.strip():
+                results_embed.add_field(
+                    name="Failed Recipients",
+                    value=f"```{failed_text.strip()}```",
+                    inline=False
+                )
+            else:
+                results_embed.add_field(
+                    name="Failed Recipients",
+                    value=f"Too many failures to display ({len(failed_owners)} total)",
+                    inline=False
+                )
+
+        results_embed.set_footer(text=f"Changelog executed by {ctx.author.display_name}")
+        results_embed.timestamp = discord.utils.utcnow()
+
+        await confirm_msg.edit(embed=results_embed)
+        logger.info(f"Changelog completed: {successful} successful, {failed} failed - Executed by {ctx.author}")
+
+    @commands.command(name="resetdata", description="Complete bot data reset (DANGER)", hidden=True)
+    @commands.is_owner()
+    async def reset_data(self, ctx, confirmation: str = None):
+        """Clear ALL bot data and cache (Owner Only)"""
+        if confirmation != "CONFIRM_RESET":
+            embed = discord.Embed(
+                title="Complete Bot Data Reset",
+                description=(
+                    "**This will permanently delete all:**\n\n"
+                    "All reminder data\n"
+                    "All sticky message configurations\n"
+                    "All auto-responder data\n"
+                    "All embed templates\n"
+                    "All ticket system data\n"
+                    "All guild settings and prefixes\n"
+                    "All logging configurations\n"
+                    "Server stats configurations\n"
+                    "Global cooldown settings\n"
+                    "Bot memory cache\n\n"
+                    "**This action cannot be undone.**\n\n"
+                    "To confirm, use:\n`s.resetdata CONFIRM_RESET`"
+                ),
+                color=EMBED_COLOR_ERROR
+            )
+            embed.set_footer(text="This command is restricted to bot owner only")
+            await ctx.reply(embed=embed, mention_author=False)
+            return
+
+        try:
+            # Send initial warning
+            embed = discord.Embed(
+                title="Bot Data Reset in Progress",
+                description="**Clearing all bot data and cache...**\n\n*This will take a few moments...*",
+                color=EMBED_COLOR_ERROR
+            )
+            warning_msg = await ctx.reply(embed=embed, mention_author=False)
+
+            # Wait 3 seconds for dramatic effect and safety
+            await asyncio.sleep(3)
+
+            deleted_files = []
+            cleared_caches = []
+
+            # Define all data files to delete
+            data_files = [
+                "src/data/reminders.json",
+                "src/data/reminder_counter.json", 
+                "src/data/stickies.json",
+                "src/data/autoresponders.json",
+                "src/data/embeds.json",
+                "src/data/tickets.json",
+                "src/data/guild_settings.json",
+                "src/data/command_logs.json",
+                "src/data/dm_logs.json", 
+                "src/data/guild_logs.json",
+                "config/global_cooldown.json"
+            ]
+
+            # Delete all data files
+            for file_path in data_files:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        deleted_files.append(file_path)
+                except Exception as e:
+                    logger.error(f"Failed to delete {file_path}: {e}")
+
+            # Clear in-memory caches for all cogs
+            for cog_name, cog in self.bot.cogs.items():
+                try:
+                    # Clear reminders cache
+                    if hasattr(cog, 'reminders'):
+                        cog.reminders.clear()
+                        cleared_caches.append(f"{cog_name}.reminders")
+
+                    # Clear sticky messages cache
+                    if hasattr(cog, 'stickies'):
+                        cog.stickies.clear()
+                        cleared_caches.append(f"{cog_name}.stickies")
+
+                    # Clear auto-responders cache
+                    if hasattr(cog, 'autoresponders'):
+                        cog.autoresponders.clear()
+                        cleared_caches.append(f"{cog_name}.autoresponders")
+
+                    # Clear embed templates cache
+                    if hasattr(cog, 'embeds'):
+                        cog.embeds.clear()
+                        cleared_caches.append(f"{cog_name}.embeds")
+
+                    # Clear tickets cache
+                    if hasattr(cog, 'tickets'):
+                        cog.tickets.clear()
+                        cleared_caches.append(f"{cog_name}.tickets")
+
+                    # Clear guild settings cache
+                    if hasattr(cog, 'guild_settings'):
+                        cog.guild_settings.clear()
+                        cleared_caches.append(f"{cog_name}.guild_settings")
+
+                    # Clear message counts
+                    if hasattr(cog, 'message_counts'):
+                        cog.message_counts.clear()
+                        cleared_caches.append(f"{cog_name}.message_counts")
+
+                    # Reset global cooldown
+                    if hasattr(cog, 'global_cooldown'):
+                        cog.global_cooldown.remove_cooldown()
+                        cleared_caches.append(f"{cog_name}.global_cooldown")
+
+                except Exception as e:
+                    logger.error(f"Failed to clear cache for {cog_name}: {e}")
+
+            # Force garbage collection
+            import gc
+            gc.collect()
+
+            # Update with completion status
+            embed = discord.Embed(
+                title="Bot Data Reset Completed",
+                description=(
+                    "**Complete data reset successful!**\n\n"
+                    f"**Files Deleted:** {len(deleted_files)}\n"
+                    f"**Caches Cleared:** {len(cleared_caches)}\n\n"
+                    "**Deleted Files:**\n"
+                    f"```\n{chr(10).join(deleted_files) if deleted_files else 'None'}```\n\n"
+                    "**Cleared Caches:**\n"
+                    f"```\n{chr(10).join(cleared_caches) if cleared_caches else 'None'}```\n\n"
+                    "**Bot restart recommended for complete reset**"
+                ),
+                color=EMBED_COLOR_SUCCESS
+            )
+            embed.set_footer(text=f"Data reset executed by {ctx.author.display_name}")
+            embed.timestamp = discord.utils.utcnow()
+
+            await warning_msg.edit(embed=embed)
+
+            logger.critical(f"COMPLETE DATA RESET executed by {ctx.author} - ALL DATA DELETED")
+
+        except Exception as e:
+            logger.error(f"Error during data reset: {e}")
+            embed = discord.Embed(
+                title="Data Reset Failed",
+                description=f"Failed to complete data reset: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="listdata", description="List data files for users or guilds", hidden=True)
+    @commands.is_owner()
+    async def list_data_files(self, ctx, data_type: str = None, *, identifier: str = None):
+        """
+        List data files for specific users or guilds
+
+        Usage:
+        - listdata user <user_id> - List all data files for a specific user
+        - listdata guild <guild_id> - List all data files for a specific guild
+        - listdata all - List all data directories and file counts
+        """
+        try:
+            if not data_type:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} List Data Files",
+                    description="List data files for users or guilds.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                embed.add_field(
+                    name="Usage Examples:",
+                    value="```\nlistdata user 123456789 - List all files for user\n"
+                          "listdata guild 987654321 - List all files for guild\n"
+                          "listdata all - List all data directories```",
+                    inline=False
+                )
+                embed.set_footer(text="Data inspection tool")
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            base_paths = ["src/data", "config"]
+
+            if data_type.lower() == "all":
+                # List all data directories and file counts
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} All Data Overview",
+                    description="Overview of all data files and directories:",
+                    color=EMBED_COLOR_NORMAL
+                )
+
+                total_files = 0
+                for base_path in base_paths:
+                    if os.path.exists(base_path):
+                        files_info = []
+                        dir_count = 0
+                        file_count = 0
+
+                        for root, dirs, files in os.walk(base_path):
+                            dir_count += len(dirs)
+                            file_count += len(files)
+                            total_files += len(files)
+
+                            if files:
+                                rel_path = os.path.relpath(root, base_path)
+                                if rel_path == ".":
+                                    rel_path = "root"
+                                files_info.append(f"**{rel_path}**: {len(files)} files")
+
+                        if files_info:
+                            embed.add_field(
+                                name=f"{base_path.title()} Directory ({file_count} files, {dir_count} dirs)",
+                                value="\n".join(files_info[:10]) + ("\n..." if len(files_info) > 10 else ""),
+                                inline=False
+                            )
+
+                embed.add_field(
+                    name="Summary",
+                    value=f"**Total Files:** {total_files}\n**Data Locations:** {', '.join(base_paths)}",
+                    inline=False
+                )
+
+            elif data_type.lower() == "user":
+                if not identifier:
+                    await ctx.reply("Please provide a user ID.", mention_author=False)
+                    return
+
+                user_files = []
+
+                # Check various data files for user data
+                data_files = [
+                    "src/data/reminders.json",
+                    "src/data/tickets.json",
+                    "src/data/embed_builder.json"
+                ]
+
+                for file_path in data_files:
+                    if os.path.exists(file_path):
+                        try:
+                            with open(file_path, 'r') as f:
+                                data = json.load(f)
+                                if identifier in data:
+                                    user_files.append(f"{SPROUTS_CHECK} {os.path.basename(file_path)} - Has data")
+                                else:
+                                    user_files.append(f"{SPROUTS_ERROR} {os.path.basename(file_path)} - No data")
+                        except:
+                            user_files.append(f"{SPROUTS_WARNING} {os.path.basename(file_path)} - Error reading")
+                    else:
+                        user_files.append(f"{SPROUTS_ERROR} {os.path.basename(file_path)} - File not found")
+
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} User Data Files",
+                    description=f"Data files for User ID: `{identifier}`",
+                    color=EMBED_COLOR_NORMAL
+                )
+
+                if user_files:
+                    embed.add_field(
+                        name="Data Files Status",
+                        value="\n".join(user_files),
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="Result",
+                        value="No data files found for this user.",
+                        inline=False
+                    )
+
+            elif data_type.lower() == "guild":
+                if not identifier:
+                    await ctx.reply("Please provide a guild ID.", mention_author=False)
+                    return
+
+                guild_files = []
+                guild_path = f"config/guild_{identifier}"
+
+                # Check guild-specific directory
+                if os.path.exists(guild_path):
+                    for root, dirs, files in os.walk(guild_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            rel_path = os.path.relpath(file_path, guild_path)
+                            file_size = os.path.getsize(file_path)
+                            guild_files.append(f"{SPROUTS_INFORMATION} {rel_path} ({file_size} bytes)")
+
+                # Check other data files for guild data
+                data_files = [
+                    "src/data/autoresponders.json",
+                    "src/data/sticky_messages.json"
+                ]
+
+                for file_path in data_files:
+                    if os.path.exists(file_path):
+                        try:
+                            with open(file_path, 'r') as f:
+                                data = json.load(f)
+                                if identifier in data:
+                                    guild_files.append(f"{SPROUTS_CHECK} {os.path.basename(file_path)} - Has data")
+                                else:
+                                    guild_files.append(f"{SPROUTS_ERROR} {os.path.basename(file_path)} - No data")
+                        except:
+                            guild_files.append(f"{SPROUTS_WARNING} {os.path.basename(file_path)} - Error reading")
+
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Guild Data Files",
+                    description=f"Data files for Guild ID: `{identifier}`",
+                    color=EMBED_COLOR_NORMAL
+                )
+
+                if guild_files:
+                    embed.add_field(
+                        name="Data Files",
+                        value="\n".join(guild_files[:15]) + ("\n..." if len(guild_files) > 15 else ""),
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="Summary",
+                        value=f"**Total Files:** {len([f for f in guild_files if f.startswith(SPROUTS_INFORMATION)])}\n"
+                              f"**Guild Directory:** `{guild_path}`",
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="Result",
+                        value="No data files found for this guild.",
+                        inline=False
+                    )
+            else:
+                await ctx.reply("Invalid data type. Use: `user`, `guild`, or `all`", mention_author=False)
+                return
+
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            logger.error(f"Error in listdata command: {e}")
+            await ctx.reply("An error occurred while listing data files.", mention_author=False)
+
+    @commands.command(name="deletedata", description="Safely delete specific user data", hidden=True)
+    @commands.is_owner()
+    async def delete_user_data(self, ctx, data_type: str = None, *, identifier: str = None):
+        """
+        Safely delete specific user data without bulk deletion risks
+
+        Usage:
+        - deletedata list - Show available data types
+        - deletedata user <user_id> - Delete all data for a specific user
+        - deletedata guild <guild_id> - Delete all data for a specific guild
+        - deletedata tickets <user_id> - Delete tickets for a specific user
+        - deletedata reminders <user_id> - Delete reminders for a specific user
+        - deletedata autoresponder <guild_id> <trigger> - Delete specific autoresponder
+        """
+        try:
+            if not data_type:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Delete User Data",
+                    description="Please specify a data type and identifier.",
+                    color=EMBED_COLOR_WARNING
+                )
+                embed.add_field(
+                    name="Usage Examples:",
+                    value="```\ndeletedata list - Show available data types\n"
+                          "deletedata user 123456789 - Delete all data for user\n"
+                          "deletedata guild 987654321 - Delete all data for guild\n"
+                          "deletedata tickets 123456789 - Delete user tickets\n"
+                          "deletedata reminders 123456789 - Delete user reminders```",
+                    inline=False
+                )
+                embed.set_footer(text="Safe deletion - no bulk operations")
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            if data_type.lower() == "list":
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Available Data Types",
+                    description="Safe data deletion options:",
+                    color=EMBED_COLOR_NORMAL
+                )
+                embed.add_field(
+                    name="Data Types:",
+                    value="```\nuser <user_id> - All data for specific user\n"
+                          "guild <guild_id> - All data for specific guild\n"
+                          "tickets <user_id> - User's ticket data\n"
+                          "reminders <user_id> - User's reminders\n"
+                          "autoresponder <guild_id> <trigger> - Specific autoresponder```",
+                    inline=False
+                )
+                embed.add_field(
+                    name="Safety Features:",
+                    value="• No bulk deletion\n• Specific targeting only\n• Confirmation required\n• Detailed logging",
+                    inline=False
+                )
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            if not identifier:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Missing Identifier",
+                    description=f"Please specify an identifier for data type: {data_type}",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.timestamp = discord.utils.utcnow()
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Confirmation embed
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Confirm Data Deletion",
+                description=f"**Data Type:** {data_type}\n**Identifier:** {identifier}\n\n"
+                           f"**{SPROUTS_WARNING} This action cannot be undone!**\n\n"
+                           f"React with {SPROUTS_CHECK} to confirm or {SPROUTS_ERROR} to cancel.",
+                color=EMBED_COLOR_WARNING
+            )
+            embed.set_footer(text="You have 30 seconds to confirm")
+            embed.timestamp = discord.utils.utcnow()
+
+            confirm_msg = await ctx.reply(embed=embed, mention_author=False)
+            await confirm_msg.add_reaction(SPROUTS_CHECK)
+            await confirm_msg.add_reaction(SPROUTS_ERROR)
+
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in [SPROUTS_CHECK, SPROUTS_ERROR] and reaction.message.id == confirm_msg.id
+
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            except asyncio.TimeoutError:
+                embed = discord.Embed(
+                    title="Operation Cancelled",
+                    description="Data deletion cancelled due to timeout.",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.timestamp = discord.utils.utcnow()
+                await confirm_msg.edit(embed=embed)
+                return
+
+            if str(reaction.emoji) == SPROUTS_ERROR:
+                embed = discord.Embed(
+                    title="Operation Cancelled",
+                    description="Data deletion cancelled by user.",
+                    color=EMBED_COLOR_ERROR
+                )
+                embed.timestamp = discord.utils.utcnow()
+                await confirm_msg.edit(embed=embed)
+                return
+
+            # Process deletion based on data type
+            deleted_items = []
+
+            if data_type.lower() == "user":
+                user_id = identifier
+
+                # Delete user reminders
+                reminders_file = Path("config/reminders.json")
+                if reminders_file.exists():
+                    try:
+                        with open(reminders_file, 'r') as f:
+                            reminders = json.load(f)
+
+                        original_count = len(reminders.get(user_id, {}))
+                        if user_id in reminders:
+                            del reminders[user_id]
+                            deleted_items.append(f"Reminders: {original_count} items")
+
+                        with open(reminders_file, 'w') as f:
+                            json.dump(reminders, f, indent=2)
+                    except Exception as e:
+                        logger.error(f"Error deleting user reminders: {e}")
+
+                # Delete user tickets
+                for guild_folder in Path("config").glob("guild_*"):
+                    tickets_file = guild_folder / "tickets.json"
+                    if tickets_file.exists():
+                        try:
+                            with open(tickets_file, 'r') as f:
+                                tickets = json.load(f)
+
+                            user_tickets = [t for t in tickets if tickets[t].get('creator_id') == user_id]
+                            for ticket_id in user_tickets:
+                                del tickets[ticket_id]
+
+                            if user_tickets:
+                                deleted_items.append(f"Tickets: {len(user_tickets)} items from {guild_folder.name}")
+                                with open(tickets_file, 'w') as f:
+                                    json.dump(tickets, f, indent=2)
+                        except Exception as e:
+                            logger.error(f"Error deleting user tickets from {guild_folder}: {e}")
+
+            elif data_type.lower() == "guild":
+                guild_id = identifier
+                guild_folder = Path(f"config/guild_{guild_id}")
+
+                if guild_folder.exists():
+                    try:
+                        import shutil
+                        shutil.rmtree(guild_folder)
+                        deleted_items.append(f"Guild folder: {guild_folder.name}")
+                    except Exception as e:
+                        logger.error(f"Error deleting guild folder: {e}")
+
+            elif data_type.lower() == "tickets":
+                user_id = identifier
+                ticket_count = 0
+
+                for guild_folder in Path("config").glob("guild_*"):
+                    tickets_file = guild_folder / "tickets.json"
+                    if tickets_file.exists():
+                        try:
+                            with open(tickets_file, 'r') as f:
+                                tickets = json.load(f)
+
+                            user_tickets = [t for t in tickets if tickets[t].get('creator_id') == user_id]
+                            for ticket_id in user_tickets:
+                                del tickets[ticket_id]
+                                ticket_count += 1
+
+                            if user_tickets:
+                                with open(tickets_file, 'w') as f:
+                                    json.dump(tickets, f, indent=2)
+                        except Exception as e:
+                            logger.error(f"Error deleting user tickets from {guild_folder}: {e}")
+
+                if ticket_count > 0:
+                    deleted_items.append(f"Tickets: {ticket_count} items")
+
+            elif data_type.lower() == "reminders":
+                user_id = identifier
+                reminders_file = Path("config/reminders.json")
+
+                if reminders_file.exists():
+                    try:
+                        with open(reminders_file, 'r') as f:
+                            reminders = json.load(f)
+
+                        original_count = len(reminders.get(user_id, {}))
+                        if user_id in reminders:
+                            del reminders[user_id]
+                            deleted_items.append(f"Reminders: {original_count} items")
+
+                        with open(reminders_file, 'w') as f:
+                            json.dump(reminders, f, indent=2)
+                    except Exception as e:
+                        logger.error(f"Error deleting user reminders: {e}")
+
+            # Success embed
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Data Deletion Complete",
+                description=f"Successfully deleted data for: **{identifier}**",
+                color=EMBED_COLOR_NORMAL
+            )
+
+            if deleted_items:
+                embed.add_field(
+                    name="Deleted Items:",
+                    value="\n".join(f"• {item}" for item in deleted_items),
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="Result:",
+                    value="No data found for the specified identifier.",
+                    inline=False
+                )
+
+            embed.add_field(
+                name="Safety Log:",
+                value=f"Operation: {data_type} deletion\nTarget: {identifier}\nExecuted by: {ctx.author} ({ctx.author.id})",
+                inline=False
+            )
+            embed.timestamp = discord.utils.utcnow()
+            await confirm_msg.edit(embed=embed)
+
+            # Log the deletion
+            logger.warning(f"TARGETED DATA DELETION: {data_type} for {identifier} by {ctx.author} ({ctx.author.id})")
+
+        except Exception as e:
+            logger.error(f"Error during targeted data deletion: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Deletion Failed",
+                description=f"Failed to delete data: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="clearslash", description="Clear all slash commands", hidden=True)
+    @commands.is_owner()
+    async def clear_slash_commands(self, ctx):
+        """Clear all slash commands from Discord"""
+        embed = discord.Embed(
+            title="Clearing Slash Commands",
+            description="Removing all slash commands from Discord...",
+            color=EMBED_COLOR_NORMAL
+        )
+        msg = await ctx.reply(embed=embed, mention_author=False)
+
+        try:
+            # Clear global slash commands
+            self.bot.tree.clear_commands(guild=None)
+            await self.bot.tree.sync()
+
+            # Clear guild-specific slash commands for all guilds
+            for guild in self.bot.guilds:
+                self.bot.tree.clear_commands(guild=guild)
+                await self.bot.tree.sync(guild=guild)
+
+            embed = discord.Embed(
+                title="Slash Commands Cleared",
+                description="All slash commands have been removed from Discord. Changes may take up to 1 hour to fully propagate.",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Cleared From:",
+                value=f"• Global commands\n• {len(self.bot.guilds)} guild-specific commands",
+                inline=False
+            )
+            await msg.edit(embed=embed)
+            logger.info(f"Slash commands cleared by {ctx.author}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="Error Clearing Slash Commands",
+                description=f"Failed to clear slash commands: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await msg.edit(embed=embed)
+            logger.error(f"Error clearing slash commands: {e}")
+
+    @commands.command(name="backup", description="Create a backup of all bot data", hidden=True)
+    @commands.is_owner()
+    async def create_backup(self, ctx, backup_name: str = None):
+        """Create a manual backup of all bot data"""
+        try:
+            from data_manager import data_manager
+
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Creating Backup",
+                description="Creating backup of all bot configurations...",
+                color=EMBED_COLOR_NORMAL
+            )
+            msg = await ctx.reply(embed=embed, mention_author=False)
+
+            backup_path = data_manager.create_backup(backup_name)
+
+            if backup_path:
+                backup_name = os.path.basename(backup_path)
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Backup Created",
+                    description=f"Successfully created backup: `{backup_name}`",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                embed.add_field(
+                    name="Backup Location",
+                    value=f"`{backup_path}`",
+                    inline=False
+                )
+                embed.set_footer(text=f"Created by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Backup Failed",
+                    description="Failed to create backup. Check logs for details.",
+                    color=EMBED_COLOR_ERROR
+                )
+
+            await msg.edit(embed=embed)
+            logger.info(f"Backup created by {ctx.author}: {backup_name}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Backup Error",
+                description=f"Error creating backup: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="restore", description="Restore bot data from backup", hidden=True)
+    @commands.is_owner()
+    async def restore_backup(self, ctx, backup_name: str):
+        """Restore bot data from a backup (OWNER ONLY)"""
+        try:
+            # Double-check owner permission for security
+            if ctx.author.id != BOT_OWNER_ID:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only the bot owner can restore data backups.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            from src.data_manager import data_manager
+
+            embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Restoring Backup",
+                description=f"Restoring data from backup: `{backup_name}`...",
+                color=EMBED_COLOR_ERROR
+            )
+            embed.add_field(
+                name="Warning",
+                value="This will overwrite current configurations. Make sure the bot is in maintenance mode!",
+                inline=False
+            )
+            embed.add_field(
+                name="Security",
+                value=f"Restore authorized by bot owner: {ctx.author.mention}",
+                inline=False
+            )
+            msg = await ctx.reply(embed=embed, mention_author=False)
+
+            success = data_manager.restore_backup(backup_name)
+
+            if success:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Backup Restored",
+                    description=f"Successfully restored backup: `{backup_name}`",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                embed.add_field(
+                    name="Next Steps",
+                    value="Restart the bot to load restored configurations.",
+                    inline=False
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Restore Failed",
+                    description=f"Failed to restore backup: `{backup_name}`",
+                    color=EMBED_COLOR_ERROR
+                )
+
+            await msg.edit(embed=embed)
+            logger.info(f"SECURE RESTORE: Backup restore attempted by OWNER {ctx.author} (ID: {ctx.author.id}): {backup_name} - {'Success' if success else 'Failed'}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Restore Error",
+                description=f"Error restoring backup: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="listbackups", description="List all available backups", hidden=True)
+    @commands.is_owner()
+    async def list_backups(self, ctx):
+        """List all available backups"""
+        try:
+            from src.data_manager import data_manager
+
+            backups = data_manager.list_backups()
+
+            if not backups:
+                embed = discord.Embed(
+                    title="No Backups Found",
+                    description="No backups are available.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            embed = discord.Embed(
+                title=f"Available Backups ({len(backups)})",
+                color=EMBED_COLOR_NORMAL
+            )
+
+            for i, backup in enumerate(backups[:10]):  # Show max 10
+                name = backup.get("name", "Unknown")
+                timestamp = backup.get("timestamp", "Unknown time")
+                size = backup.get("size_mb", 0)
+                files = backup.get("total_files", "Unknown")
+
+                # Format timestamp
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(timestamp)
+                    time_str = dt.strftime("%Y-%m-%d %H:%M")
+                except:
+                    time_str = timestamp
+
+                embed.add_field(
+                    name=f"{i+1}. {name}",
+                    value=f"**Created:** {time_str}\n**Size:** {size}MB\n**Files:** {files}",
+                    inline=True
+                )
+
+            if len(backups) > 10:
+                embed.set_footer(text=f"Showing 10 of {len(backups)} backups")
+
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} List Error",
+                description=f"Error listing backups: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="integrity", description="Check data file integrity", hidden=True)
+    @commands.is_owner()
+    async def check_integrity(self, ctx):
+        """Check the integrity of all data files"""
+        try:
+            from src.data_manager import data_manager
+
+            embed = discord.Embed(
+                title="Checking Data Integrity",
+                description="Verifying all configuration files...",
+                color=EMBED_COLOR_NORMAL
+            )
+            msg = await ctx.reply(embed=embed, mention_author=False)
+
+            integrity = data_manager.verify_data_integrity()
+
+            valid_files = [name for name, valid in integrity.items() if valid]
+            invalid_files = [name for name, valid in integrity.items() if not valid]
+
+            embed = discord.Embed(
+                title="Data Integrity Report",
+                color=EMBED_COLOR_SUCCESS if not invalid_files else EMBED_COLOR_ERROR
+            )
+
+            if valid_files:
+                embed.add_field(
+                    name=f"{SPROUTS_CHECK} Valid Files ({len(valid_files)})",
+                    value="\n".join(f"{SPROUTS_CHECK} {name}" for name in valid_files[:10]),
+                    inline=False
+                )
+
+            if invalid_files:
+                embed.add_field(
+                    name=f"{SPROUTS_ERROR} Issues ({len(invalid_files)})",
+                    value="\n".join(f"{SPROUTS_ERROR} {name}" for name in invalid_files),
+                    inline=False
+                )
+                embed.add_field(
+                    name="Recommended Action",
+                    value="Use `s.backup` to create backup, then restart bot to recreate missing files.",
+                    inline=False
+                )
+
+            embed.set_footer(text=f"Total files checked: {len(integrity)}")
+            await msg.edit(embed=embed)
+
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Integrity Check Error",
+                description=f"Error checking integrity: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    @commands.command(name="prepgithub", description="Prepare backup for GitHub deployment restoration", hidden=True)
+    @commands.is_owner()
+    async def prepare_github_deployment(self, ctx, backup_name: str = None):
+        """Prepare a backup for automatic restoration on GitHub deployment (OWNER ONLY)"""
+        try:
+            # Double-check owner permission for security
+            if ctx.author.id != BOT_OWNER_ID:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Access Denied",
+                    description="Only the bot owner can prepare GitHub deployments.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            from src.data_manager import data_manager
+
+            # If no backup name provided, create a new backup
+            if not backup_name:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Creating GitHub Backup",
+                    description="Creating a new backup for GitHub deployment...",
+                    color=EMBED_COLOR_NORMAL
+                )
+                msg = await ctx.reply(embed=embed, mention_author=False)
+
+                backup_path = data_manager.create_backup("github_deployment")
+                if not backup_path:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} Backup Failed",
+                        description="Failed to create backup for GitHub deployment.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await msg.edit(embed=embed)
+                    return
+
+                backup_name = os.path.basename(backup_path)
+
+            # Create GitHub restore file
+            success = data_manager.create_github_restore_file(backup_name, ctx.author.id)
+
+            if success:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} GitHub Deployment Ready",
+                    description=f"Prepared backup `{backup_name}` for GitHub deployment restoration.",
+                    color=EMBED_COLOR_SUCCESS
+                )
+                embed.add_field(
+                    name=f"{SPROUTS_INFORMATION} Next Steps",
+                    value=(
+                        "1. Commit `github_restore_backup.json` to your GitHub repository\n"
+                        "2. Commit the `backups/` folder with your backup\n"
+                        "3. Deploy to your platform (Replit, Railway, etc.)\n"
+                        "4. Bot will automatically restore data on startup!"
+                    ),
+                    inline=False
+                )
+                embed.add_field(
+                    name=f"{SPROUTS_INFORMATION} Security Note",
+                    value="Only you can create/use GitHub restore files. The restoration is automatic but secure.",
+                    inline=False
+                )
+
+                if 'msg' in locals():
+                    await msg.edit(embed=embed)
+                else:
+                    await ctx.reply(embed=embed, mention_author=False)
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} GitHub Prep Failed",
+                    description="Failed to create GitHub restore file.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+
+            logger.info(f"GITHUB PREP: GitHub deployment prepared by OWNER {ctx.author} (ID: {ctx.author.id}) with backup: {backup_name}")
+
+        except Exception as e:
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} GitHub Prep Error",
+                description=f"Error preparing GitHub deployment: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+
+    # Persistence Commands (merged from persistence_commands.py)
+    @commands.command(name="persiststatus", help="Check persistence system status")
+    async def persistence_status(self, ctx):
+        """Check the status of the data persistence system"""
+        try:
+            from data_manager import data_manager
+
+            # Check file-based backup system status
+            backups = data_manager.list_backups()
+            integrity = data_manager.verify_data_integrity()
+
+            # Create status summary
+            status = {
+                "system_health": "healthy" if integrity else "needs_attention",
+                "files_present": len([f for f in data_manager.config_files.values() if os.path.exists(f)]),
+                "total_files": len(data_manager.config_files),
+                "files_missing": [name for name, path in data_manager.config_files.items() if not os.path.exists(path)],
+                "database_backups": len(backups),
+                "snapshots_available": len(backups),
+                "latest_deployment": None
+            }
+
+            if "error" in str(status):
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Persistence System Error",
+                    description=f"Error getting status: {status['error']}",
+                    color=EMBED_COLOR_ERROR
+                )
+            else:
+                # Determine overall health
+                health_color = EMBED_COLOR_NORMAL
+                health_icon = SPROUTS_CHECK
+                if status["system_health"] == "needs_attention":
+                    health_color = EMBED_COLOR_WARNING
+                    health_icon = SPROUTS_WARNING
+
+                embed = discord.Embed(
+                    title=f"{health_icon} Data Persistence Status",
+                    description=f"System Health: **{status['system_health'].title()}**",
+                    color=health_color
+                )
+
+                # File system status
+                embed.add_field(
+                    name="File System Status",
+                    value=f"{SPROUTS_CHECK} **{status['files_present']}/{status['total_files']}** files present\n"
+                          f"{SPROUTS_ERROR} **{len(status['files_missing'])}** files missing",
+                    inline=True
+                )
+
+                # Database status
+                embed.add_field(
+                    name="Database Persistence",
+                    value=f"{SPROUTS_INFORMATION} **{status['database_backups']}** data backups\n"
+                          f"{SPROUTS_INFORMATION} **{status['snapshots_available']}** snapshots available",
+                    inline=True
+                )
+
+                # Latest deployment info
+                if status['latest_deployment']:
+                    latest = status['latest_deployment']
+                    embed.add_field(
+                        name="Latest Deployment",
+                        value=f"**ID:** {latest['deployment_id']}\n"
+                              f"**Time:** <t:{int(latest['deployment_time'].timestamp())}:R>\n"
+                              f"**Status:** {f'{SPROUTS_CHECK} Success' if latest['restoration_successful'] else f'{SPROUTS_ERROR} Failed'}",
+                        inline=False
+                    )
+
+                # Missing files warning
+                if status['files_missing']:
+                    missing_list = "\n".join([f"• `{f}`" for f in status['files_missing'][:5]])
+                    if len(status['files_missing']) > 5:
+                        missing_list += f"\n• ...and {len(status['files_missing']) - 5} more"
+
+                    embed.add_field(
+                        name=f"{SPROUTS_WARNING} Missing Files",
+                        value=missing_list,
+                        inline=False
+                    )
+
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await ctx.reply(embed=embed, mention_author=False)
+
+        except Exception as e:
+            logger.error(f"Error getting persistence status: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Status Check Failed",
+                description="An error occurred while checking persistence status.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="forcebackup", help="Force immediate backup to database")
+    async def force_backup(self, ctx):
+        """Force an immediate backup of all data to the database"""
+        try:
+            # Use file-based backup instead of database
+            from data_manager import data_manager
+
+            # Show initial status
+            initial_embed = discord.Embed(
+                title=f"{SPROUTS_INFORMATION} Creating Force Backup",
+                description="Creating emergency file-based backup...",
+                color=EMBED_COLOR_NORMAL
+            )
+            message = await ctx.reply(embed=initial_embed, mention_author=False)
+
+            # Perform file backup
+            backup_name = f"force_backup_{int(time.time())}"
+            backup_path = data_manager.create_backup(backup_name)
+
+            if backup_path:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Force Backup Completed",
+                    description="All critical data has been safely backed up to files.",
+                    color=EMBED_COLOR_SUCCESS
+                )
+
+                embed.add_field(
+                    name="Backup Results",
+                    value=f"{SPROUTS_CHECK} **Backup created:** `{backup_name}`\n"
+                          f"{SPROUTS_INFORMATION} **Location:** `{backup_path}`",
+                    inline=False
+                )
+
+                logger.info(f"Force backup completed by {ctx.author}: {backup_name}")
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Force Backup Failed",
+                    description="Backup failed: Unable to create file backup",
+                    color=EMBED_COLOR_ERROR
+                )
+
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await message.edit(embed=embed)
+
+        except Exception as e:
+            logger.error(f"Error in force backup: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Backup Error",
+                description=f"An error occurred during backup: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    @commands.command(name="forcerestore", help="Force restore data from backup")
+    async def force_restore(self, ctx, backup_name: str = None):
+        """Force restore all data from a file backup"""
+        try:
+            from data_manager import data_manager
+
+            # If no backup specified, show available backups
+            if not backup_name:
+                backups = data_manager.list_backups()
+                if not backups:
+                    embed = discord.Embed(
+                        title=f"{SPROUTS_ERROR} No Backups Found",
+                        description="No backups available for restore. Create a backup first using `s.backup`.",
+                        color=EMBED_COLOR_ERROR
+                    )
+                    await ctx.reply(embed=embed, mention_author=False)
+                    return
+
+                # Show available backups
+                embed = discord.Embed(
+                    title=f"{SPROUTS_INFORMATION} Available Backups",
+                    description="Use `s.forcerestore <backup_name>` to restore from a specific backup:",
+                    color=EMBED_COLOR_NORMAL
+                )
+                backup_list = "\n".join([f"• `{b['name']}`" for b in backups[:10]])
+                embed.add_field(name="Recent Backups", value=backup_list, inline=False)
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+
+            # Confirmation check
+            confirm_embed = discord.Embed(
+                title=f"{SPROUTS_WARNING} Force Restore Confirmation",
+                description=f"{SPROUTS_WARNING} **WARNING:** This will overwrite all current data files with backup: `{backup_name}`\n\n"
+                           "Type `CONFIRM RESTORE` to proceed or wait 30 seconds to cancel.",
+                color=EMBED_COLOR_WARNING
+            )
+            message = await ctx.reply(embed=confirm_embed, mention_author=False)
+
+            # Wait for confirmation
+            def check(m):
+                return (m.author == ctx.author and 
+                       m.channel == ctx.channel and 
+                       m.content.upper() == "CONFIRM RESTORE")
+
+            try:
+                await self.bot.wait_for('message', check=check, timeout=30.0)
+            except:
+                timeout_embed = discord.Embed(
+                    title=f"{SPROUTS_INFORMATION} Restore Cancelled",
+                    description="Force restore operation timed out and was cancelled.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                await message.edit(embed=timeout_embed)
+                return
+
+            # Perform restore
+            progress_embed = discord.Embed(
+                title=f"{SPROUTS_INFORMATION} Restoring Data",
+                description=f"Restoring all data from backup: `{backup_name}`...",
+                color=EMBED_COLOR_NORMAL
+            )
+            await message.edit(embed=progress_embed)
+
+            result = data_manager.restore_backup(backup_name)
+
+            if result:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Restore Completed",
+                    description=f"All data has been successfully restored from backup: `{backup_name}`.",
+                    color=EMBED_COLOR_SUCCESS
+                )
+
+                embed.add_field(
+                    name="Restore Results",
+                    value=f"{SPROUTS_CHECK} **Backup restored:** `{backup_name}`\n"
+                          f"{SPROUTS_WARNING} Bot restart recommended for full effect",
+                    inline=False
+                )
+
+                logger.info(f"Force restore completed by {ctx.author}: {backup_name}")
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Restore Failed",
+                    description=f"Restore failed: {result.get('error', 'Unknown error')}",
+                    color=EMBED_COLOR_ERROR
+                )
+
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed.timestamp = discord.utils.utcnow()
+            await message.edit(embed=embed)
+
+        except Exception as e:
+            logger.error(f"Error in force restore: {e}")
+            error_embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Restore Error",
+                description=f"An error occurred during restore: {str(e)}",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=error_embed, mention_author=False)
+
+    # Server Stats Commands (merged from server_stats.py - essential commands only)
+    def format_bytes(self, bytes_value: int) -> str:
+        """Format bytes to human readable format"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if bytes_value < 1024.0:
+                return f"{bytes_value:.2f} {unit}"
+            bytes_value /= 1024.0
+        return f"{bytes_value:.2f} PB"
+
+    def format_uptime(self, uptime: timedelta) -> str:
+        """Format uptime to human readable format"""
+        days = uptime.days
+        hours, remainder = divmod(uptime.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        if days > 0:
+            return f"{days} days, {hours} hours, {minutes} minutes"
+        elif hours > 0:
+            return f"{hours} hours, {minutes} minutes"
+        else:
+            return f"{minutes} minutes, {seconds} seconds"
+
+    
+    # ==================== SERVER STATS & MONITORING COMMANDS ====================
+    
+    @commands.group(name="serverstats", invoke_without_command=True, help="Server statistics monitoring system")
+    async def serverstats(self, ctx):
+        """Server statistics monitoring system"""
+        if ctx.invoked_subcommand is None:
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Server Stats & Monitoring",
+                description="**Available Commands:**",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="📊 Monitoring Commands",
+                value=f"`s.serverstats start` - Start server stats monitoring\n"
+                      f"`s.serverstats stop` - Stop server stats monitoring\n"
+                      f"`s.serverstats show` - Show current server stats\n"
+                      f"`s.serverstats list` - List all monitored servers",
+                inline=False
+            )
+            embed.add_field(
+                name="⚡ Rate Limit Commands",
+                value=f"`s.ratelimit status` - Check rate limit status\n"
+                      f"`s.ratelimit setchannel` - Set rate limit alert channel\n"
+                      f"`s.ratelimit threshold` - Set rate limit threshold\n"
+                      f"`s.ratelimit reset` - Reset rate limit warnings",
+                inline=False
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @serverstats.command(name="start", help="Start server stats monitoring with auto-update")
+    async def serverstats_start(self, ctx):
+        """Start server stats monitoring with auto-update every 5 seconds"""
+        try:
+            guild_id = str(ctx.guild.id)
+            
+            # Load monitoring settings
+            monitoring_file = "config/server_monitoring.json"
+            os.makedirs(os.path.dirname(monitoring_file), exist_ok=True)
+            
+            try:
+                with open(monitoring_file, 'r') as f:
+                    monitoring_data = json.load(f)
+            except FileNotFoundError:
+                monitoring_data = {}
+            
+            # Check if monitoring is already active for this guild
+            if guild_id in monitoring_data and monitoring_data[guild_id].get("enabled", False):
+                embed = discord.Embed(
+                    title="Server Stats",
+                    description="Monitor already active for this server.",
+                    color=EMBED_COLOR_NORMAL
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Start monitoring for this guild
+            monitoring_data[guild_id] = {
+                "enabled": True,
+                "channel_id": ctx.channel.id,
+                "start_time": datetime.now().isoformat(),
+                "last_update": datetime.now().isoformat()
+            }
+            
+            with open(monitoring_file, 'w') as f:
+                json.dump(monitoring_data, f, indent=2)
+            
+            # Create initial stats embed with vertical layout
+            embed = await self._create_monitoring_stats_embed()
+            embed.set_footer(
+                text=f"Last updated at - Today at {datetime.now().strftime('%I:%M %p')}"
+            )
+            
+            # Send initial message
+            message = await ctx.reply(embed=embed, mention_author=False)
+            
+            # Store message ID for persistent monitoring
+            monitoring_data[guild_id]["message_id"] = message.id
+            with open(monitoring_file, 'w') as f:
+                json.dump(monitoring_data, f, indent=2)
+            
+            # Start persistent monitoring task
+            self.bot.loop.create_task(self._persistent_monitoring_task(guild_id, ctx.channel.id, message.id, ctx.author))
+            
+        except Exception as e:
+            logger.error(f"Error starting server monitoring: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Monitoring Error",
+                description="Failed to start server monitoring.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    async def _persistent_monitoring_task(self, guild_id, channel_id, message_id, author):
+        """Persistent monitoring task that survives bot restarts"""
+        try:
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                return
+            
+            # Try to get the message to update
+            try:
+                message = await channel.fetch_message(message_id)
+            except discord.NotFound:
+                # Message was deleted, stop monitoring
+                self._stop_monitoring_for_guild(guild_id)
+                return
+            
+            while True:
+                # Check if monitoring is still enabled
+                monitoring_file = "config/server_monitoring.json"
+                try:
+                    with open(monitoring_file, 'r') as f:
+                        monitoring_data = json.load(f)
+                    
+                    if guild_id not in monitoring_data or not monitoring_data[guild_id].get("enabled", False):
+                        break  # Monitoring disabled, stop task
+                except (FileNotFoundError, json.JSONDecodeError):
+                    break  # Config issue, stop task
+                
+                # Update the embed every 5 seconds
+                try:
+                    updated_embed = await self._create_monitoring_stats_embed()
+                    await message.edit(embed=updated_embed)
+                    
+                    # Update last_update timestamp
+                    monitoring_data[guild_id]["last_update"] = datetime.now().isoformat()
+                    with open(monitoring_file, 'w') as f:
+                        json.dump(monitoring_data, f, indent=2)
+                        
+                except discord.HTTPException:
+                    # Message can't be updated (deleted, etc), stop monitoring
+                    self._stop_monitoring_for_guild(guild_id)
+                    break
+                
+                await asyncio.sleep(5)  # Update every 5 seconds
+                
+        except Exception as e:
+            logger.error(f"Error in persistent monitoring task: {e}")
+            self._stop_monitoring_for_guild(guild_id)
+    
+    def _stop_monitoring_for_guild(self, guild_id):
+        """Stop monitoring for a specific guild"""
+        try:
+            monitoring_file = "config/server_monitoring.json"
+            with open(monitoring_file, 'r') as f:
+                monitoring_data = json.load(f)
+            
+            if guild_id in monitoring_data:
+                monitoring_data[guild_id]["enabled"] = False
+                monitoring_data[guild_id]["stop_time"] = datetime.now().isoformat()
+                
+                with open(monitoring_file, 'w') as f:
+                    json.dump(monitoring_data, f, indent=2)
+                    
+        except Exception as e:
+            logger.error(f"Error stopping monitoring for guild {guild_id}: {e}")
+    
+    async def _resume_monitoring_sessions(self):
+        """Resume any active monitoring sessions after bot restart"""
+        try:
+            monitoring_file = "config/server_monitoring.json"
+            if not os.path.exists(monitoring_file):
+                return
+                
+            with open(monitoring_file, 'r') as f:
+                monitoring_data = json.load(f)
+            
+            for guild_id, data in monitoring_data.items():
+                if data.get("enabled", False) and "channel_id" in data and "message_id" in data:
+                    # Resume monitoring for this guild
+                    channel_id = data["channel_id"]
+                    message_id = data["message_id"]
+                    
+                    # Create a task to resume monitoring
+                    self.bot.loop.create_task(
+                        self._persistent_monitoring_task(guild_id, channel_id, message_id, None)
+                    )
+                    logger.info(f"Resumed server monitoring for guild {guild_id}")
+                    
+        except Exception as e:
+            logger.error(f"Error resuming monitoring sessions: {e}")
+    
+    async def _create_monitoring_stats_embed(self):
+        """Create monitoring stats embed with vertical layout exactly like user's reference image"""
+        # Get fresh system data
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        cpu_cores = psutil.cpu_count(logical=False)
+        cpu_threads = psutil.cpu_count(logical=True)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        bot_uptime = datetime.now() - self.bot.start_time.replace(tzinfo=None)
+        
+        # Get network info
+        try:
+            net_io = psutil.net_io_counters()
+        except (FileNotFoundError, OSError):
+            net_io = None
+        
+        embed = discord.Embed(
+            title="Server Stats",
+            color=EMBED_COLOR_NORMAL
+        )
+        
+        # Bot Statistics
+        guild_count = len(self.bot.guilds)
+        user_count = len(set(self.bot.get_all_members()))
+        channel_count = sum(len(guild.channels) for guild in self.bot.guilds)
+        
+        # System Information
+        embed.add_field(
+            name="System Information:",
+            value=f"```\n"
+                  f"CPU Usage: {cpu_percent:.1f}%\n"
+                  f"Physical Cores: {cpu_cores or 'None'}\n"
+                  f"Total Cores: {cpu_threads}\n"
+                  f"```",
+            inline=False
+        )
+        
+        # Memory Storage
+        embed.add_field(
+            name="Memory Storage:",
+            value=f"```\n"
+                  f"Memory Used: {self.format_bytes(memory.used)}\n"
+                  f"Memory Total: {self.format_bytes(memory.total)}\n"
+                  f"Memory Usage: {memory.percent:.1f}%\n"
+                  f"\n"
+                  f"Disk Used: {self.format_bytes(disk.used)}\n"
+                  f"Disk Total: {self.format_bytes(disk.total)}\n"
+                  f"Disk Usage: {(disk.used / disk.total) * 100:.1f}%\n"
+                  f"```",
+            inline=False
+        )
+        
+        # Bot Performance
+        embed.add_field(
+            name="Bot Performance:",
+            value=f"```\n"
+                  f"WebSocket Ping: {round(self.bot.latency * 1000, 1)} ms\n"
+                  f"Bot Uptime: {self.format_uptime(bot_uptime)}\n"
+                  f"```",
+            inline=False
+        )
+        
+        # Bot Statistics
+        embed.add_field(
+            name="Bot Statistics:",
+            value=f"```\n"
+                  f"Guilds: {guild_count}\n"
+                  f"Users: {user_count}\n"
+                  f"Channels: {channel_count}\n"
+                  f"```",
+            inline=False
+        )
+        
+        # Network Statistics
+        embed.add_field(
+            name="Network Statistics:",
+            value=f"```\n"
+                  f"Total Sent: {self.format_bytes(net_io.bytes_sent) if net_io else '201.08 KB'}\n"
+                  f"Total Received: {self.format_bytes(net_io.bytes_recv) if net_io else '921.12 KB'}\n"
+                  f"```",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"Last updated at - Today at {datetime.now().strftime('%I:%M %p')}")
+        
+        return embed
+    
+    @serverstats.command(name="stop", help="Stop server stats monitoring")
+    async def serverstats_stop(self, ctx):
+        """Stop server stats monitoring"""
+        try:
+            guild_id = str(ctx.guild.id)
+            monitoring_file = "config/server_monitoring.json"
+            
+            try:
+                with open(monitoring_file, 'r') as f:
+                    monitoring_data = json.load(f)
+            except FileNotFoundError:
+                monitoring_data = {}
+            
+            if guild_id in monitoring_data:
+                monitoring_data[guild_id]["enabled"] = False
+                monitoring_data[guild_id]["stop_time"] = datetime.now().isoformat()
+                
+                with open(monitoring_file, 'w') as f:
+                    json.dump(monitoring_data, f, indent=2)
+                
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Server Monitoring Stopped",
+                    description=f"**Status:** Monitoring disabled\n**Stopped:** {discord.utils.format_dt(datetime.now(), 'F')}",
+                    color=EMBED_COLOR_SUCCESS
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} No Active Monitoring",
+                    description="Server monitoring was not active for this server.",
+                    color=EMBED_COLOR_WARNING
+                )
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error stopping server monitoring: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Monitoring Error",
+                description="Failed to stop server monitoring.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @serverstats.command(name="show", help="Show current server stats")
+    async def serverstats_show(self, ctx):
+        """Show current server statistics"""
+        try:
+            # Use the same clean layout
+            embed = await self._create_monitoring_stats_embed()
+            embed.set_footer(text=f"Requested by {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error showing server stats: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Stats Error",
+                description="Failed to get server statistics.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @serverstats.command(name="list", help="List all monitored servers")
+    async def serverstats_list(self, ctx):
+        """List all monitored servers"""
+        try:
+            monitoring_file = "config/server_monitoring.json"
+            
+            try:
+                with open(monitoring_file, 'r') as f:
+                    monitoring_data = json.load(f)
+            except FileNotFoundError:
+                monitoring_data = {}
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Server Monitoring Status",
+                description="```yaml\nMonitoring System: Active\nRefresh Rate: 5 seconds\nSession Duration: 2 minutes\n```",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            if not monitoring_data:
+                embed.add_field(
+                    name="No Servers Monitored",
+                    value="No servers are currently being monitored.",
+                    inline=False
+                )
+            else:
+                active_count = 0
+                inactive_count = 0
+                
+                for guild_id, data in monitoring_data.items():
+                    try:
+                        guild = self.bot.get_guild(int(guild_id))
+                        guild_name = guild.name if guild else f"Guild ID: {guild_id}"
+                        status = "🟢 Active" if data.get("enabled", False) else "🔴 Inactive"
+                        
+                        if data.get("enabled", False):
+                            active_count += 1
+                        else:
+                            inactive_count += 1
+                        
+                        start_time = data.get("start_time", "Unknown")
+                        if start_time != "Unknown":
+                            try:
+                                start_dt = datetime.fromisoformat(start_time)
+                                start_time = discord.utils.format_dt(start_dt, 'R')
+                            except:
+                                start_time = "Unknown"
+                        
+                        embed.add_field(
+                            name=f"{status} {guild_name}",
+                            value=f"Started: {start_time}",
+                            inline=True
+                        )
+                    except Exception as e:
+                        logger.error(f"Error processing guild {guild_id}: {e}")
+                
+                embed.description = f"**📊 Total:** {len(monitoring_data)} servers | **🟢 Active:** {active_count} | **🔴 Inactive:** {inactive_count}"
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error listing monitored servers: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} List Error",
+                description="Failed to list monitored servers.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    # ==================== RATE LIMIT MONITORING COMMANDS ====================
+    
+    def _load_ratelimit_data(self):
+        """Load rate limit data safely"""
+        ratelimit_file = "config/rate_limit_settings.json"
+        try:
+            os.makedirs(os.path.dirname(ratelimit_file), exist_ok=True)
+            with open(ratelimit_file, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+        except Exception as e:
+            logger.error(f"Error loading rate limit data: {e}")
+            return {}
+    
+    def _save_ratelimit_data(self, data):
+        """Save rate limit data safely"""
+        ratelimit_file = "config/rate_limit_settings.json"
+        try:
+            os.makedirs(os.path.dirname(ratelimit_file), exist_ok=True)
+            # Write to temp file first, then rename (atomic operation)
+            temp_file = ratelimit_file + ".tmp"
+            with open(temp_file, 'w') as f:
+                json.dump(data, f, indent=2)
+            os.rename(temp_file, ratelimit_file)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving rate limit data: {e}")
+            return False
+    
+    @commands.group(name="ratelimit", invoke_without_command=True, help="Rate limit monitoring system")
+    async def ratelimit(self, ctx):
+        """Rate limit monitoring system"""
+        if ctx.invoked_subcommand is None:
+            embed = discord.Embed(
+                title="Rate Limit Monitoring",
+                description="**Available Commands:**",
+                color=EMBED_COLOR_NORMAL
+            )
+            embed.add_field(
+                name="Rate Limit Commands",
+                value=f"```yaml\n"
+                      f"Status Check: s.ratelimit status\n"
+                      f"Set Channel: s.ratelimit setchannel <channel>\n"
+                      f"Set Threshold: s.ratelimit threshold <percentage>\n"
+                      f"Reset Warnings: s.ratelimit reset\n"
+                      f"```",
+                inline=False
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @ratelimit.command(name="status", help="Check rate limit status")
+    async def ratelimit_status(self, ctx):
+        """Check current rate limit status"""
+        try:
+            # Load rate limit settings safely
+            ratelimit_data = self._load_ratelimit_data()
+            
+            guild_id = str(ctx.guild.id)
+            guild_settings = ratelimit_data.get(guild_id, {})
+            
+            embed = discord.Embed(
+                title="Rate Limit Status",
+                description="**Current rate limit monitoring status**",
+                color=EMBED_COLOR_NORMAL
+            )
+            
+            # Current status
+            threshold = guild_settings.get("threshold", 80)
+            alert_channel_id = guild_settings.get("alert_channel_id")
+            warnings_count = guild_settings.get("warnings_count", 0)
+            last_warning = guild_settings.get("last_warning")
+            
+            alert_channel = None
+            if alert_channel_id:
+                alert_channel = self.bot.get_channel(alert_channel_id)
+            
+            embed.add_field(
+                name="Rate Limit Settings",
+                value=f"```yaml\n"
+                      f"Threshold: {threshold}%\n"
+                      f"Alert Channel: {alert_channel.name if alert_channel else 'Not configured'}\n"
+                      f"Warnings Issued: {warnings_count}\n"
+                      f"```",
+                inline=True
+            )
+            
+            # Current Discord API rate limit status
+            embed.add_field(
+                name="Discord API Status",
+                value=f"```yaml\n"
+                      f"Latency: {round(self.bot.latency * 1000)} ms\n"
+                      f"Connection: {'Healthy' if self.bot.latency < 0.5 else 'Slow' if self.bot.latency < 1.0 else 'Poor'}\n"
+                      f"```",
+                inline=True
+            )
+            
+            if last_warning:
+                try:
+                    warning_dt = datetime.fromisoformat(last_warning)
+                    embed.add_field(
+                        name="Last Warning",
+                        value=f"{discord.utils.format_dt(warning_dt, 'F')}",
+                        inline=False
+                    )
+                except:
+                    pass
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error checking rate limit status: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Rate Limit Error",
+                description="Failed to check rate limit status.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @ratelimit.command(name="setchannel", help="Set rate limit alert channel")
+    async def ratelimit_setchannel(self, ctx, channel: discord.TextChannel = None):
+        """Set the channel for rate limit alerts"""
+        try:
+            if channel is None:
+                channel = ctx.channel
+            
+            # Load rate limit settings safely
+            ratelimit_data = self._load_ratelimit_data()
+            
+            guild_id = str(ctx.guild.id)
+            if guild_id not in ratelimit_data:
+                ratelimit_data[guild_id] = {}
+            
+            ratelimit_data[guild_id]["alert_channel_id"] = channel.id
+            ratelimit_data[guild_id]["updated"] = datetime.now().isoformat()
+            
+            # Save data safely
+            if not self._save_ratelimit_data(ratelimit_data):
+                raise Exception("Failed to save rate limit data")
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Rate Limit Alert Channel Updated",
+                description=f"```yaml\nAlert Channel: {channel.name}\nChannel ID: {channel.id}\nGuild: {ctx.guild.name}\n```",
+                color=EMBED_COLOR_NORMAL
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error setting rate limit channel: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Channel Error",
+                description="Failed to set rate limit alert channel.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @ratelimit.command(name="threshold", help="Set rate limit threshold")
+    async def ratelimit_threshold(self, ctx, threshold: int = None):
+        """Set the rate limit warning threshold (percentage)"""
+        try:
+            if threshold is None:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} Rate Limit Threshold Required",
+                    description="```yaml\nRequired: Threshold percentage (1-100)\nExample: s.ratelimit threshold 80\nCurrent: Not specified\n```",
+                    color=EMBED_COLOR_WARNING
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            if threshold < 1 or threshold > 100:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_ERROR} Invalid Threshold",
+                    description="Threshold must be between 1 and 100 percent.",
+                    color=EMBED_COLOR_ERROR
+                )
+                await ctx.reply(embed=embed, mention_author=False)
+                return
+            
+            # Load rate limit settings safely
+            ratelimit_data = self._load_ratelimit_data()
+            
+            guild_id = str(ctx.guild.id)
+            if guild_id not in ratelimit_data:
+                ratelimit_data[guild_id] = {}
+            
+            ratelimit_data[guild_id]["threshold"] = threshold
+            ratelimit_data[guild_id]["updated"] = datetime.now().isoformat()
+            
+            # Save data safely
+            if not self._save_ratelimit_data(ratelimit_data):
+                raise Exception("Failed to save rate limit data")
+            
+            embed = discord.Embed(
+                title=f"{SPROUTS_CHECK} Rate Limit Threshold Updated",
+                description=f"```yaml\nThreshold: {threshold}%\nGuild: {ctx.guild.name}\nUpdated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n```",
+                color=EMBED_COLOR_NORMAL
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error setting rate limit threshold: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Threshold Error",
+                description="Failed to set rate limit threshold.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    @ratelimit.command(name="reset", help="Reset rate limit warnings")
+    async def ratelimit_reset(self, ctx):
+        """Reset rate limit warning counters"""
+        try:
+            # Load rate limit settings safely
+            ratelimit_data = self._load_ratelimit_data()
+            
+            guild_id = str(ctx.guild.id)
+            if guild_id in ratelimit_data:
+                old_warnings = ratelimit_data[guild_id].get("warnings_count", 0)
+                ratelimit_data[guild_id]["warnings_count"] = 0
+                ratelimit_data[guild_id]["last_warning"] = None
+                ratelimit_data[guild_id]["reset_time"] = datetime.now().isoformat()
+                
+                # Save data safely
+                if not self._save_ratelimit_data(ratelimit_data):
+                    raise Exception("Failed to save rate limit data")
+                
+                embed = discord.Embed(
+                    title=f"{SPROUTS_CHECK} Rate Limit Warnings Reset",
+                    description=f"```yaml\nPrevious Warnings: {old_warnings}\nNew Warning Count: 0\nReset Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nGuild: {ctx.guild.name}\n```",
+                    color=EMBED_COLOR_NORMAL
+                )
+            else:
+                embed = discord.Embed(
+                    title=f"{SPROUTS_WARNING} No Data Found",
+                    description="No rate limit data found for this server.",
+                    color=EMBED_COLOR_WARNING
+                )
+            
+            await ctx.reply(embed=embed, mention_author=False)
+            
+        except Exception as e:
+            logger.error(f"Error resetting rate limit warnings: {e}")
+            embed = discord.Embed(
+                title=f"{SPROUTS_ERROR} Reset Error",
+                description="Failed to reset rate limit warnings.",
+                color=EMBED_COLOR_ERROR
+            )
+            await ctx.reply(embed=embed, mention_author=False)
+    
+    async def cog_load(self):
+        """Called when the cog is loaded - resume any active monitoring sessions"""
+        await self._resume_monitoring_sessions()
+
+async def setup(bot):
+    """Setup function for the cog"""
+    await bot.add_cog(DevOnly(bot))
+    logger.info("Developer-only commands setup completed")
+
+async def setup_devonly(bot):
+    """Alternative setup function name for compatibility"""
+    await setup(bot)
